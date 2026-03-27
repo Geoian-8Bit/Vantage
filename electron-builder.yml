@@ -8,10 +8,20 @@ files:
   - node_modules/sql.js/dist/sql-wasm.wasm
   - package.json
 win:
+  signAndEditExecutable: false
   target:
+    - target: nsis
+      arch:
+        - x64
     - target: portable
       arch:
         - x64
+nsis:
+  oneClick: true
+  createDesktopShortcut: true
+  createStartMenuShortcut: true
+  shortcutName: Vantage
+  deleteAppDataOnUninstall: false
 portable:
   unpackDirName: Vantage
 asar: true

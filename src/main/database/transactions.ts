@@ -1,5 +1,5 @@
 import { randomUUID } from 'crypto'
-import { Transaction, CreateTransactionDTO } from '../../shared/types'
+import { Transaction, CreateTransactionDTO, UpdateTransactionDTO } from '../../shared/types'
 import { getDatabase, saveDatabase } from './schema'
 
 export function getAllTransactions(): Transaction[] {
@@ -15,6 +15,7 @@ export function getAllTransactions(): Transaction[] {
       type: row.type as 'income' | 'expense',
       description: String(row.description),
       date: String(row.date),
+      category: String(row.category),
       created_at: String(row.created_at)
     })
   }
@@ -29,8 +30,8 @@ export function createTransaction(data: CreateTransactionDTO): Transaction {
   const created_at = new Date().toISOString()
 
   db.run(
-    'INSERT INTO transactions (id, amount, type, description, date, created_at) VALUES (?, ?, ?, ?, ?, ?)',
-    [id, data.amount, data.type, data.description, data.date, created_at]
+    'INSERT INTO transactions (id, amount, type, description, date, category, created_at) VALUES (?, ?, ?, ?, ?, ?, ?)',
+    [id, data.amount, data.type, data.description, data.date, data.category, created_at]
   )
 
   saveDatabase()
@@ -41,6 +42,7 @@ export function createTransaction(data: CreateTransactionDTO): Transaction {
     type: data.type,
     description: data.description,
     date: data.date,
+    category: data.category,
     created_at
   }
 }
@@ -49,4 +51,22 @@ export function deleteTransaction(id: string): void {
   const db = getDatabase()
   db.run('DELETE FROM transactions WHERE id = ?', [id])
   saveDatabase()
+}
+
+export function updateTransaction(id: string, data: UpdateTransactionDTO): Transaction {
+  const db = getDatabase()
+  db.run(
+    'UPDATE transactions SET amount=?, type=?, description=?, date=?, category=? WHERE id=?',
+    [data.amount, data.type, data.description, data.date, data.category, id]
+  )
+  saveDatabase()
+
+  const stmt = db.prepare('SELECT created_at FROM transactions WHERE id=?')
+  stmt.bind([id])
+  stmt.step()
+  const row = stmt.getAsObject() as unknown as { created_at: string }
+  const created_at = String(row.created_at)
+  stmt.free()
+
+  return { id, ...data, created_at }
 }

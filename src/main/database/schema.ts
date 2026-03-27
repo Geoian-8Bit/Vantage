@@ -24,7 +24,7 @@ export async function initializeDatabase(filePath: string): Promise<Database> {
     db = new SQL.Database()
   }
 
-  // Enable WAL-like behavior (sql.js doesn't support WAL but we set journal mode)
+  // sql.js doesn't support WAL mode; DELETE is the default and works correctly
   db.run('PRAGMA journal_mode = DELETE')
 
   // Create tables
@@ -41,6 +41,13 @@ export async function initializeDatabase(filePath: string): Promise<Database> {
 
   db.run('CREATE INDEX IF NOT EXISTS idx_transactions_date ON transactions(date DESC)')
   db.run('CREATE INDEX IF NOT EXISTS idx_transactions_type ON transactions(type)')
+
+  // Migration: add category column if it does not yet exist
+  try {
+    db.run("ALTER TABLE transactions ADD COLUMN category TEXT NOT NULL DEFAULT 'Otros'")
+  } catch {
+    // Column already exists — safe to ignore
+  }
 
   saveDatabase()
 

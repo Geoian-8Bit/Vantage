@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback, useMemo } from 'react'
-import type { Transaction, CreateTransactionDTO } from '../../shared/types'
+import type { Transaction, CreateTransactionDTO, UpdateTransactionDTO } from '../../shared/types'
 import { transactionRepository } from '../repositories'
 
 interface UseTransactionsReturn {
@@ -11,6 +11,7 @@ interface UseTransactionsReturn {
   balance: number
   addTransaction: (data: CreateTransactionDTO) => Promise<void>
   removeTransaction: (id: string) => Promise<void>
+  updateTransaction: (id: string, data: UpdateTransactionDTO) => Promise<void>
 }
 
 export function useTransactions(): UseTransactionsReturn {
@@ -18,11 +19,7 @@ export function useTransactions(): UseTransactionsReturn {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
-  useEffect(() => {
-    loadTransactions()
-  }, [])
-
-  async function loadTransactions(): Promise<void> {
+  const loadTransactions = useCallback(async (): Promise<void> => {
     try {
       setLoading(true)
       setError(null)
@@ -33,7 +30,11 @@ export function useTransactions(): UseTransactionsReturn {
     } finally {
       setLoading(false)
     }
-  }
+  }, [])
+
+  useEffect(() => {
+    loadTransactions()
+  }, [loadTransactions])
 
   const addTransaction = useCallback(async (data: CreateTransactionDTO): Promise<void> => {
     try {
@@ -57,17 +58,30 @@ export function useTransactions(): UseTransactionsReturn {
     }
   }, [])
 
-  const totalIncome = useMemo(
-    () => transactions.filter(t => t.type === 'income').reduce((sum, t) => sum + t.amount, 0),
+  const updateTransaction = useCallback(async (id: string, data: UpdateTransactionDTO): Promise<void> => {
+    try {
+      setError(null)
+      const updated = await transactionRepository.update(id, data)
+      setTransactions(prev => prev.map(t => t.id === id ? updated : t))
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Error al actualizar transacción')
+      throw err
+    }
+  }, [])
+
+  const { totalIncome, totalExpenses } = useMemo(
+    () => transactions.reduce(
+      (acc, t) => {
+        if (t.type === 'income') acc.totalIncome += t.amount
+        else acc.totalExpenses += t.amount
+        return acc
+      },
+      { totalIncome: 0, totalExpenses: 0 }
+    ),
     [transactions]
   )
 
-  const totalExpenses = useMemo(
-    () => transactions.filter(t => t.type === 'expense').reduce((sum, t) => sum + t.amount, 0),
-    [transactions]
-  )
-
-  const balance = useMemo(() => totalIncome - totalExpenses, [totalIncome, totalExpenses])
+  const balance = totalIncome - totalExpenses
 
   return {
     transactions,
@@ -77,6 +91,7 @@ export function useTransactions(): UseTransactionsReturn {
     totalExpenses,
     balance,
     addTransaction,
-    removeTransaction
+    removeTransaction,
+    updateTransaction
   }
 }

@@ -1,11 +1,14 @@
 import { app, BrowserWindow, ipcMain } from 'electron'
-import { join } from 'path'
-import { existsSync } from 'fs'
+import { join, dirname } from 'path'
+import { existsSync, mkdirSync } from 'fs'
 import { IPC_CHANNELS } from '../shared/types'
 import { initializeDatabase, closeDatabase, setWasmPath } from './database/schema'
-import { getAllTransactions, createTransaction, deleteTransaction } from './database/transactions'
+import { getAllTransactions, createTransaction, deleteTransaction, updateTransaction } from './database/transactions'
 
 let mainWindow: BrowserWindow | null = null
+
+let dbReadyResolve!: () => void
+const dbReady = new Promise<void>(resolve => { dbReadyResolve = resolve })
 
 function getDbPath(): string {
   // For portable builds, store DB next to the executable
@@ -56,43 +59,48 @@ async function createWindow(): Promise<void> {
 }
 
 function registerIpcHandlers(): void {
-  ipcMain.handle(IPC_CHANNELS.TRANSACTIONS_GET_ALL, () => {
+  ipcMain.handle(IPC_CHANNELS.TRANSACTIONS_GET_ALL, async () => {
+    await dbReady
     return getAllTransactions()
   })
 
-  ipcMain.handle(IPC_CHANNELS.TRANSACTIONS_CREATE, (_event, data) => {
+  ipcMain.handle(IPC_CHANNELS.TRANSACTIONS_CREATE, async (_event, data) => {
+    await dbReady
     return createTransaction(data)
   })
 
-  ipcMain.handle(IPC_CHANNELS.TRANSACTIONS_DELETE, (_event, { id }) => {
+  ipcMain.handle(IPC_CHANNELS.TRANSACTIONS_DELETE, async (_event, { id }) => {
+    await dbReady
     deleteTransaction(id)
+  })
+
+  ipcMain.handle(IPC_CHANNELS.TRANSACTIONS_UPDATE, async (_event, { id, data }) => {
+    await dbReady
+    return updateTransaction(id, data)
   })
 }
 
 app.whenReady().then(async () => {
   try {
-    // Ensure portable data directory exists
     const dbPath = getDbPath()
-    const dbDir = join(dbPath, '..')
-    const { mkdirSync } = await import('fs')
+    const dbDir = dirname(dbPath)
     if (!existsSync(dbDir)) {
       mkdirSync(dbDir, { recursive: true })
     }
 
-    const wasmFile = getWasmPath()
-    console.log('DB path:', dbPath)
-    console.log('WASM path:', wasmFile)
-    console.log('WASM exists:', existsSync(wasmFile))
+    setWasmPath(getWasmPath())
 
-    setWasmPath(wasmFile)
-    await initializeDatabase(dbPath)
-    console.log('Database initialized')
-
+    // Register handlers before DB is ready — they await dbReady internally
     registerIpcHandlers()
-    await createWindow()
-    console.log('Window created')
+
+    // DB init and window creation run in parallel
+    await Promise.all([
+      initializeDatabase(dbPath).then(() => dbReadyResolve()),
+      createWindow()
+    ])
   } catch (err) {
     console.error('Failed to start app:', err)
+    app.quit()
   }
 })
 

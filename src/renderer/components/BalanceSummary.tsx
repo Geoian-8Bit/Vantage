@@ -29,16 +29,17 @@ export function BalanceSummary({ totalIncome, totalExpenses, balance }: BalanceS
         </p>
       </div>
 
-      <div className="rounded-xl bg-card p-5 shadow-sm border border-border relative overflow-hidden">
+      <div
+        className={`rounded-xl p-5 shadow-sm border ${balance >= 0 ? 'bg-income-light border-income/30' : 'bg-expense-light border-expense/30'}`}
+        style={{ borderLeftWidth: '4px', borderLeftColor: balance >= 0 ? 'var(--color-income)' : 'var(--color-expense)' }}
+      >
         <div className="flex items-center gap-2 mb-1">
-          <div className="w-2 h-2 rounded-full bg-accent" />
+          <div className={`w-2 h-2 rounded-full ${balance >= 0 ? 'bg-income' : 'bg-expense'}`} />
           <p className="text-sm font-medium text-subtext">Balance</p>
         </div>
         <p className={`text-2xl font-bold ${balance >= 0 ? 'text-income' : 'text-expense'}`}>
           {formatCurrency(balance)}
         </p>
-        {/* Decorative accent line */}
-        <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-accent" />
       </div>
     </div>
   )
