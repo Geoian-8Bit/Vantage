@@ -1,0 +1,45 @@
+@import "tailwindcss";
+
+@theme {
+  /* Primario - Granate */
+  --color-brand: #7A1B2D;
+  --color-brand-hover: #5C1422;
+  --color-brand-light: #F3E5E8;
+  --color-brand-100: #EECDD3;
+
+  /* Acento - Dorado */
+  --color-accent: #C9A84C;
+  --color-accent-hover: #B8963F;
+  --color-accent-light: #FBF5E6;
+
+  /* Neutrales - Ceniza */
+  --color-sidebar: #1A1A1D;
+  --color-sidebar-hover: #2A2A2E;
+  --color-sidebar-border: #2E2E32;
+  --color-text: #2D2D2F;
+  --color-subtext: #6B6B6F;
+  --color-border: #E2E0DE;
+  --color-surface: #F7F6F5;
+  --color-card: #FFFFFF;
+
+  /* Estado */
+  --color-income: #1B7A4E;
+  --color-income-hover: #156B42;
+  --color-income-light: #E6F5ED;
+  --color-expense: #7A1B2D;
+  --color-expense-hover: #5C1422;
+  --color-expense-light: #F3E5E8;
+  --color-error: #B91C1C;
+  --color-error-light: #FEE2E2;
+}
+
+body {
+  font-family: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+  background-color: var(--color-surface);
+  color: var(--color-text);
+  margin: 0;
+}
+
+* {
+  box-sizing: border-box;
+}

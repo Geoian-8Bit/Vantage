@@ -1,0 +1,20 @@
+appId: com.vantage.app
+productName: Vantage
+directories:
+  output: dist-electron
+  buildResources: build
+files:
+  - out/**/*
+  - node_modules/sql.js/dist/sql-wasm.wasm
+  - package.json
+win:
+  target:
+    - target: portable
+      arch:
+        - x64
+portable:
+  unpackDirName: Vantage
+asar: true
+extraResources:
+  - from: node_modules/sql.js/dist/sql-wasm.wasm
+    to: sql-wasm.wasm
