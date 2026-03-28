@@ -1,3 +1,8 @@
+declare module '*.png' {
+  const src: string
+  export default src
+}
+
 import type {
   Transaction, CreateTransactionDTO, UpdateTransactionDTO,
   Category, CreateCategoryDTO,

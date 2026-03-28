@@ -1,3 +1,6 @@
+import logoIcon from '../../assets/logo-icon.png'
+import logoFull from '../../assets/logo-full.png'
+
 interface NavItem {
   id: string
   label: string
@@ -72,14 +75,10 @@ export function Sidebar({ activeModule, onNavigate }: SidebarProps) {
     <aside className="w-14 lg:w-60 h-screen bg-sidebar text-sidebar-text flex flex-col shrink-0 transition-all duration-200 overflow-hidden">
       {/* Logo */}
       <div className="px-2 lg:px-6 py-4 lg:py-5 border-b border-sidebar-border flex items-center justify-center lg:justify-start">
-        <div className="flex items-center gap-2.5">
-          <div className="w-8 h-8 rounded-lg bg-brand flex items-center justify-center shrink-0">
-            <span className="text-white font-bold text-sm">V</span>
-          </div>
-          <div className="hidden lg:block overflow-hidden">
-            <h1 className="text-base font-bold tracking-tight whitespace-nowrap">Vantage</h1>
-            <p className="text-[10px] text-subtext leading-none">Control de gastos</p>
-          </div>
+        <img src={logoIcon} alt="Vantage" className="w-8 h-8 rounded-lg shrink-0" />
+        <div className="hidden lg:block overflow-hidden ml-2.5">
+          <h1 className="text-base font-bold tracking-tight whitespace-nowrap">Vantage</h1>
+          <p className="text-[10px] text-subtext leading-none">Control de gastos</p>
         </div>
       </div>
 

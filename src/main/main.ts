@@ -59,6 +59,7 @@ async function createWindow(): Promise<void> {
     height: 700,
     minWidth: 800,
     minHeight: 600,
+    icon: join(__dirname, '../../build/icon.png'),
     webPreferences: {
       preload: join(__dirname, '../preload/preload.js'),
       contextIsolation: true,

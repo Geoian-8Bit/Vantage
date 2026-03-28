@@ -10,6 +10,7 @@ files:
   - package.json
 
 win:
+  icon: build/icon.ico
   signAndEditExecutable: false
   target:
     - target: nsis
@@ -18,7 +19,7 @@ win:
 
 nsis:
   oneClick: true
-  createDesktopShortcut: true
+  createDesktopShortcut: always
   createStartMenuShortcut: true
   shortcutName: Vantage
   deleteAppDataOnUninstall: false
