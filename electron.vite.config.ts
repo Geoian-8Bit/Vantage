@@ -8,6 +8,8 @@ export default defineConfig({
     plugins: [externalizeDepsPlugin()],
     build: {
       outDir: 'out/main',
+      minify: true,
+      sourcemap: false,
       rollupOptions: {
         external: ['sql.js']
       }
@@ -16,7 +18,9 @@ export default defineConfig({
   preload: {
     plugins: [externalizeDepsPlugin()],
     build: {
-      outDir: 'out/preload'
+      outDir: 'out/preload',
+      minify: true,
+      sourcemap: false,
     }
   },
   renderer: {
@@ -24,9 +28,37 @@ export default defineConfig({
     root: resolve('src/renderer'),
     build: {
       outDir: resolve('out/renderer'),
+      // Terser: minificación agresiva — más pequeño que esbuild default
+      minify: 'terser',
+      cssMinify: true,
+      sourcemap: false,
+      // En Electron no hay red — el warning de chunk size no aplica
+      chunkSizeWarningLimit: 2000,
+      terserOptions: {
+        compress: {
+          // Eliminar console.* en producción
+          drop_console: true,
+          drop_debugger: true,
+          // Dos pasadas para mayor compresión
+          passes: 2,
+          // Eliminar código inalcanzable
+          dead_code: true,
+        },
+        mangle: true,
+        format: {
+          // Eliminar comentarios del bundle
+          comments: false,
+        },
+      },
       rollupOptions: {
-        input: resolve('src/renderer/index.html')
-      }
+        input: resolve('src/renderer/index.html'),
+        output: {
+          // Separar recharts del bundle principal
+          manualChunks: {
+            'recharts': ['recharts'],
+          },
+        },
+      },
     }
   }
 })

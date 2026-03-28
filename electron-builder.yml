@@ -3,28 +3,40 @@ productName: Vantage
 directories:
   output: dist-electron
   buildResources: build
+
+# Solo los archivos compilados — sin duplicar el WASM (va en extraResources)
 files:
   - out/**/*
-  - node_modules/sql.js/dist/sql-wasm.wasm
   - package.json
+
 win:
   signAndEditExecutable: false
   target:
+    # Instalador con compresión LZMA máxima — el más pequeño para distribuir
     - target: nsis
       arch:
         - x64
-    - target: portable
+    # ZIP comprimido — fácil de copiar/enviar, Windows lo abre nativo
+    - target: zip
       arch:
         - x64
+
 nsis:
   oneClick: true
   createDesktopShortcut: true
   createStartMenuShortcut: true
   shortcutName: Vantage
   deleteAppDataOnUninstall: false
-portable:
-  unpackDirName: Vantage
+  # LZMA: mejor ratio compresión, reduce el instalador ~30-40%
+  compression: maximum
+
+# asar empaqueta todo el código en un único archivo binario
 asar: true
+# El WASM no puede ir dentro del asar (necesita path real en disco)
+asarUnpack:
+  - "**/*.wasm"
+
+# El WASM fuera del asar, en resources/ — accesible en tiempo de ejecución
 extraResources:
   - from: node_modules/sql.js/dist/sql-wasm.wasm
     to: sql-wasm.wasm
