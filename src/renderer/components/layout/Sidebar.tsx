@@ -47,28 +47,29 @@ const navItems: NavItem[] = [
 
 export function Sidebar({ activeModule, onNavigate }: SidebarProps) {
   return (
-    <aside className="w-60 h-screen bg-sidebar text-white flex flex-col shrink-0">
+    <aside className="w-14 lg:w-60 h-screen bg-sidebar text-white flex flex-col shrink-0 transition-all duration-200 overflow-hidden">
       {/* Logo */}
-      <div className="px-6 py-5 border-b border-sidebar-border">
+      <div className="px-2 lg:px-6 py-4 lg:py-5 border-b border-sidebar-border flex items-center justify-center lg:justify-start">
         <div className="flex items-center gap-2.5">
-          <div className="w-8 h-8 rounded-lg bg-brand flex items-center justify-center">
+          <div className="w-8 h-8 rounded-lg bg-brand flex items-center justify-center shrink-0">
             <span className="text-white font-bold text-sm">V</span>
           </div>
-          <div>
-            <h1 className="text-base font-bold tracking-tight">Vantage</h1>
+          <div className="hidden lg:block overflow-hidden">
+            <h1 className="text-base font-bold tracking-tight whitespace-nowrap">Vantage</h1>
             <p className="text-[10px] text-subtext leading-none">Control de gastos</p>
           </div>
         </div>
       </div>
 
       {/* Navigation */}
-      <nav className="flex-1 px-3 py-4 space-y-1">
+      <nav className="flex-1 px-1.5 lg:px-3 py-4 space-y-1">
         {navItems.map(item => (
           <button
             key={item.id}
             onClick={() => !item.disabled && onNavigate(item.id)}
             disabled={item.disabled}
-            className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors cursor-pointer ${
+            title={item.label}
+            className={`w-full flex items-center justify-center lg:justify-start gap-3 px-1.5 lg:px-3 py-2.5 rounded-lg text-sm font-medium transition-colors cursor-pointer ${
               activeModule === item.id
                 ? 'bg-brand text-white'
                 : item.disabled
@@ -76,10 +77,10 @@ export function Sidebar({ activeModule, onNavigate }: SidebarProps) {
                   : 'text-[#8A8A8F] hover:bg-sidebar-hover hover:text-white'
             }`}
           >
-            {item.icon}
-            <span>{item.label}</span>
+            <span className="shrink-0">{item.icon}</span>
+            <span className="hidden lg:block">{item.label}</span>
             {item.disabled && (
-              <span className="ml-auto text-[10px] text-[#4A4A4E] bg-sidebar-hover px-1.5 py-0.5 rounded">
+              <span className="hidden lg:inline ml-auto text-[10px] text-[#4A4A4E] bg-sidebar-hover px-1.5 py-0.5 rounded">
                 Pronto
               </span>
             )}
@@ -88,7 +89,7 @@ export function Sidebar({ activeModule, onNavigate }: SidebarProps) {
       </nav>
 
       {/* Footer */}
-      <div className="px-6 py-4 border-t border-sidebar-border">
+      <div className="hidden lg:block px-6 py-4 border-t border-sidebar-border">
         <p className="text-[11px] text-[#4A4A4E]">Vantage v0.1.0</p>
       </div>
     </aside>

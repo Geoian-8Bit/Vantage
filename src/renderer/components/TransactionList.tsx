@@ -44,10 +44,10 @@ export function TransactionList({ transactions, onDelete, onEdit, emptyMessage =
   return (
     <div className="rounded-xl bg-card shadow-sm border border-border overflow-hidden">
       {/* Header */}
-      <div className="grid grid-cols-[1fr_140px_110px_120px_72px] px-5 py-3 border-b border-border bg-surface text-xs font-semibold text-subtext uppercase tracking-wider">
+      <div className="grid grid-cols-[1fr_110px_56px] lg:grid-cols-[1fr_140px_110px_120px_72px] px-4 lg:px-5 py-3 border-b border-border bg-surface text-xs font-semibold text-subtext uppercase tracking-wider">
         <span>Descripción</span>
-        <span>Categoría</span>
-        <span className="text-right">Fecha</span>
+        <span className="hidden lg:block">Categoría</span>
+        <span className="hidden lg:block text-right">Fecha</span>
         <span className="text-right">Cantidad</span>
         <span />
       </div>
@@ -60,7 +60,7 @@ export function TransactionList({ transactions, onDelete, onEdit, emptyMessage =
           return (
             <div
               key={transaction.id}
-              className="group grid grid-cols-[1fr_140px_110px_120px_72px] items-center px-5 py-3.5 hover:bg-surface/60 transition-colors"
+              className="group grid grid-cols-[1fr_110px_56px] lg:grid-cols-[1fr_140px_110px_120px_72px] items-center px-4 lg:px-5 py-3.5 hover:bg-surface/60 transition-colors"
             >
               {/* Description + type indicator */}
               <div className="flex items-center gap-3 min-w-0">
@@ -91,21 +91,21 @@ export function TransactionList({ transactions, onDelete, onEdit, emptyMessage =
                 )}
               </div>
 
-              {/* Category */}
+              {/* Category — hidden on small viewports */}
               <span
-                className="px-2.5 py-1 rounded-full text-xs font-semibold w-fit whitespace-nowrap"
+                className="hidden lg:block px-2.5 py-1 rounded-full text-xs font-semibold w-fit whitespace-nowrap"
                 style={{ background: style.background, color: style.color }}
               >
                 {transaction.category}
               </span>
 
-              {/* Date */}
-              <span className="text-sm text-subtext text-right tabular-nums">
+              {/* Date — hidden on small viewports */}
+              <span className="hidden lg:block text-sm text-subtext text-right tabular-nums">
                 {formatDate(transaction.date)}
               </span>
 
               {/* Amount */}
-              <span className={`text-sm font-bold text-right tabular-nums ${transaction.type === 'income' ? 'text-income' : 'text-expense'}`}>
+              <span className={`text-xs lg:text-sm font-bold text-right tabular-nums ${transaction.type === 'income' ? 'text-income' : 'text-expense'}`}>
                 {transaction.type === 'income' ? '+' : '−'}{formatCurrency(transaction.amount)}
               </span>
 

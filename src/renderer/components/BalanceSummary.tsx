@@ -8,7 +8,7 @@ interface BalanceSummaryProps {
 
 export function BalanceSummary({ totalIncome, totalExpenses, balance }: BalanceSummaryProps) {
   return (
-    <div className="grid grid-cols-3 gap-4">
+    <div className="grid grid-cols-3 gap-3 lg:gap-4">
       {/* Income */}
       <div className="rounded-xl bg-card p-5 shadow-sm border border-border">
         <div className="flex items-center gap-2 mb-2">
@@ -19,7 +19,7 @@ export function BalanceSummary({ totalIncome, totalExpenses, balance }: BalanceS
           </div>
           <p className="text-sm font-medium text-subtext">Ingresos</p>
         </div>
-        <p className="text-2xl font-bold text-income tabular-nums">
+        <p className="text-xl lg:text-2xl font-bold text-income tabular-nums">
           {formatCurrency(totalIncome)}
         </p>
       </div>
@@ -34,7 +34,7 @@ export function BalanceSummary({ totalIncome, totalExpenses, balance }: BalanceS
           </div>
           <p className="text-sm font-medium text-subtext">Gastos</p>
         </div>
-        <p className="text-2xl font-bold text-expense tabular-nums">
+        <p className="text-xl lg:text-2xl font-bold text-expense tabular-nums">
           {formatCurrency(totalExpenses)}
         </p>
       </div>
@@ -50,7 +50,7 @@ export function BalanceSummary({ totalIncome, totalExpenses, balance }: BalanceS
           </div>
           <p className="text-sm font-medium text-subtext">Balance</p>
         </div>
-        <p className={`text-2xl font-bold tabular-nums ${balance >= 0 ? 'text-income' : 'text-expense'}`}>
+        <p className={`text-xl lg:text-2xl font-bold tabular-nums ${balance >= 0 ? 'text-income' : 'text-expense'}`}>
           {balance >= 0 ? '+' : ''}{formatCurrency(balance)}
         </p>
       </div>

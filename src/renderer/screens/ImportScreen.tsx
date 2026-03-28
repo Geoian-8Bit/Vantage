@@ -37,7 +37,7 @@ function StepIndicator({ step, fileType }: { step: ImportStep; fileType: 'excel'
     { key: 'confirm',        label: 'Confirmar' },
   ]
   return (
-    <div className="flex items-center gap-4 px-6 py-3 bg-card rounded-xl border border-border">
+    <div className="flex items-center gap-2 lg:gap-4 px-4 lg:px-6 py-3 bg-card rounded-xl border border-border flex-wrap">
       {steps.map((s, i) => (
         <div key={s.key} className="flex items-center gap-3">
           <StepBadge n={i + 1} label={s.label} active={s.key === step} />
@@ -59,7 +59,7 @@ interface FileSelectStepProps {
 
 function FileSelectStep({ onChoose, loading }: FileSelectStepProps) {
   return (
-    <div className="grid grid-cols-2 gap-4">
+    <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
       <button
         onClick={() => onChoose('excel')}
         disabled={loading}
@@ -294,7 +294,7 @@ function ConfirmStep({ validation, importing, result, onConfirm, onBack, onDone 
   return (
     <div className="space-y-4">
       {/* Summary */}
-      <div className="grid grid-cols-2 gap-4">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
         <div className="rounded-xl bg-income-light border border-income/20 p-5">
           <p className="text-2xl font-bold text-income">{validation.validRows.length}</p>
           <p className="text-sm text-income/80 mt-1">filas válidas listas para importar</p>
@@ -454,7 +454,7 @@ export function ImportScreen({ onBack }: ImportScreenProps) {
   }
 
   return (
-    <div className="space-y-5 max-w-5xl">
+    <div className="space-y-4 lg:space-y-5 w-full">
       <PageHeader
         section="Ajustes"
         page="Importar datos"

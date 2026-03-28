@@ -148,9 +148,9 @@ export function SettingsScreen() {
   // ── Settings hub ──────────────────────────────────────────────────
   if (view === 'menu') {
     return (
-      <div className="space-y-5 max-w-5xl">
+      <div className="space-y-4 lg:space-y-5 w-full">
         <PageHeader section="Ajustes" page="Ajustes" />
-        <div className="grid grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
           {SETTINGS_OPTIONS.map(opt => (
             <button
               key={opt.id}
@@ -186,7 +186,7 @@ export function SettingsScreen() {
 
   // ── Categories view ───────────────────────────────────────────────
   return (
-    <div className="space-y-5 max-w-5xl">
+    <div className="space-y-4 lg:space-y-5 w-full">
       <PageHeader
         section="Ajustes"
         page="Categorías"
@@ -217,7 +217,7 @@ export function SettingsScreen() {
       {loading ? (
         <p className="text-subtext text-sm">Cargando…</p>
       ) : (
-        <div className="flex gap-4">
+        <div className="flex flex-col lg:flex-row gap-4">
           {/* Gastos column */}
           <div className="flex-1 rounded-xl bg-card border border-border shadow-sm overflow-hidden">
             <div className="flex items-center gap-2 px-5 py-3 border-b border-border bg-expense-light">

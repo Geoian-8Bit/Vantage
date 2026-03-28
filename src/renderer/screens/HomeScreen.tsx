@@ -269,7 +269,7 @@ export function HomeScreen() {
   }
 
   return (
-    <div className="space-y-5 max-w-5xl">
+    <div className="space-y-4 lg:space-y-5 w-full">
 
       {/* Recurring banner */}
       {recurringBanner > 0 && (
@@ -341,7 +341,7 @@ export function HomeScreen() {
       />
 
       {/* ── Unified control bar ────────────────────────────────────────── */}
-      <div className="rounded-xl bg-card border border-border shadow-sm px-5 py-3 flex items-center gap-4 flex-wrap">
+      <div className="rounded-xl bg-card border border-border shadow-sm px-3 lg:px-5 py-3 flex items-center gap-2 lg:gap-3 flex-wrap">
 
         {/* Period navigation (left side) */}
         <div className="flex items-center gap-2">

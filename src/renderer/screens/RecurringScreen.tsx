@@ -111,7 +111,7 @@ export function RecurringScreen({ onBack }: RecurringScreenProps) {
   }
 
   return (
-    <div className="space-y-5 max-w-5xl">
+    <div className="space-y-4 lg:space-y-5 w-full">
       <PageHeader
         section="Ajustes"
         page="Recurrentes"
@@ -141,7 +141,7 @@ export function RecurringScreen({ onBack }: RecurringScreenProps) {
           <p className="text-sm text-subtext mt-1">Activa «Repetir automáticamente» al crear un nuevo movimiento</p>
         </div>
       ) : (
-        <div className="flex gap-4">
+        <div className="flex flex-col lg:flex-row gap-4">
           {/* Gastos */}
           <div className="flex-1 rounded-xl bg-card border border-border shadow-sm overflow-hidden">
             <div className="flex items-center gap-2 px-5 py-3 border-b border-border bg-expense-light">

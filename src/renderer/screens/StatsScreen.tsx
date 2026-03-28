@@ -244,14 +244,14 @@ export function StatsScreen() {
   )
 
   return (
-    <div className="space-y-5 max-w-5xl">
+    <div className="space-y-4 lg:space-y-5 w-full">
       <PageHeader section="Estadísticas" page="Resumen" />
 
       {/* ── Period control bar ─────────────────────────────────────────── */}
-      <div className="rounded-xl bg-card border border-border shadow-sm px-5 py-3.5 space-y-3">
+      <div className="rounded-xl bg-card border border-border shadow-sm px-3 lg:px-5 py-3.5 space-y-3">
 
         {/* Mode pills + period navigation */}
-        <div className="flex items-center gap-4 flex-wrap">
+        <div className="flex items-center gap-2 lg:gap-4 flex-wrap">
           <div className="flex gap-1 bg-surface rounded-lg p-1 border border-border">
             {DATE_MODES.map(m => (
               <button
@@ -342,25 +342,25 @@ export function StatsScreen() {
       </div>
 
       {/* Summary cards */}
-      <div className="grid grid-cols-3 gap-4">
-        <div className="rounded-xl bg-card p-5 shadow-sm border border-border">
+      <div className="grid grid-cols-3 gap-3 lg:gap-4">
+        <div className="rounded-xl bg-card p-4 lg:p-5 shadow-sm border border-border">
           <p className="text-xs font-medium text-subtext uppercase tracking-wider mb-1">Ingresos</p>
-          <p className="text-2xl font-bold text-income tabular-nums">{formatCurrency(periodStats.income)}</p>
+          <p className="text-xl lg:text-2xl font-bold text-income tabular-nums">{formatCurrency(periodStats.income)}</p>
         </div>
-        <div className="rounded-xl bg-card p-5 shadow-sm border border-border">
+        <div className="rounded-xl bg-card p-4 lg:p-5 shadow-sm border border-border">
           <p className="text-xs font-medium text-subtext uppercase tracking-wider mb-1">Gastos</p>
-          <p className="text-2xl font-bold text-expense tabular-nums">{formatCurrency(periodStats.expenses)}</p>
+          <p className="text-xl lg:text-2xl font-bold text-expense tabular-nums">{formatCurrency(periodStats.expenses)}</p>
         </div>
-        <div className={`rounded-xl p-5 shadow-sm border ${periodStats.balance >= 0 ? 'bg-income-light border-income/20' : 'bg-expense-light border-expense/20'}`}>
+        <div className={`rounded-xl p-4 lg:p-5 shadow-sm border ${periodStats.balance >= 0 ? 'bg-income-light border-income/20' : 'bg-expense-light border-expense/20'}`}>
           <p className="text-xs font-medium text-subtext uppercase tracking-wider mb-1">Balance</p>
-          <p className={`text-2xl font-bold tabular-nums ${periodStats.balance >= 0 ? 'text-income' : 'text-expense'}`}>
+          <p className={`text-xl lg:text-2xl font-bold tabular-nums ${periodStats.balance >= 0 ? 'text-income' : 'text-expense'}`}>
             {periodStats.balance >= 0 ? '+' : ''}{formatCurrency(periodStats.balance)}
           </p>
         </div>
       </div>
 
       {/* Charts */}
-      <div className="grid grid-cols-[1fr_340px] gap-4">
+      <div className="flex flex-col lg:grid lg:grid-cols-[1fr_300px] gap-4">
         <div className="rounded-xl bg-card p-5 shadow-sm border border-border">
           <h3 className="text-sm font-semibold text-text mb-4">{barChartTitle}</h3>
           {barChartData.length === 0 ? (
@@ -382,7 +382,7 @@ export function StatsScreen() {
           )}
         </div>
 
-        <div className="rounded-xl bg-card p-5 shadow-sm border border-border">
+        <div className="rounded-xl bg-card p-5 shadow-sm border border-border lg:min-w-0">
           <h3 className="text-sm font-semibold text-text mb-4">Gastos por categoría</h3>
           {categoryData.length === 0 ? (
             <div className="flex items-center justify-center h-[240px] text-subtext text-sm">Sin gastos en este periodo</div>

@@ -6,7 +6,7 @@ interface PageHeaderProps {
 
 export function PageHeader({ section, page, actions }: PageHeaderProps) {
   return (
-    <div className="flex items-center justify-between pb-5 border-b border-border">
+    <div className="flex flex-wrap items-start justify-between gap-y-3 pb-5 border-b border-border">
       <div>
         <div className="flex items-center gap-2 text-sm text-subtext">
           <span>{section}</span>
@@ -16,7 +16,7 @@ export function PageHeader({ section, page, actions }: PageHeaderProps) {
         <h2 className="text-xl font-bold text-text mt-1">{page}</h2>
       </div>
       {actions && (
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2">
           {actions}
         </div>
       )}
