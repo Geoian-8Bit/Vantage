@@ -9,6 +9,7 @@ interface UseTransactionsReturn {
   totalIncome: number
   totalExpenses: number
   balance: number
+  loadTransactions: () => Promise<void>
   addTransaction: (data: CreateTransactionDTO) => Promise<void>
   removeTransaction: (id: string) => Promise<void>
   updateTransaction: (id: string, data: UpdateTransactionDTO) => Promise<void>
@@ -90,6 +91,7 @@ export function useTransactions(): UseTransactionsReturn {
     totalIncome,
     totalExpenses,
     balance,
+    loadTransactions,
     addTransaction,
     removeTransaction,
     updateTransaction

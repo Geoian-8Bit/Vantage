@@ -16,7 +16,8 @@ export function getAllTransactions(): Transaction[] {
       description: String(row.description),
       date: String(row.date),
       category: String(row.category),
-      created_at: String(row.created_at)
+      created_at: String(row.created_at),
+      note: row.note ? String(row.note) : '',
     })
   }
   stmt.free()
@@ -28,10 +29,11 @@ export function createTransaction(data: CreateTransactionDTO): Transaction {
   const db = getDatabase()
   const id = randomUUID()
   const created_at = new Date().toISOString()
+  const note = data.note ?? ''
 
   db.run(
-    'INSERT INTO transactions (id, amount, type, description, date, category, created_at) VALUES (?, ?, ?, ?, ?, ?, ?)',
-    [id, data.amount, data.type, data.description, data.date, data.category, created_at]
+    'INSERT INTO transactions (id, amount, type, description, date, category, created_at, note) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
+    [id, data.amount, data.type, data.description, data.date, data.category, created_at, note]
   )
 
   saveDatabase()
@@ -43,7 +45,8 @@ export function createTransaction(data: CreateTransactionDTO): Transaction {
     description: data.description,
     date: data.date,
     category: data.category,
-    created_at
+    created_at,
+    note,
   }
 }
 
@@ -55,9 +58,11 @@ export function deleteTransaction(id: string): void {
 
 export function updateTransaction(id: string, data: UpdateTransactionDTO): Transaction {
   const db = getDatabase()
+  const note = data.note ?? ''
+
   db.run(
-    'UPDATE transactions SET amount=?, type=?, description=?, date=?, category=? WHERE id=?',
-    [data.amount, data.type, data.description, data.date, data.category, id]
+    'UPDATE transactions SET amount=?, type=?, description=?, date=?, category=?, note=? WHERE id=?',
+    [data.amount, data.type, data.description, data.date, data.category, note, id]
   )
   saveDatabase()
 
@@ -68,5 +73,5 @@ export function updateTransaction(id: string, data: UpdateTransactionDTO): Trans
   const created_at = String(row.created_at)
   stmt.free()
 
-  return { id, ...data, created_at }
+  return { id, ...data, note, created_at }
 }

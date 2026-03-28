@@ -6,6 +6,7 @@ export interface Transaction {
   date: string // YYYY-MM-DD
   category: string
   created_at: string // ISO timestamp
+  note?: string
 }
 
 export interface CreateTransactionDTO {
@@ -14,6 +15,7 @@ export interface CreateTransactionDTO {
   description: string
   date: string
   category: string
+  note?: string
 }
 
 export interface UpdateTransactionDTO {
@@ -22,6 +24,7 @@ export interface UpdateTransactionDTO {
   description: string
   date: string
   category: string
+  note?: string
 }
 
 export const CATEGORIES = {
@@ -56,6 +59,12 @@ export const IPC_CHANNELS = {
   IMPORT_ACCESS_TABLES:      'fs:import:accessTables',
   IMPORT_PARSE_ACCESS:       'fs:import:parseAccess',
   IMPORT_COMMIT:             'db:import:commit',
+  // Recurring
+  RECURRING_GET_ALL: 'db:recurring:getAll',
+  RECURRING_CREATE:  'db:recurring:create',
+  RECURRING_DELETE:  'db:recurring:delete',
+  RECURRING_TOGGLE:  'db:recurring:toggle',
+  RECURRING_PROCESS: 'db:recurring:process',
 } as const
 
 // ── Import / Export types ──────────────────────────────────────────────────
@@ -95,3 +104,28 @@ export interface InvalidImportRow {
 
 export interface ImportCommitPayload { rows: CreateTransactionDTO[] }
 export interface ImportCommitResult  { inserted: number; errors: string[] }
+
+// ── Recurring templates ────────────────────────────────────────────────────
+
+export type RecurringFrequency = 'weekly' | 'monthly' | 'quarterly' | 'annual'
+
+export interface RecurringTemplate {
+  id: string
+  amount: number
+  type: 'income' | 'expense'
+  description: string
+  category: string
+  frequency: RecurringFrequency
+  next_date: string   // YYYY-MM-DD — next due date
+  active: boolean
+  created_at: string
+}
+
+export interface CreateRecurringTemplateDTO {
+  amount: number
+  type: 'income' | 'expense'
+  description: string
+  category: string
+  frequency: RecurringFrequency
+  start_date: string  // YYYY-MM-DD — first registration date
+}

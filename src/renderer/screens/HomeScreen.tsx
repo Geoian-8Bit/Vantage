@@ -1,4 +1,4 @@
-import { useState, useCallback, useMemo, useRef } from 'react'
+import { useState, useCallback, useMemo, useRef, useEffect } from 'react'
 import * as XLSX from 'xlsx'
 import { useTransactions } from '../hooks/useTransactions'
 import { PageHeader } from '../components/layout/PageHeader'
@@ -6,7 +6,7 @@ import { BalanceSummary } from '../components/BalanceSummary'
 import { TransactionForm } from '../components/TransactionForm'
 import { TransactionList } from '../components/TransactionList'
 import { Modal } from '../components/Modal'
-import type { CreateTransactionDTO, Transaction, UpdateTransactionDTO } from '../../shared/types'
+import type { CreateTransactionDTO, CreateRecurringTemplateDTO, Transaction, UpdateTransactionDTO } from '../../shared/types'
 import { CATEGORIES } from '../../shared/types'
 
 type ModalType = 'expense' | 'income' | null
@@ -39,6 +39,7 @@ export function HomeScreen() {
     transactions,
     loading,
     error,
+    loadTransactions,
     addTransaction,
     removeTransaction,
     updateTransaction
@@ -55,6 +56,19 @@ export function HomeScreen() {
   const [refDate, setRefDate] = useState(() => new Date())
   const [customFrom, setCustomFrom] = useState('')
   const [customTo, setCustomTo] = useState('')
+  const [recurringBanner, setRecurringBanner] = useState(0)
+
+  // Auto-process recurring transactions on mount
+  useEffect(() => {
+    window.api.recurring.process().then(({ count }) => {
+      if (count > 0) {
+        loadTransactions()
+        setRecurringBanner(count)
+        setTimeout(() => setRecurringBanner(0), 4000)
+      }
+    }).catch(console.error)
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
 
   const { fromDate, toDate, periodLabel } = useMemo(() => {
     const y = refDate.getFullYear()
@@ -164,6 +178,11 @@ export function HomeScreen() {
     setModalType(null)
   }, [addTransaction])
 
+  const handleSubmitRecurring = useCallback(async (dto: CreateRecurringTemplateDTO): Promise<void> => {
+    await window.api.recurring.create(dto)
+    setModalType(null)
+  }, [])
+
   const seedRef = useRef(false)
   const handleSeed = useCallback(async (): Promise<void> => {
     if (seedRef.current) return
@@ -251,6 +270,16 @@ export function HomeScreen() {
 
   return (
     <div className="space-y-5 max-w-5xl">
+
+      {/* Recurring banner */}
+      {recurringBanner > 0 && (
+        <div className="flex items-center gap-2.5 rounded-xl bg-income-light border border-income/20 px-4 py-3 text-sm font-medium text-income">
+          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M20 6 9 17l-5-5"/>
+          </svg>
+          Se {recurringBanner === 1 ? 'ha registrado 1 transacción recurrente' : `han registrado ${recurringBanner} transacciones recurrentes`} automáticamente
+        </div>
+      )}
 
       {/* Page header */}
       <PageHeader
@@ -494,6 +523,7 @@ export function HomeScreen() {
             type={modalType}
             onSubmit={handleSubmit}
             onCancel={() => setModalType(null)}
+            onSubmitRecurring={handleSubmitRecurring}
           />
         )}
       </Modal>
@@ -513,7 +543,8 @@ export function HomeScreen() {
               amount: String(editingTransaction.amount),
               description: editingTransaction.description,
               date: editingTransaction.date,
-              category: editingTransaction.category
+              category: editingTransaction.category,
+              note: editingTransaction.note ?? '',
             }}
           />
         )}

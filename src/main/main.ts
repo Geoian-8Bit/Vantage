@@ -13,11 +13,20 @@ import {
   handleParseAccess,
   handleImportCommit,
 } from './importExport'
+import {
+  getAllRecurring,
+  createRecurring,
+  deleteRecurring,
+  toggleRecurring,
+  processDueRecurring,
+} from './database/recurring'
 
 let mainWindow: BrowserWindow | null = null
 
 let dbReadyResolve!: () => void
 const dbReady = new Promise<void>(resolve => { dbReadyResolve = resolve })
+
+let pendingRecurringCount = 0
 
 function getDbPath(): string {
   // For portable builds, store DB next to the executable
@@ -118,6 +127,34 @@ function registerIpcHandlers(): void {
     await dbReady
     return handleImportCommit(e, payload)
   })
+
+  // ── Recurring ─────────────────────────────────────────────────────────
+  ipcMain.handle(IPC_CHANNELS.RECURRING_GET_ALL, async () => {
+    await dbReady
+    return getAllRecurring()
+  })
+
+  ipcMain.handle(IPC_CHANNELS.RECURRING_CREATE, async (_event, data) => {
+    await dbReady
+    return createRecurring(data)
+  })
+
+  ipcMain.handle(IPC_CHANNELS.RECURRING_DELETE, async (_event, { id }) => {
+    await dbReady
+    deleteRecurring(id)
+  })
+
+  ipcMain.handle(IPC_CHANNELS.RECURRING_TOGGLE, async (_event, { id }) => {
+    await dbReady
+    return toggleRecurring(id)
+  })
+
+  ipcMain.handle(IPC_CHANNELS.RECURRING_PROCESS, async () => {
+    await dbReady
+    const count = pendingRecurringCount
+    pendingRecurringCount = 0
+    return { count }
+  })
 }
 
 app.whenReady().then(async () => {
@@ -135,7 +172,10 @@ app.whenReady().then(async () => {
 
     // DB init and window creation run in parallel
     await Promise.all([
-      initializeDatabase(dbPath).then(() => dbReadyResolve()),
+      initializeDatabase(dbPath).then(() => {
+        pendingRecurringCount = processDueRecurring()
+        dbReadyResolve()
+      }),
       createWindow()
     ])
   } catch (err) {

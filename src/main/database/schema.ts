@@ -75,6 +75,28 @@ export async function initializeDatabase(filePath: string): Promise<Database> {
     // Column already exists — safe to ignore
   }
 
+  // Migration: add note column if it does not yet exist
+  try {
+    db.run("ALTER TABLE transactions ADD COLUMN note TEXT NOT NULL DEFAULT ''")
+  } catch {
+    // Column already exists — safe to ignore
+  }
+
+  // Recurring templates table
+  db.run(`
+    CREATE TABLE IF NOT EXISTS recurring_templates (
+      id          TEXT    PRIMARY KEY,
+      amount      REAL    NOT NULL,
+      type        TEXT    NOT NULL CHECK(type IN ('income','expense')),
+      description TEXT    NOT NULL,
+      category    TEXT    NOT NULL,
+      frequency   TEXT    NOT NULL CHECK(frequency IN ('weekly','monthly','quarterly','annual')),
+      next_date   TEXT    NOT NULL,
+      active      INTEGER NOT NULL DEFAULT 1,
+      created_at  TEXT    NOT NULL
+    )
+  `)
+
   saveDatabase()
 
   return db

@@ -3,11 +3,12 @@ import { useCategories } from '../hooks/useCategories'
 import { PageHeader } from '../components/layout/PageHeader'
 import { Modal } from '../components/Modal'
 import { ImportScreen } from './ImportScreen'
+import { RecurringScreen } from './RecurringScreen'
 import type { Category } from '../../shared/types'
 
 // ── Settings hub ───────────────────────────────────────────────────────────────
 
-type SettingsView = 'menu' | 'categories' | 'import'
+type SettingsView = 'menu' | 'categories' | 'import' | 'recurring'
 
 const SETTINGS_OPTIONS = [
   {
@@ -19,6 +20,18 @@ const SETTINGS_OPTIONS = [
         <path d="M9 5H2v7l6.29 6.29c.94.94 2.48.94 3.42 0l3.58-3.58c.94-.94.94-2.48 0-3.42L9 5Z"/>
         <path d="M6 9.01V9"/>
         <path d="m15 5 6.3 6.3a2.4 2.4 0 0 1 0 3.4L17 19"/>
+      </svg>
+    )
+  },
+  {
+    id: 'recurring' as SettingsView,
+    title: 'Recurrentes',
+    description: 'Consulta y gestiona las plantillas de transacciones recurrentes creadas desde el formulario de movimientos.',
+    icon: (
+      <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+        <path d="M17 2.1l4 4-4 4"/>
+        <path d="M3 12.2v-2a4 4 0 0 1 4-4h12.8M7 21.9l-4-4 4-4"/>
+        <path d="M21 11.8v2a4 4 0 0 1-4 4H4.2"/>
       </svg>
     )
   },
@@ -164,6 +177,11 @@ export function SettingsScreen() {
   // ── Import view ───────────────────────────────────────────────────
   if (view === 'import') {
     return <ImportScreen onBack={() => setView('menu')} />
+  }
+
+  // ── Recurring view ────────────────────────────────────────────────
+  if (view === 'recurring') {
+    return <RecurringScreen onBack={() => setView('menu')} />
   }
 
   // ── Categories view ───────────────────────────────────────────────

@@ -27,7 +27,19 @@ const api = {
       ipcRenderer.invoke(IPC_CHANNELS.IMPORT_PARSE_ACCESS, { filePath, tableName }),
     commitImport: (payload: unknown) =>
       ipcRenderer.invoke(IPC_CHANNELS.IMPORT_COMMIT, payload),
-  }
+  },
+  recurring: {
+    getAll:  () =>
+      ipcRenderer.invoke(IPC_CHANNELS.RECURRING_GET_ALL),
+    create:  (data: unknown) =>
+      ipcRenderer.invoke(IPC_CHANNELS.RECURRING_CREATE, data),
+    delete:  (id: string) =>
+      ipcRenderer.invoke(IPC_CHANNELS.RECURRING_DELETE, { id }),
+    toggle:  (id: string) =>
+      ipcRenderer.invoke(IPC_CHANNELS.RECURRING_TOGGLE, { id }),
+    process: () =>
+      ipcRenderer.invoke(IPC_CHANNELS.RECURRING_PROCESS),
+  },
 }
 
 contextBridge.exposeInMainWorld('api', api)

@@ -2,6 +2,7 @@ import type {
   Transaction, CreateTransactionDTO, UpdateTransactionDTO,
   Category, CreateCategoryDTO,
   ImportFilePreview, ImportCommitPayload, ImportCommitResult,
+  RecurringTemplate, CreateRecurringTemplateDTO,
 } from '../shared/types'
 
 declare global {
@@ -26,6 +27,13 @@ declare global {
         getAccessTables(filePath: string): Promise<{ tables: string[] }>
         parseAccess(filePath: string, tableName: string): Promise<ImportFilePreview>
         commitImport(payload: ImportCommitPayload): Promise<ImportCommitResult>
+      }
+      recurring: {
+        getAll(): Promise<RecurringTemplate[]>
+        create(data: CreateRecurringTemplateDTO): Promise<RecurringTemplate>
+        delete(id: string): Promise<void>
+        toggle(id: string): Promise<RecurringTemplate>
+        process(): Promise<{ count: number }>
       }
     }
   }
