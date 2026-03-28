@@ -1,0 +1,295 @@
+import { useState } from 'react'
+import { useCategories } from '../hooks/useCategories'
+import { PageHeader } from '../components/layout/PageHeader'
+import { Modal } from '../components/Modal'
+import type { Category } from '../../shared/types'
+
+// ── Settings hub ───────────────────────────────────────────────────────────────
+
+type SettingsView = 'menu' | 'categories'
+
+const SETTINGS_OPTIONS = [
+  {
+    id: 'categories' as SettingsView,
+    title: 'Categorías',
+    description: 'Gestiona las categorías de gastos e ingresos disponibles al registrar movimientos.',
+    icon: (
+      <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+        <path d="M9 5H2v7l6.29 6.29c.94.94 2.48.94 3.42 0l3.58-3.58c.94-.94.94-2.48 0-3.42L9 5Z"/>
+        <path d="M6 9.01V9"/>
+        <path d="m15 5 6.3 6.3a2.4 2.4 0 0 1 0 3.4L17 19"/>
+      </svg>
+    )
+  }
+]
+
+// ── Category list view ─────────────────────────────────────────────────────────
+
+interface CategoryRowProps {
+  cat: Category
+  onDelete: (id: string) => Promise<void>
+  onRename: (id: string, name: string) => Promise<void>
+}
+
+function CategoryRow({ cat, onDelete, onRename }: CategoryRowProps) {
+  const [editingName, setEditingName] = useState('')
+  const [isEditing,   setIsEditing]   = useState(false)
+
+  function startEdit() {
+    setEditingName(cat.name)
+    setIsEditing(true)
+  }
+
+  async function commitEdit() {
+    const trimmed = editingName.trim()
+    if (trimmed && trimmed !== cat.name) await onRename(cat.id, trimmed)
+    setIsEditing(false)
+  }
+
+  return (
+    <div className="group flex items-center gap-3 px-5 py-3 hover:bg-surface/60 transition-colors">
+      {isEditing ? (
+        <input
+          autoFocus
+          value={editingName}
+          onChange={e => setEditingName(e.target.value)}
+          onBlur={commitEdit}
+          onKeyDown={e => { if (e.key === 'Enter') commitEdit(); if (e.key === 'Escape') setIsEditing(false) }}
+          className="flex-1 rounded-lg border border-brand bg-surface px-3 py-1.5 text-sm text-text focus:outline-none"
+        />
+      ) : (
+        <span className="flex-1 text-sm font-medium text-text">{cat.name}</span>
+      )}
+      <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+        <button
+          onClick={startEdit}
+          aria-label={`Renombrar ${cat.name}`}
+          className="rounded-lg p-1.5 text-subtext hover:bg-brand-light hover:text-brand transition-colors cursor-pointer"
+        >
+          <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
+            <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
+          </svg>
+        </button>
+        <button
+          onClick={() => onDelete(cat.id)}
+          aria-label={`Eliminar ${cat.name}`}
+          className="rounded-lg p-1.5 text-subtext hover:bg-expense-light hover:text-expense transition-colors cursor-pointer"
+        >
+          <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/>
+            <path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/>
+          </svg>
+        </button>
+      </div>
+    </div>
+  )
+}
+
+// ── Main screen ────────────────────────────────────────────────────────────────
+
+export function SettingsScreen() {
+  const [view, setView] = useState<SettingsView>('menu')
+  const [showModal, setShowModal] = useState(false)
+  const [newName, setNewName]     = useState('')
+  const [newType, setNewType]     = useState<'expense' | 'income'>('expense')
+  const [saving,  setSaving]      = useState(false)
+
+  const { categories, loading, addCategory, removeCategory, renameCategory } = useCategories()
+
+  const expenseCategories = categories.filter(c => c.type === 'expense')
+  const incomeCategories  = categories.filter(c => c.type === 'income')
+
+  function openModal() {
+    setNewName('')
+    setNewType('expense')
+    setShowModal(true)
+  }
+
+  async function handleAddCategory(e: React.FormEvent) {
+    e.preventDefault()
+    const trimmed = newName.trim()
+    if (!trimmed) return
+    setSaving(true)
+    try {
+      await addCategory({ name: trimmed, type: newType })
+      setShowModal(false)
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  // ── Settings hub ──────────────────────────────────────────────────
+  if (view === 'menu') {
+    return (
+      <div className="space-y-5 max-w-5xl">
+        <PageHeader section="Ajustes" page="Ajustes" />
+        <div className="grid grid-cols-2 gap-4">
+          {SETTINGS_OPTIONS.map(opt => (
+            <button
+              key={opt.id}
+              onClick={() => setView(opt.id)}
+              className="rounded-xl bg-card border border-border shadow-sm p-5 text-left flex items-start gap-4 hover:bg-surface/60 hover:border-brand/40 transition-all cursor-pointer group"
+            >
+              <div className="w-10 h-10 rounded-xl bg-brand-light flex items-center justify-center text-brand shrink-0 group-hover:bg-brand group-hover:text-white transition-colors">
+                {opt.icon}
+              </div>
+              <div className="flex-1 min-w-0">
+                <p className="text-sm font-bold text-text">{opt.title}</p>
+                <p className="text-xs text-subtext mt-1 leading-relaxed">{opt.description}</p>
+              </div>
+              <svg className="text-subtext mt-1 shrink-0" xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M9 18l6-6-6-6"/>
+              </svg>
+            </button>
+          ))}
+        </div>
+      </div>
+    )
+  }
+
+  // ── Categories view ───────────────────────────────────────────────
+  return (
+    <div className="space-y-5 max-w-5xl">
+      <PageHeader
+        section="Ajustes"
+        page="Categorías"
+        actions={
+          <>
+            <button
+              onClick={() => setView('menu')}
+              className="flex items-center gap-1.5 px-3 py-2 rounded-lg text-sm font-medium text-subtext bg-surface hover:bg-border border border-border transition-colors cursor-pointer"
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M15 18l-6-6 6-6"/>
+              </svg>
+              Volver
+            </button>
+            <button
+              onClick={openModal}
+              className="flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-semibold text-white bg-brand hover:bg-brand-hover transition-colors cursor-pointer"
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M5 12h14"/><path d="M12 5v14"/>
+              </svg>
+              Añadir categoría
+            </button>
+          </>
+        }
+      />
+
+      {loading ? (
+        <p className="text-subtext text-sm">Cargando…</p>
+      ) : (
+        <div className="flex gap-4">
+          {/* Gastos column */}
+          <div className="flex-1 rounded-xl bg-card border border-border shadow-sm overflow-hidden">
+            <div className="flex items-center gap-2 px-5 py-3 border-b border-border bg-expense-light">
+              <div className="w-2 h-2 rounded-full bg-expense" />
+              <h3 className="text-sm font-bold text-expense">Gastos</h3>
+              <span className="ml-auto text-xs text-subtext">{expenseCategories.length}</span>
+            </div>
+            <div className="divide-y divide-border/40">
+              {expenseCategories.length === 0
+                ? <p className="px-5 py-4 text-sm text-subtext italic">Sin categorías</p>
+                : expenseCategories.map(cat => (
+                    <CategoryRow key={cat.id} cat={cat} onDelete={removeCategory} onRename={renameCategory} />
+                  ))
+              }
+            </div>
+          </div>
+
+          {/* Ingresos column */}
+          <div className="flex-1 rounded-xl bg-card border border-border shadow-sm overflow-hidden">
+            <div className="flex items-center gap-2 px-5 py-3 border-b border-border bg-income-light">
+              <div className="w-2 h-2 rounded-full bg-income" />
+              <h3 className="text-sm font-bold text-income">Ingresos</h3>
+              <span className="ml-auto text-xs text-subtext">{incomeCategories.length}</span>
+            </div>
+            <div className="divide-y divide-border/40">
+              {incomeCategories.length === 0
+                ? <p className="px-5 py-4 text-sm text-subtext italic">Sin categorías</p>
+                : incomeCategories.map(cat => (
+                    <CategoryRow key={cat.id} cat={cat} onDelete={removeCategory} onRename={renameCategory} />
+                  ))
+              }
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Add category modal */}
+      <Modal isOpen={showModal} onClose={() => setShowModal(false)} title="Nueva categoría">
+        <form onSubmit={handleAddCategory} className="space-y-5">
+          <div>
+            <label className="block text-xs font-semibold text-subtext uppercase tracking-wider mb-2">
+              Nombre
+            </label>
+            <input
+              autoFocus
+              type="text"
+              value={newName}
+              onChange={e => setNewName(e.target.value)}
+              placeholder="Ej: Suscripciones, Freelance…"
+              required
+              className="w-full rounded-xl border border-border bg-surface px-4 py-2.5 text-sm text-text focus:outline-none focus:ring-2 focus:ring-brand focus:border-transparent"
+            />
+          </div>
+
+          <div>
+            <label className="block text-xs font-semibold text-subtext uppercase tracking-wider mb-2">
+              Tipo
+            </label>
+            <div className="flex gap-3">
+              <button
+                type="button"
+                onClick={() => setNewType('expense')}
+                className={`flex-1 flex items-center justify-center gap-2 py-2.5 rounded-xl text-sm font-semibold border-2 transition-all cursor-pointer ${
+                  newType === 'expense'
+                    ? 'border-expense bg-expense text-white'
+                    : 'border-border bg-surface text-subtext hover:border-expense/40'
+                }`}
+              >
+                <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M12 5v14M5 12l7 7 7-7"/>
+                </svg>
+                Gasto
+              </button>
+              <button
+                type="button"
+                onClick={() => setNewType('income')}
+                className={`flex-1 flex items-center justify-center gap-2 py-2.5 rounded-xl text-sm font-semibold border-2 transition-all cursor-pointer ${
+                  newType === 'income'
+                    ? 'border-income bg-income text-white'
+                    : 'border-border bg-surface text-subtext hover:border-income/40'
+                }`}
+              >
+                <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M12 19V5M5 12l7-7 7 7"/>
+                </svg>
+                Ingreso
+              </button>
+            </div>
+          </div>
+
+          <div className="flex gap-3 pt-1">
+            <button
+              type="button"
+              onClick={() => setShowModal(false)}
+              className="flex-1 py-2.5 rounded-xl text-sm font-semibold text-subtext bg-surface hover:bg-border transition-colors cursor-pointer"
+            >
+              Cancelar
+            </button>
+            <button
+              type="submit"
+              disabled={saving || !newName.trim()}
+              className="flex-1 py-2.5 rounded-xl text-sm font-semibold text-white bg-brand hover:bg-brand-hover disabled:opacity-50 disabled:cursor-not-allowed transition-colors cursor-pointer"
+            >
+              {saving ? 'Guardando…' : 'Crear categoría'}
+            </button>
+          </div>
+        </form>
+      </Modal>
+    </div>
+  )
+}

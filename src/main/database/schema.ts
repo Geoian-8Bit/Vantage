@@ -1,6 +1,7 @@
 import initSqlJs, { Database } from 'sql.js'
 import { readFileSync, writeFileSync, existsSync } from 'fs'
 import { join } from 'path'
+import { randomUUID } from 'crypto'
 
 let db: Database | null = null
 let dbPath: string = ''
@@ -41,6 +42,31 @@ export async function initializeDatabase(filePath: string): Promise<Database> {
 
   db.run('CREATE INDEX IF NOT EXISTS idx_transactions_date ON transactions(date DESC)')
   db.run('CREATE INDEX IF NOT EXISTS idx_transactions_type ON transactions(type)')
+
+  // Categories table
+  db.run(`
+    CREATE TABLE IF NOT EXISTS categories (
+      id   TEXT PRIMARY KEY,
+      name TEXT NOT NULL,
+      type TEXT NOT NULL CHECK(type IN ('income', 'expense'))
+    )
+  `)
+
+  // Seed default categories if the table is empty
+  const countStmt = db.prepare('SELECT COUNT(*) as cnt FROM categories')
+  countStmt.step()
+  const countRow = countStmt.getAsObject() as { cnt: number }
+  countStmt.free()
+  if (Number(countRow.cnt) === 0) {
+    const defaultExpense = ['Alimentación','Transporte','Alquiler','Ocio','Salud','Ropa','Servicios','Otros']
+    const defaultIncome  = ['Nómina','Bizum','Regalo','Inversión']
+    for (const name of defaultExpense) {
+      db.run('INSERT INTO categories (id, name, type) VALUES (?, ?, ?)', [randomUUID(), name, 'expense'])
+    }
+    for (const name of defaultIncome) {
+      db.run('INSERT INTO categories (id, name, type) VALUES (?, ?, ?)', [randomUUID(), name, 'income'])
+    }
+  }
 
   // Migration: add category column if it does not yet exist
   try {

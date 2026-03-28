@@ -26,115 +26,105 @@ interface TransactionListProps {
 export function TransactionList({ transactions, onDelete, onEdit, emptyMessage = 'No hay transacciones' }: TransactionListProps) {
   if (transactions.length === 0) {
     return (
-      <div className="rounded-xl bg-card p-10 shadow-sm border border-border text-center">
-        <div className="w-12 h-12 rounded-full bg-brand-light mx-auto mb-3 flex items-center justify-center">
-          <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-brand">
+      <div className="rounded-xl bg-card p-12 shadow-sm border border-border text-center">
+        <div className="w-14 h-14 rounded-2xl bg-surface border border-border mx-auto mb-4 flex items-center justify-center">
+          <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-subtext">
             <line x1="12" y1="1" x2="12" y2="23" />
             <path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6" />
           </svg>
         </div>
-        <p className="text-subtext text-base">{emptyMessage}</p>
-        <p className="text-subtext text-sm mt-1">Registra tu primer gasto o ingreso</p>
+        <p className="text-base font-medium text-text">{emptyMessage}</p>
+        <p className="text-sm text-subtext mt-1">Pulsa «+ Gasto» o «+ Ingreso» para empezar</p>
       </div>
     )
   }
 
+  const sorted = [...transactions].sort((a, b) => b.date.localeCompare(a.date))
+
   return (
-    <div role="table" aria-label="Lista de transacciones" className="rounded-xl bg-card shadow-sm border border-border overflow-hidden">
-      {/* Table header */}
-      <div role="row" className="grid grid-cols-[1fr_130px_110px_110px_80px] px-5 py-3 border-b border-border bg-surface text-xs font-medium text-subtext uppercase tracking-wider">
-        <span role="columnheader">Descripción</span>
-        <span role="columnheader" className="text-center">Categoría</span>
-        <span role="columnheader" className="text-right">Fecha</span>
-        <span role="columnheader" className="text-right">Cantidad</span>
-        <span role="columnheader" />
+    <div className="rounded-xl bg-card shadow-sm border border-border overflow-hidden">
+      {/* Header */}
+      <div className="grid grid-cols-[1fr_140px_110px_120px_72px] px-5 py-3 border-b border-border bg-surface text-xs font-semibold text-subtext uppercase tracking-wider">
+        <span>Descripción</span>
+        <span>Categoría</span>
+        <span className="text-right">Fecha</span>
+        <span className="text-right">Cantidad</span>
+        <span />
       </div>
 
       {/* Rows */}
-      <div className="divide-y divide-border/50">
-        {transactions.map(transaction => (
-          <div
-            key={transaction.id}
-            role="row"
-            className="grid grid-cols-[1fr_130px_110px_110px_80px] items-center px-5 py-3.5 hover:bg-surface/50 transition-colors"
-          >
-            {/* Description + type indicator */}
-            <div role="cell" className="flex items-center gap-3 min-w-0">
-              <div
-                aria-label={transaction.type === 'income' ? 'Ingreso' : 'Gasto'}
-                className={`w-7 h-7 rounded-lg flex items-center justify-center shrink-0 ${
-                  transaction.type === 'income' ? 'bg-income-light' : 'bg-expense-light'
-                }`}
-              >
-                <svg aria-hidden="true" xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"
-                  className={transaction.type === 'income' ? 'text-income' : 'text-expense'}>
-                  {transaction.type === 'income'
-                    ? <path d="M12 19V5M5 12l7-7 7 7" />
-                    : <path d="M12 5v14M5 12l7 7 7-7" />
-                  }
-                </svg>
-              </div>
-              <span className="text-sm font-medium text-text truncate">
-                {transaction.description || (transaction.type === 'income' ? 'Ingreso' : 'Gasto')}
-              </span>
-            </div>
+      <div className="divide-y divide-border/40">
+        {sorted.map(transaction => {
+          const style = CATEGORY_STYLE[transaction.category] ?? CATEGORY_STYLE['Otros']
 
-            {/* Category */}
-            <div role="cell" className="flex justify-center">
-              {transaction.category && (() => {
-                const style = CATEGORY_STYLE[transaction.category] ?? CATEGORY_STYLE['Otros']
-                return (
-                  <span
-                    className="text-xs font-medium px-2 py-1 rounded-full"
-                    style={{ background: style.background, color: style.color }}
-                  >
-                    {transaction.category}
-                  </span>
-                )
-              })()}
-            </div>
-
-            {/* Date */}
-            <span role="cell" className="text-sm text-subtext text-right">
-              {formatDate(transaction.date)}
-            </span>
-
-            {/* Amount */}
-            <span
-              role="cell"
-              className={`text-sm font-semibold text-right ${
-                transaction.type === 'income' ? 'text-income' : 'text-expense'
-              }`}
+          return (
+            <div
+              key={transaction.id}
+              className="group grid grid-cols-[1fr_140px_110px_120px_72px] items-center px-5 py-3.5 hover:bg-surface/60 transition-colors"
             >
-              {transaction.type === 'income' ? '+' : '-'}{formatCurrency(transaction.amount)}
-            </span>
+              {/* Description + type indicator */}
+              <div className="flex items-center gap-3 min-w-0">
+                <div
+                  aria-label={transaction.type === 'income' ? 'Ingreso' : 'Gasto'}
+                  className={`w-7 h-7 rounded-lg flex items-center justify-center shrink-0 ${transaction.type === 'income' ? 'bg-income-light' : 'bg-expense-light'}`}
+                >
+                  <svg aria-hidden="true" xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className={transaction.type === 'income' ? 'text-income' : 'text-expense'}>
+                    {transaction.type === 'income'
+                      ? <path d="M12 19V5M5 12l7-7 7 7" />
+                      : <path d="M12 5v14M5 12l7 7 7-7" />
+                    }
+                  </svg>
+                </div>
+                <span className="text-sm font-semibold text-text truncate">
+                  {transaction.description || (transaction.type === 'income' ? 'Ingreso' : 'Gasto')}
+                </span>
+              </div>
 
-            {/* Actions */}
-            <div role="cell" className="flex justify-end gap-1">
-              <button
-                onClick={() => onEdit(transaction)}
-                aria-label={`Editar: ${transaction.description || (transaction.type === 'income' ? 'Ingreso' : 'Gasto')}`}
-                className="rounded-md p-2.5 text-subtext hover:bg-brand-light hover:text-brand transition-colors cursor-pointer"
+              {/* Category */}
+              <span
+                className="px-2.5 py-1 rounded-full text-xs font-semibold w-fit whitespace-nowrap"
+                style={{ background: style.background, color: style.color }}
               >
-                <svg aria-hidden="true" xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                  <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" />
-                  <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" />
-                </svg>
-              </button>
-              <button
-                onClick={() => onDelete(transaction.id)}
-                aria-label={`Eliminar: ${transaction.description || (transaction.type === 'income' ? 'Ingreso' : 'Gasto')}`}
-                className="rounded-md p-2.5 text-subtext hover:bg-expense-light hover:text-expense transition-colors cursor-pointer"
-              >
-                <svg aria-hidden="true" xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                  <path d="M3 6h18" />
-                  <path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6" />
-                  <path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2" />
-                </svg>
-              </button>
+                {transaction.category}
+              </span>
+
+              {/* Date */}
+              <span className="text-sm text-subtext text-right tabular-nums">
+                {formatDate(transaction.date)}
+              </span>
+
+              {/* Amount */}
+              <span className={`text-sm font-bold text-right tabular-nums ${transaction.type === 'income' ? 'text-income' : 'text-expense'}`}>
+                {transaction.type === 'income' ? '+' : '−'}{formatCurrency(transaction.amount)}
+              </span>
+
+              {/* Actions */}
+              <div className="flex justify-end gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                <button
+                  onClick={() => onEdit(transaction)}
+                  aria-label={`Editar: ${transaction.description || 'transacción'}`}
+                  className="rounded-lg p-2 text-subtext hover:bg-brand-light hover:text-brand transition-colors cursor-pointer"
+                >
+                  <svg aria-hidden="true" xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" />
+                    <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" />
+                  </svg>
+                </button>
+                <button
+                  onClick={() => onDelete(transaction.id)}
+                  aria-label={`Eliminar: ${transaction.description || 'transacción'}`}
+                  className="rounded-lg p-2 text-subtext hover:bg-expense-light hover:text-expense transition-colors cursor-pointer"
+                >
+                  <svg aria-hidden="true" xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M3 6h18" />
+                    <path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6" />
+                    <path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2" />
+                  </svg>
+                </button>
+              </div>
             </div>
-          </div>
-        ))}
+          )
+        })}
       </div>
     </div>
   )

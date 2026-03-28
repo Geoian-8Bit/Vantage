@@ -13,6 +13,10 @@ export function Modal({ isOpen, onClose, title, children }: ModalProps) {
   const panelRef = useRef<HTMLDivElement>(null)
   const previousFocusRef = useRef<HTMLElement | null>(null)
   const titleId = useRef(`modal-title-${Math.random().toString(36).slice(2)}`)
+  const onCloseRef = useRef(onClose)
+
+  // Keep the ref current without triggering the focus effect
+  useEffect(() => { onCloseRef.current = onClose })
 
   useEffect(() => {
     if (!isOpen) return
@@ -25,7 +29,7 @@ export function Modal({ isOpen, onClose, title, children }: ModalProps) {
 
     function handleKeyDown(e: KeyboardEvent) {
       if (e.key === 'Escape') {
-        onClose()
+        onCloseRef.current()
         return
       }
       if (e.key !== 'Tab') return
@@ -49,7 +53,7 @@ export function Modal({ isOpen, onClose, title, children }: ModalProps) {
       document.removeEventListener('keydown', handleKeyDown)
       previousFocusRef.current?.focus()
     }
-  }, [isOpen, onClose])
+  }, [isOpen])
 
   if (!isOpen) return null
 

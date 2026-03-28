@@ -9,36 +9,49 @@ interface BalanceSummaryProps {
 export function BalanceSummary({ totalIncome, totalExpenses, balance }: BalanceSummaryProps) {
   return (
     <div className="grid grid-cols-3 gap-4">
+      {/* Income */}
       <div className="rounded-xl bg-card p-5 shadow-sm border border-border">
-        <div className="flex items-center gap-2 mb-1">
-          <div className="w-2 h-2 rounded-full bg-income" />
+        <div className="flex items-center gap-2 mb-2">
+          <div className="w-7 h-7 rounded-lg bg-income-light flex items-center justify-center">
+            <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="text-income">
+              <path d="M12 19V5M5 12l7-7 7 7" />
+            </svg>
+          </div>
           <p className="text-sm font-medium text-subtext">Ingresos</p>
         </div>
-        <p className="text-2xl font-bold text-income">
+        <p className="text-2xl font-bold text-income tabular-nums">
           {formatCurrency(totalIncome)}
         </p>
       </div>
 
+      {/* Expenses */}
       <div className="rounded-xl bg-card p-5 shadow-sm border border-border">
-        <div className="flex items-center gap-2 mb-1">
-          <div className="w-2 h-2 rounded-full bg-expense" />
+        <div className="flex items-center gap-2 mb-2">
+          <div className="w-7 h-7 rounded-lg bg-expense-light flex items-center justify-center">
+            <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="text-expense">
+              <path d="M12 5v14M5 12l7 7 7-7" />
+            </svg>
+          </div>
           <p className="text-sm font-medium text-subtext">Gastos</p>
         </div>
-        <p className="text-2xl font-bold text-expense">
+        <p className="text-2xl font-bold text-expense tabular-nums">
           {formatCurrency(totalExpenses)}
         </p>
       </div>
 
-      <div
-        className={`rounded-xl p-5 shadow-sm border ${balance >= 0 ? 'bg-income-light border-income/30' : 'bg-expense-light border-expense/30'}`}
-        style={{ borderLeftWidth: '4px', borderLeftColor: balance >= 0 ? 'var(--color-income)' : 'var(--color-expense)' }}
-      >
-        <div className="flex items-center gap-2 mb-1">
-          <div className={`w-2 h-2 rounded-full ${balance >= 0 ? 'bg-income' : 'bg-expense'}`} />
+      {/* Balance */}
+      <div className={`rounded-xl p-5 shadow-sm border ${balance >= 0 ? 'bg-income-light border-income/20' : 'bg-expense-light border-expense/20'}`}>
+        <div className="flex items-center gap-2 mb-2">
+          <div className={`w-7 h-7 rounded-lg flex items-center justify-center ${balance >= 0 ? 'bg-income/15' : 'bg-expense/15'}`}>
+            <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={balance >= 0 ? 'text-income' : 'text-expense'}>
+              <line x1="12" y1="1" x2="12" y2="23" />
+              <path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6" />
+            </svg>
+          </div>
           <p className="text-sm font-medium text-subtext">Balance</p>
         </div>
-        <p className={`text-2xl font-bold ${balance >= 0 ? 'text-income' : 'text-expense'}`}>
-          {formatCurrency(balance)}
+        <p className={`text-2xl font-bold tabular-nums ${balance >= 0 ? 'text-income' : 'text-expense'}`}>
+          {balance >= 0 ? '+' : ''}{formatCurrency(balance)}
         </p>
       </div>
     </div>

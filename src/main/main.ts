@@ -4,6 +4,7 @@ import { existsSync, mkdirSync } from 'fs'
 import { IPC_CHANNELS } from '../shared/types'
 import { initializeDatabase, closeDatabase, setWasmPath } from './database/schema'
 import { getAllTransactions, createTransaction, deleteTransaction, updateTransaction } from './database/transactions'
+import { getAllCategories, createCategory, deleteCategory, updateCategory } from './database/categories'
 
 let mainWindow: BrowserWindow | null = null
 
@@ -77,6 +78,26 @@ function registerIpcHandlers(): void {
   ipcMain.handle(IPC_CHANNELS.TRANSACTIONS_UPDATE, async (_event, { id, data }) => {
     await dbReady
     return updateTransaction(id, data)
+  })
+
+  ipcMain.handle(IPC_CHANNELS.CATEGORIES_GET_ALL, async () => {
+    await dbReady
+    return getAllCategories()
+  })
+
+  ipcMain.handle(IPC_CHANNELS.CATEGORIES_CREATE, async (_event, data) => {
+    await dbReady
+    return createCategory(data)
+  })
+
+  ipcMain.handle(IPC_CHANNELS.CATEGORIES_DELETE, async (_event, { id }) => {
+    await dbReady
+    deleteCategory(id)
+  })
+
+  ipcMain.handle(IPC_CHANNELS.CATEGORIES_UPDATE, async (_event, { id, name }) => {
+    await dbReady
+    return updateCategory(id, name)
   })
 }
 

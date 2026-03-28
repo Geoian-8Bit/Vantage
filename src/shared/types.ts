@@ -29,9 +29,24 @@ export const CATEGORIES = {
   income: ['Nómina', 'Bizum', 'Regalo', 'Inversión'] as const,
 } as const
 
+export interface Category {
+  id: string
+  name: string
+  type: 'income' | 'expense'
+}
+
+export interface CreateCategoryDTO {
+  name: string
+  type: 'income' | 'expense'
+}
+
 export const IPC_CHANNELS = {
   TRANSACTIONS_GET_ALL: 'db:transactions:getAll',
   TRANSACTIONS_CREATE: 'db:transactions:create',
   TRANSACTIONS_DELETE: 'db:transactions:delete',
   TRANSACTIONS_UPDATE: 'db:transactions:update',
+  CATEGORIES_GET_ALL: 'db:categories:getAll',
+  CATEGORIES_CREATE: 'db:categories:create',
+  CATEGORIES_DELETE: 'db:categories:delete',
+  CATEGORIES_UPDATE: 'db:categories:update',
 } as const
