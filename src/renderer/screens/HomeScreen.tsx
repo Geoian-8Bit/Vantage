@@ -1,4 +1,4 @@
-import { useState, useCallback, useMemo, useRef, useEffect } from 'react'
+import { useState, useCallback, useMemo, useEffect } from 'react'
 import * as XLSX from 'xlsx'
 import { useTransactions } from '../hooks/useTransactions'
 import { PageHeader } from '../components/layout/PageHeader'
@@ -183,46 +183,6 @@ export function HomeScreen() {
     setModalType(null)
   }, [])
 
-  const seedRef = useRef(false)
-  const handleSeed = useCallback(async (): Promise<void> => {
-    if (seedRef.current) return
-    seedRef.current = true
-    const now = new Date()
-    const entries: CreateTransactionDTO[] = []
-    const d = (monthOffset: number, day: number) => {
-      const dt = new Date(now.getFullYear(), now.getMonth() + monthOffset, day)
-      return dt.toISOString().slice(0, 10)
-    }
-    entries.push({ type: 'income',  amount: 2400, description: 'Nómina marzo',       category: 'Nómina',       date: d(0, 1) })
-    entries.push({ type: 'income',  amount: 2400, description: 'Nómina febrero',      category: 'Nómina',       date: d(-1, 1) })
-    entries.push({ type: 'income',  amount: 2400, description: 'Nómina enero',        category: 'Nómina',       date: d(-2, 1) })
-    entries.push({ type: 'income',  amount: 2400, description: 'Nómina diciembre',    category: 'Nómina',       date: d(-3, 1) })
-    entries.push({ type: 'income',  amount: 2400, description: 'Nómina noviembre',    category: 'Nómina',       date: d(-4, 1) })
-    entries.push({ type: 'income',  amount: 2400, description: 'Nómina octubre',      category: 'Nómina',       date: d(-5, 1) })
-    entries.push({ type: 'income',  amount: 150,  description: 'Bizum cumpleaños',    category: 'Bizum',        date: d(-1, 15) })
-    entries.push({ type: 'income',  amount: 500,  description: 'Devolución hacienda', category: 'Inversión',    date: d(-2, 20) })
-    entries.push({ type: 'expense', amount: 850,  description: 'Alquiler piso',       category: 'Alquiler',     date: d(0, 2) })
-    entries.push({ type: 'expense', amount: 850,  description: 'Alquiler piso',       category: 'Alquiler',     date: d(-1, 2) })
-    entries.push({ type: 'expense', amount: 850,  description: 'Alquiler piso',       category: 'Alquiler',     date: d(-2, 2) })
-    entries.push({ type: 'expense', amount: 850,  description: 'Alquiler piso',       category: 'Alquiler',     date: d(-3, 2) })
-    entries.push({ type: 'expense', amount: 850,  description: 'Alquiler piso',       category: 'Alquiler',     date: d(-4, 2) })
-    entries.push({ type: 'expense', amount: 850,  description: 'Alquiler piso',       category: 'Alquiler',     date: d(-5, 2) })
-    entries.push({ type: 'expense', amount: 320,  description: 'Mercadona',           category: 'Alimentación', date: d(0, 5) })
-    entries.push({ type: 'expense', amount: 290,  description: 'Supermercado',        category: 'Alimentación', date: d(-1, 8) })
-    entries.push({ type: 'expense', amount: 275,  description: 'Compra semanal',      category: 'Alimentación', date: d(-2, 10) })
-    entries.push({ type: 'expense', amount: 80,   description: 'Gasolina',            category: 'Transporte',   date: d(0, 7) })
-    entries.push({ type: 'expense', amount: 75,   description: 'Gasolina',            category: 'Transporte',   date: d(-1, 6) })
-    entries.push({ type: 'expense', amount: 90,   description: 'Gasolina + revisión', category: 'Transporte',   date: d(-2, 5) })
-    entries.push({ type: 'expense', amount: 45,   description: 'Netflix + Spotify',   category: 'Ocio',         date: d(0, 3) })
-    entries.push({ type: 'expense', amount: 60,   description: 'Cine y cena',         category: 'Ocio',         date: d(-1, 20) })
-    entries.push({ type: 'expense', amount: 120,  description: 'Concierto',           category: 'Ocio',         date: d(-3, 15) })
-    entries.push({ type: 'expense', amount: 30,   description: 'Luz',                 category: 'Servicios',    date: d(0, 10) })
-    entries.push({ type: 'expense', amount: 28,   description: 'Internet',            category: 'Servicios',    date: d(0, 10) })
-    entries.push({ type: 'expense', amount: 55,   description: 'Médico',              category: 'Salud',        date: d(-1, 12) })
-    entries.push({ type: 'expense', amount: 95,   description: 'Zapatillas',          category: 'Ropa',         date: d(-2, 18) })
-    for (const e of entries) await addTransaction(e)
-  }, [addTransaction])
-
   const handleDeleteConfirm = useCallback(async (): Promise<void> => {
     if (!confirmDeleteId) return
     await removeTransaction(confirmDeleteId)
@@ -287,12 +247,6 @@ export function HomeScreen() {
         page="Listado"
         actions={
           <>
-            <button
-              onClick={handleSeed}
-              className="px-3 py-1.5 rounded-lg text-xs font-medium text-subtext bg-surface hover:bg-border border border-border transition-colors cursor-pointer"
-            >
-              Demo
-            </button>
             <button
               onClick={handleExport}
               disabled={filteredTransactions.length === 0}
