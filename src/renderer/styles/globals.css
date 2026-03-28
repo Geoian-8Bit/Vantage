@@ -1,7 +1,7 @@
 @import "tailwindcss";
 
 @theme {
-  /* Primario - Granate */
+  /* Primario - Granate (default corporativo) */
   --color-brand: #7A1B2D;
   --color-brand-hover: #5C1422;
   --color-brand-light: #F3E5E8;
@@ -16,6 +16,8 @@
   --color-sidebar: #1A1A1D;
   --color-sidebar-hover: #2A2A2E;
   --color-sidebar-border: #2E2E32;
+  --color-sidebar-text: #FFFFFF;
+  --color-sidebar-muted: #8A8A8F;
   --color-text: #2D2D2F;
   --color-subtext: #6B6B6F;
   --color-border: #E2E0DE;
@@ -42,4 +44,168 @@ body {
 
 * {
   box-sizing: border-box;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   TEMAS
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+/* ── Oscuro ─────────────────────────────────────────────────────────────── */
+[data-theme="oscuro"] {
+  --color-brand: #3B82F6;
+  --color-brand-hover: #2563EB;
+  --color-brand-light: #1E293B;
+  --color-brand-100: #1E3A5F;
+
+  --color-accent: #F59E0B;
+  --color-accent-hover: #D97706;
+  --color-accent-light: #292524;
+
+  --color-sidebar: #0A0A0C;
+  --color-sidebar-hover: #18181B;
+  --color-sidebar-border: #27272A;
+  --color-sidebar-text: #FFFFFF;
+  --color-sidebar-muted: #71717A;
+  --color-text: #F1F5F9;
+  --color-subtext: #94A3B8;
+  --color-border: #27272A;
+  --color-surface: #0F0F12;
+  --color-card: #18181B;
+
+  --color-income: #22C55E;
+  --color-income-hover: #16A34A;
+  --color-income-light: #14291E;
+  --color-expense: #EF4444;
+  --color-expense-hover: #DC2626;
+  --color-expense-light: #2D1515;
+  --color-error: #EF4444;
+  --color-error-light: #2D1515;
+}
+
+/* ── Claro ──────────────────────────────────────────────────────────────── */
+[data-theme="claro"] {
+  --color-brand: #2563EB;
+  --color-brand-hover: #1D4ED8;
+  --color-brand-light: #DBEAFE;
+  --color-brand-100: #BFDBFE;
+
+  --color-accent: #7C3AED;
+  --color-accent-hover: #6D28D9;
+  --color-accent-light: #EDE9FE;
+
+  --color-sidebar: #F8FAFC;
+  --color-sidebar-hover: #E2E8F0;
+  --color-sidebar-border: #CBD5E1;
+  --color-sidebar-text: #1E293B;
+  --color-sidebar-muted: #64748B;
+  --color-text: #1E293B;
+  --color-subtext: #64748B;
+  --color-border: #E2E8F0;
+  --color-surface: #F1F5F9;
+  --color-card: #FFFFFF;
+
+  --color-income: #16A34A;
+  --color-income-hover: #15803D;
+  --color-income-light: #DCFCE7;
+  --color-expense: #DC2626;
+  --color-expense-hover: #B91C1C;
+  --color-expense-light: #FEE2E2;
+  --color-error: #DC2626;
+  --color-error-light: #FEE2E2;
+}
+
+/* ── Oceánico ───────────────────────────────────────────────────────────── */
+[data-theme="oceanico"] {
+  --color-brand: #0D9488;
+  --color-brand-hover: #0F766E;
+  --color-brand-light: #CCFBF1;
+  --color-brand-100: #99F6E4;
+
+  --color-accent: #F97316;
+  --color-accent-hover: #EA580C;
+  --color-accent-light: #FFF7ED;
+
+  --color-sidebar: #0C1222;
+  --color-sidebar-hover: #162033;
+  --color-sidebar-border: #1E3048;
+  --color-sidebar-text: #FFFFFF;
+  --color-sidebar-muted: #7B93B0;
+  --color-text: #1E293B;
+  --color-subtext: #64748B;
+  --color-border: #CBD5E1;
+  --color-surface: #F0F9FF;
+  --color-card: #FFFFFF;
+
+  --color-income: #0D9488;
+  --color-income-hover: #0F766E;
+  --color-income-light: #CCFBF1;
+  --color-expense: #E11D48;
+  --color-expense-hover: #BE123C;
+  --color-expense-light: #FFE4E6;
+  --color-error: #E11D48;
+  --color-error-light: #FFE4E6;
+}
+
+/* ── Naturaleza ─────────────────────────────────────────────────────────── */
+[data-theme="naturaleza"] {
+  --color-brand: #4D7C0F;
+  --color-brand-hover: #3F6212;
+  --color-brand-light: #ECFCCB;
+  --color-brand-100: #D9F99D;
+
+  --color-accent: #D97706;
+  --color-accent-hover: #B45309;
+  --color-accent-light: #FFFBEB;
+
+  --color-sidebar: #1A1C16;
+  --color-sidebar-hover: #2C2E24;
+  --color-sidebar-border: #3D3F33;
+  --color-sidebar-text: #FFFFFF;
+  --color-sidebar-muted: #8A8A7A;
+  --color-text: #1C1917;
+  --color-subtext: #78716C;
+  --color-border: #D6D3D1;
+  --color-surface: #FAFAF0;
+  --color-card: #FFFFFF;
+
+  --color-income: #15803D;
+  --color-income-hover: #166534;
+  --color-income-light: #DCFCE7;
+  --color-expense: #B91C1C;
+  --color-expense-hover: #991B1B;
+  --color-expense-light: #FEE2E2;
+  --color-error: #B91C1C;
+  --color-error-light: #FEE2E2;
+}
+
+/* ── Mocha ──────────────────────────────────────────────────────────────── */
+[data-theme="mocha"] {
+  --color-brand: #92400E;
+  --color-brand-hover: #78350F;
+  --color-brand-light: #FEF3C7;
+  --color-brand-100: #FDE68A;
+
+  --color-accent: #B45309;
+  --color-accent-hover: #92400E;
+  --color-accent-light: #FFFBEB;
+
+  --color-sidebar: #1C1410;
+  --color-sidebar-hover: #2C221A;
+  --color-sidebar-border: #3D3228;
+  --color-sidebar-text: #FFFFFF;
+  --color-sidebar-muted: #A09080;
+  --color-text: #1C1917;
+  --color-subtext: #78716C;
+  --color-border: #D6D3D1;
+  --color-surface: #FAF8F5;
+  --color-card: #FFFBF5;
+
+  --color-income: #15803D;
+  --color-income-hover: #166534;
+  --color-income-light: #DCFCE7;
+  --color-expense: #9A3412;
+  --color-expense-hover: #7C2D12;
+  --color-expense-light: #FFEDD5;
+  --color-error: #9A3412;
+  --color-error-light: #FFEDD5;
 }

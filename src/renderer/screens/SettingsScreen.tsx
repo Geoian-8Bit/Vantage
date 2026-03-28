@@ -1,14 +1,16 @@
 import { useState } from 'react'
 import { useCategories } from '../hooks/useCategories'
+import { useTheme } from '../hooks/useTheme'
 import { PageHeader } from '../components/layout/PageHeader'
 import { Modal } from '../components/Modal'
 import { ImportScreen } from './ImportScreen'
 import { RecurringScreen } from './RecurringScreen'
+import { BackupScreen } from './BackupScreen'
 import type { Category } from '../../shared/types'
 
 // ── Settings hub ───────────────────────────────────────────────────────────────
 
-type SettingsView = 'menu' | 'categories' | 'import' | 'recurring'
+type SettingsView = 'menu' | 'categories' | 'import' | 'recurring' | 'backup' | 'appearance'
 
 const SETTINGS_OPTIONS = [
   {
@@ -44,6 +46,30 @@ const SETTINGS_OPTIONS = [
         <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
         <polyline points="7 10 12 15 17 10"/>
         <line x1="12" y1="15" x2="12" y2="3"/>
+      </svg>
+    )
+  },
+  {
+    id: 'appearance' as SettingsView,
+    title: 'Apariencia',
+    description: 'Personaliza el tema de colores de la aplicación.',
+    icon: (
+      <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+        <circle cx="13.5" cy="6.5" r="2.5"/>
+        <circle cx="17.5" cy="10.5" r="2.5"/>
+        <circle cx="8.5" cy="7.5" r="2.5"/>
+        <circle cx="6.5" cy="12.5" r="2.5"/>
+        <path d="M12 2C6.5 2 2 6.5 2 12s4.5 10 10 10c.926 0 1.648-.746 1.648-1.688 0-.437-.18-.835-.437-1.125-.29-.289-.438-.652-.438-1.125a1.64 1.64 0 0 1 1.668-1.668h1.996c3.051 0 5.555-2.503 5.555-5.554C21.965 6.012 17.461 2 12 2z"/>
+      </svg>
+    )
+  },
+  {
+    id: 'backup' as SettingsView,
+    title: 'Copia de seguridad',
+    description: 'Exporta o restaura una copia completa de tu base de datos para no perder tus datos.',
+    icon: (
+      <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+        <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
       </svg>
     )
   }
@@ -107,6 +133,71 @@ function CategoryRow({ cat, onDelete, onRename }: CategoryRowProps) {
             <path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/>
           </svg>
         </button>
+      </div>
+    </div>
+  )
+}
+
+// ── Appearance view ────────────────────────────────────────────────────────────
+
+function AppearanceView({ onBack }: { onBack: () => void }) {
+  const { theme, setTheme, themes } = useTheme()
+
+  return (
+    <div className="space-y-4 lg:space-y-5 w-full">
+      <PageHeader
+        section="Ajustes"
+        page="Apariencia"
+        actions={
+          <button
+            onClick={onBack}
+            className="flex items-center gap-1.5 px-3 py-2 rounded-lg text-sm font-medium text-subtext bg-surface hover:bg-border border border-border transition-colors cursor-pointer"
+          >
+            <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M15 18l-6-6 6-6"/>
+            </svg>
+            Volver
+          </button>
+        }
+      />
+
+      <div className="grid grid-cols-2 lg:grid-cols-3 gap-4">
+        {themes.map(t => {
+          const isActive = theme === t.id
+          return (
+            <button
+              key={t.id}
+              onClick={() => setTheme(t.id)}
+              className={`relative rounded-xl border-2 p-4 text-left transition-all cursor-pointer ${
+                isActive
+                  ? 'border-brand shadow-md'
+                  : 'border-border hover:border-brand/40'
+              }`}
+            >
+              {isActive && (
+                <div className="absolute top-2.5 right-2.5 w-5 h-5 rounded-full bg-brand flex items-center justify-center">
+                  <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M20 6 9 17l-5-5"/>
+                  </svg>
+                </div>
+              )}
+              {/* Color preview */}
+              <div className="rounded-lg overflow-hidden border border-border/50 mb-3">
+                <div className="flex h-16">
+                  <div className="w-8" style={{ background: t.colors.sidebar }} />
+                  <div className="flex-1 p-1.5" style={{ background: t.colors.surface }}>
+                    <div className="rounded h-full flex flex-col gap-1 p-1.5" style={{ background: t.colors.card }}>
+                      <div className="h-1.5 w-10 rounded-full" style={{ background: t.colors.brand }} />
+                      <div className="h-1 w-14 rounded-full opacity-40" style={{ background: t.colors.text }} />
+                      <div className="h-1 w-8 rounded-full opacity-20" style={{ background: t.colors.text }} />
+                    </div>
+                  </div>
+                </div>
+              </div>
+              <p className="text-sm font-bold text-text">{t.name}</p>
+            </button>
+          )
+        })}
       </div>
     </div>
   )
@@ -182,6 +273,16 @@ export function SettingsScreen() {
   // ── Recurring view ────────────────────────────────────────────────
   if (view === 'recurring') {
     return <RecurringScreen onBack={() => setView('menu')} />
+  }
+
+  // ── Backup view ─────────────────────────────────────────────────
+  if (view === 'backup') {
+    return <BackupScreen onBack={() => setView('menu')} />
+  }
+
+  // ── Appearance view ────────────────────────────────────────────
+  if (view === 'appearance') {
+    return <AppearanceView onBack={() => setView('menu')} />
   }
 
   // ── Categories view ───────────────────────────────────────────────

@@ -64,6 +64,7 @@ export function updateTransaction(id: string, data: UpdateTransactionDTO): Trans
     'UPDATE transactions SET amount=?, type=?, description=?, date=?, category=?, note=? WHERE id=?',
     [data.amount, data.type, data.description, data.date, data.category, note, id]
   )
+
   saveDatabase()
 
   const stmt = db.prepare('SELECT created_at FROM transactions WHERE id=?')

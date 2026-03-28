@@ -43,6 +43,32 @@ export interface CreateCategoryDTO {
   type: 'income' | 'expense'
 }
 
+// ── Dashboard ─────────────────────────────────────────────────────────────
+export interface DashboardStats {
+  balance: number
+  monthExpenses: number
+  prevMonthExpenses: number
+  monthExpenseChange: number // percentage
+  topCategory: { name: string; amount: number } | null
+  upcomingRecurring: RecurringTemplate[]
+  monthlyTrend: { month: string; income: number; expenses: number }[]
+}
+
+// ── PDF Export ─────────────────────────────────────────────────────────────
+export interface PDFExportPayload {
+  title: string
+  period: string
+  income: number
+  expenses: number
+  balance: number
+  categories: { name: string; amount: number; percent: number }[]
+  transactions: { date: string; description: string; category: string; amount: number; type: 'income' | 'expense' }[]
+}
+
+// ── Backup / Restore ──────────────────────────────────────────────────────
+export interface BackupResult  { success: boolean; path?: string; error?: string }
+export interface RestoreResult { success: boolean; error?: string }
+
 export const IPC_CHANNELS = {
   TRANSACTIONS_GET_ALL: 'db:transactions:getAll',
   TRANSACTIONS_CREATE: 'db:transactions:create',
@@ -65,6 +91,13 @@ export const IPC_CHANNELS = {
   RECURRING_DELETE:  'db:recurring:delete',
   RECURRING_TOGGLE:  'db:recurring:toggle',
   RECURRING_PROCESS: 'db:recurring:process',
+  // Dashboard
+  DASHBOARD_STATS: 'db:dashboard:stats',
+  // PDF Export
+  EXPORT_PDF: 'fs:export:pdf',
+  // Backup
+  DB_BACKUP:  'db:backup',
+  DB_RESTORE: 'db:restore',
 } as const
 
 // ── Import / Export types ──────────────────────────────────────────────────

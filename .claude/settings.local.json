@@ -7,7 +7,10 @@
       "Bash(node -e \":*)",
       "Read(//c/Users/iangi/Desktop/**)",
       "Bash(taskkill /F /IM electron.exe)",
-      "Bash(taskkill /F /IM \"Vantage.exe\")"
+      "Bash(taskkill /F /IM \"Vantage.exe\")",
+      "Bash(npx tsc:*)",
+      "Bash(wc -l /c/Users/iangi/Desktop/Vantage/src/**/*.ts /c/Users/iangi/Desktop/Vantage/src/**/*.tsx)",
+      "Bash(git add:*)"
     ]
   }
 }

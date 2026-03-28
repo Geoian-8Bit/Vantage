@@ -27,6 +27,8 @@ const api = {
       ipcRenderer.invoke(IPC_CHANNELS.IMPORT_PARSE_ACCESS, { filePath, tableName }),
     commitImport: (payload: unknown) =>
       ipcRenderer.invoke(IPC_CHANNELS.IMPORT_COMMIT, payload),
+    exportPDF: (payload: unknown) =>
+      ipcRenderer.invoke(IPC_CHANNELS.EXPORT_PDF, payload),
   },
   recurring: {
     getAll:  () =>
@@ -39,6 +41,13 @@ const api = {
       ipcRenderer.invoke(IPC_CHANNELS.RECURRING_TOGGLE, { id }),
     process: () =>
       ipcRenderer.invoke(IPC_CHANNELS.RECURRING_PROCESS),
+  },
+  dashboard: {
+    getStats: () => ipcRenderer.invoke(IPC_CHANNELS.DASHBOARD_STATS),
+  },
+  database: {
+    backup:  () => ipcRenderer.invoke(IPC_CHANNELS.DB_BACKUP),
+    restore: () => ipcRenderer.invoke(IPC_CHANNELS.DB_RESTORE),
   },
 }
 

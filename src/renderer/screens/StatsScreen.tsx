@@ -1,7 +1,8 @@
 import { useState, useMemo } from 'react'
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend,
-  PieChart, Pie, Cell
+  PieChart, Pie, Cell,
+  AreaChart, Area
 } from 'recharts'
 import { useTransactions } from '../hooks/useTransactions'
 import { PageHeader } from '../components/layout/PageHeader'
@@ -233,6 +234,84 @@ export function StatsScreen() {
     return Object.entries(map).map(([name, value]) => ({ name, value })).sort((a, b) => b.value - a.value)
   }, [periodTransactions])
 
+  // ── Balance evolution data ─────────────────────────────────────────
+  const balanceEvolutionData = useMemo(() => {
+    const monthMap: Record<string, { income: number; expenses: number }> = {}
+    for (const t of periodTransactions) {
+      const key = t.date.slice(0, 7)
+      if (!monthMap[key]) monthMap[key] = { income: 0, expenses: 0 }
+      if (t.type === 'income') monthMap[key].income += t.amount
+      else monthMap[key].expenses += t.amount
+    }
+    const sorted = Object.keys(monthMap).sort()
+    let running = 0
+    return sorted.map(key => {
+      running += monthMap[key].income - monthMap[key].expenses
+      return { month: monthLabel(key), balance: running }
+    })
+  }, [periodTransactions])
+
+  // ── Comparison table data ────────────────────────────────────────
+  const comparisonTableData = useMemo(() => {
+    return barChartData.map((m, i) => {
+      const balance = m.Ingresos - m.Gastos
+      const prev = i > 0 ? barChartData[i - 1] : null
+      const prevExpenses = prev ? prev.Gastos : 0
+      const change = prevExpenses > 0 ? ((m.Gastos - prevExpenses) / prevExpenses * 100) : 0
+      return { month: m.month, income: m.Ingresos, expenses: m.Gastos, balance, change: i > 0 ? change : null }
+    })
+  }, [barChartData])
+
+  // ── Heatmap: expenses by day of week ─────────────────────────────
+  const weekdayData = useMemo(() => {
+    const DAYS = ['Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb', 'Dom']
+    const totals = [0, 0, 0, 0, 0, 0, 0]
+    const counts = [0, 0, 0, 0, 0, 0, 0]
+    for (const t of periodTransactions) {
+      if (t.type !== 'expense') continue
+      const d = new Date(t.date)
+      const dow = (d.getDay() + 6) % 7 // Monday=0
+      totals[dow] += t.amount
+      counts[dow]++
+    }
+    const maxAvg = Math.max(...totals.map((t, i) => counts[i] > 0 ? t / counts[i] : 0), 1)
+    return DAYS.map((name, i) => {
+      const avg = counts[i] > 0 ? totals[i] / counts[i] : 0
+      return { name, total: totals[i], avg, intensity: avg / maxAvg }
+    })
+  }, [periodTransactions])
+
+  // ── PDF export ───────────────────────────────────────────────────
+  async function handleExportPDF() {
+    try {
+      const cats = categoryData.map(c => ({
+        name: c.name,
+        amount: c.value,
+        percent: periodStats.expenses > 0 ? Math.round(c.value / periodStats.expenses * 100) : 0,
+      }))
+      const txs = periodTransactions
+        .sort((a, b) => a.date.localeCompare(b.date))
+        .map(t => ({
+          date: t.date,
+          description: t.description,
+          category: t.category,
+          amount: t.amount,
+          type: t.type,
+        }))
+      await window.api.fileio.exportPDF({
+        title: 'Reporte de movimientos',
+        period: periodLabel,
+        income: periodStats.income,
+        expenses: periodStats.expenses,
+        balance: periodStats.balance,
+        categories: cats,
+        transactions: txs,
+      })
+    } catch (err) {
+      console.error('[PDF Export]', err)
+    }
+  }
+
   const barChartTitle = dateMode === 'compare'
     ? `Comparativa — ${compareMonths.length} meses seleccionados`
     : `Ingresos vs Gastos — ${periodLabel}`
@@ -245,7 +324,25 @@ export function StatsScreen() {
 
   return (
     <div className="space-y-4 lg:space-y-5 w-full">
-      <PageHeader section="Estadísticas" page="Resumen" />
+      <PageHeader
+        section="Estadísticas"
+        page="Resumen"
+        actions={
+          <button
+            onClick={handleExportPDF}
+            disabled={periodTransactions.length === 0}
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium text-subtext bg-surface hover:bg-border border border-border transition-colors cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed"
+          >
+            <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+              <polyline points="14 2 14 8 20 8"/>
+              <line x1="16" y1="13" x2="8" y2="13"/>
+              <line x1="16" y1="17" x2="8" y2="17"/>
+            </svg>
+            Exportar PDF
+          </button>
+        }
+      />
 
       {/* ── Period control bar ─────────────────────────────────────────── */}
       <div className="rounded-xl bg-card border border-border shadow-sm px-3 lg:px-5 py-3.5 space-y-3">
@@ -415,6 +512,100 @@ export function StatsScreen() {
           )}
         </div>
       </div>
+
+      {/* ── Balance evolution ─────────────────────────────────────────── */}
+      {balanceEvolutionData.length > 1 && (
+        <div className="rounded-xl bg-card p-5 shadow-sm border border-border">
+          <h3 className="text-sm font-semibold text-text mb-4">Evolución del balance</h3>
+          <ResponsiveContainer width="100%" height={200}>
+            <AreaChart data={balanceEvolutionData}>
+              <defs>
+                <linearGradient id="gradBalance" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="0%" stopColor="var(--color-brand)" stopOpacity={0.3} />
+                  <stop offset="100%" stopColor="var(--color-brand)" stopOpacity={0} />
+                </linearGradient>
+              </defs>
+              <CartesianGrid strokeDasharray="3 3" stroke="var(--color-border)" vertical={false} />
+              <XAxis dataKey="month" tick={{ fontSize: 11, fill: 'var(--color-subtext)' }} axisLine={false} tickLine={false} />
+              <YAxis tickFormatter={formatYAxis} tick={{ fontSize: 11, fill: 'var(--color-subtext)' }} axisLine={false} tickLine={false} width={45} />
+              <Tooltip content={<CustomTooltip />} />
+              <Area type="monotone" dataKey="balance" stroke="var(--color-brand)" fill="url(#gradBalance)" strokeWidth={2} name="Balance" />
+            </AreaChart>
+          </ResponsiveContainer>
+        </div>
+      )}
+
+      {/* ── Comparison table ──────────────────────────────────────────── */}
+      {comparisonTableData.length > 1 && (
+        <div className="rounded-xl bg-card shadow-sm border border-border overflow-hidden">
+          <div className="px-5 py-3 border-b border-border">
+            <h3 className="text-sm font-semibold text-text">Comparativa mensual</h3>
+          </div>
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="bg-surface text-xs font-semibold text-subtext uppercase tracking-wider">
+                  <th className="px-5 py-2.5 text-left">Mes</th>
+                  <th className="px-5 py-2.5 text-right">Ingresos</th>
+                  <th className="px-5 py-2.5 text-right">Gastos</th>
+                  <th className="px-5 py-2.5 text-right">Balance</th>
+                  <th className="px-5 py-2.5 text-right">Δ Gastos</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-border/40">
+                {comparisonTableData.map(row => (
+                  <tr key={row.month} className="hover:bg-surface/60 transition-colors">
+                    <td className="px-5 py-2.5 font-medium text-text">{row.month}</td>
+                    <td className="px-5 py-2.5 text-right text-income tabular-nums">{formatCurrency(row.income)}</td>
+                    <td className="px-5 py-2.5 text-right text-expense tabular-nums">{formatCurrency(row.expenses)}</td>
+                    <td className={`px-5 py-2.5 text-right font-semibold tabular-nums ${row.balance >= 0 ? 'text-income' : 'text-expense'}`}>
+                      {row.balance >= 0 ? '+' : ''}{formatCurrency(row.balance)}
+                    </td>
+                    <td className="px-5 py-2.5 text-right tabular-nums">
+                      {row.change !== null ? (
+                        <span className={`text-xs font-semibold ${row.change > 0 ? 'text-expense' : 'text-income'}`}>
+                          {row.change > 0 ? '↑' : '↓'} {Math.abs(row.change).toFixed(1)}%
+                        </span>
+                      ) : (
+                        <span className="text-subtext">—</span>
+                      )}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
+
+      {/* ── Heatmap: expenses by weekday ──────────────────────────────── */}
+      {weekdayData.some(d => d.total > 0) && (
+        <div className="rounded-xl bg-card p-5 shadow-sm border border-border">
+          <h3 className="text-sm font-semibold text-text mb-4">Gasto promedio por día de la semana</h3>
+          <div className="grid grid-cols-7 gap-2">
+            {weekdayData.map(d => (
+              <div key={d.name} className="text-center space-y-2">
+                <p className="text-xs font-semibold text-subtext">{d.name}</p>
+                <div
+                  className="mx-auto w-12 h-12 lg:w-16 lg:h-16 rounded-xl flex items-center justify-center transition-colors"
+                  style={{
+                    backgroundColor: d.intensity > 0
+                      ? `color-mix(in srgb, var(--color-expense) ${Math.round(d.intensity * 80 + 20)}%, var(--color-expense-light))`
+                      : 'var(--color-surface)',
+                  }}
+                >
+                  <span className={`text-xs lg:text-sm font-bold tabular-nums ${d.intensity > 0.3 ? 'text-white' : 'text-subtext'}`}>
+                    {d.avg > 0 ? formatCurrency(d.avg) : '—'}
+                  </span>
+                </div>
+                <p className="text-[10px] text-subtext">
+                  {d.total > 0 ? `Total: ${formatCurrency(d.total)}` : ''}
+                </p>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
     </div>
   )
 }

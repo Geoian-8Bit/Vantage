@@ -20,6 +20,9 @@ import {
   toggleRecurring,
   processDueRecurring,
 } from './database/recurring'
+import { getDashboardStats } from './database/dashboard'
+import { handleBackup, handleRestore } from './database/backup'
+import { handleExportPDF } from './importExport'
 
 let mainWindow: BrowserWindow | null = null
 
@@ -154,6 +157,28 @@ function registerIpcHandlers(): void {
     const count = pendingRecurringCount
     pendingRecurringCount = 0
     return { count }
+  })
+
+  // ── Dashboard ───────────────────────────────────────────────────────
+  ipcMain.handle(IPC_CHANNELS.DASHBOARD_STATS, async () => {
+    await dbReady
+    return getDashboardStats()
+  })
+
+  // ── PDF Export ────────────────────────────────────────────────────
+  ipcMain.handle(IPC_CHANNELS.EXPORT_PDF, async (_event, payload) => {
+    return handleExportPDF(_event, payload)
+  })
+
+  // ── Backup / Restore ───────────────────────────────────────────────
+  ipcMain.handle(IPC_CHANNELS.DB_BACKUP, async () => {
+    await dbReady
+    return handleBackup()
+  })
+
+  ipcMain.handle(IPC_CHANNELS.DB_RESTORE, async () => {
+    await dbReady
+    return handleRestore()
   })
 }
 

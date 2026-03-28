@@ -27,6 +27,7 @@ export async function initializeDatabase(filePath: string): Promise<Database> {
 
   // sql.js doesn't support WAL mode; DELETE is the default and works correctly
   db.run('PRAGMA journal_mode = DELETE')
+  db.run('PRAGMA foreign_keys = ON')
 
   // Create tables
   db.run(`
@@ -123,4 +124,26 @@ export function closeDatabase(): void {
     db.close()
     db = null
   }
+}
+
+export async function replaceDatabase(buffer: Buffer): Promise<void> {
+  if (db) {
+    db.close()
+    db = null
+  }
+
+  const SQL = await initSqlJs({ locateFile: () => wasmPath })
+  db = new SQL.Database(new Uint8Array(buffer))
+
+  db.run('PRAGMA journal_mode = DELETE')
+  db.run('PRAGMA foreign_keys = ON')
+
+  // Re-run migrations for older backups
+  try { db.run("ALTER TABLE transactions ADD COLUMN category TEXT NOT NULL DEFAULT 'Otros'") } catch { /* exists */ }
+  try { db.run("ALTER TABLE transactions ADD COLUMN note TEXT NOT NULL DEFAULT ''") } catch { /* exists */ }
+  saveDatabase()
+}
+
+export function getDbPath(): string {
+  return dbPath
 }

@@ -3,6 +3,8 @@ import type {
   Category, CreateCategoryDTO,
   ImportFilePreview, ImportCommitPayload, ImportCommitResult,
   RecurringTemplate, CreateRecurringTemplateDTO,
+  DashboardStats, BackupResult, RestoreResult,
+  PDFExportPayload,
 } from '../shared/types'
 
 declare global {
@@ -27,6 +29,7 @@ declare global {
         getAccessTables(filePath: string): Promise<{ tables: string[] }>
         parseAccess(filePath: string, tableName: string): Promise<ImportFilePreview>
         commitImport(payload: ImportCommitPayload): Promise<ImportCommitResult>
+        exportPDF(payload: PDFExportPayload): Promise<void>
       }
       recurring: {
         getAll(): Promise<RecurringTemplate[]>
@@ -34,6 +37,13 @@ declare global {
         delete(id: string): Promise<void>
         toggle(id: string): Promise<RecurringTemplate>
         process(): Promise<{ count: number }>
+      }
+      dashboard: {
+        getStats(): Promise<DashboardStats>
+      }
+      database: {
+        backup(): Promise<BackupResult>
+        restore(): Promise<RestoreResult>
       }
     }
   }

@@ -155,3 +155,94 @@ export function handleImportCommit(
 
   return { inserted, errors }
 }
+
+// ── Export: PDF ──────────────────────────────────────────────────────────
+
+export async function handleExportPDF(
+  _event: Electron.IpcMainInvokeEvent,
+  payload: { title: string; period: string; income: number; expenses: number; balance: number; categories: { name: string; amount: number; percent: number }[]; transactions: { date: string; description: string; category: string; amount: number; type: string }[] }
+): Promise<void> {
+  const PDFDocument = (await import('pdfkit')).default
+
+  const { canceled, filePath } = await dialog.showSaveDialog(getFocusedWindow(), {
+    title: 'Exportar reporte PDF',
+    defaultPath: `vantage-reporte-${payload.period.replace(/\s/g, '-')}.pdf`,
+    filters: [{ name: 'PDF', extensions: ['pdf'] }],
+  })
+  if (canceled || !filePath) return
+
+  const { writeFileSync: _wfs, ..._ } = await import('fs')
+  const { createWriteStream } = await import('fs')
+
+  return new Promise<void>((resolve, reject) => {
+    const doc = new PDFDocument({ size: 'A4', margin: 50 })
+    const stream = createWriteStream(filePath)
+    doc.pipe(stream)
+
+    const fmt = (n: number) => n.toLocaleString('es-ES', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + ' €'
+
+    // Header
+    doc.fontSize(20).font('Helvetica-Bold').text('Vantage', { align: 'center' })
+    doc.fontSize(10).font('Helvetica').fillColor('#6B6B6F').text('Reporte de movimientos', { align: 'center' })
+    doc.moveDown(0.5)
+    doc.fontSize(14).font('Helvetica-Bold').fillColor('#2D2D2F').text(payload.period, { align: 'center' })
+    doc.moveDown(1)
+
+    // Summary
+    doc.fontSize(11).font('Helvetica-Bold').fillColor('#2D2D2F').text('Resumen')
+    doc.moveDown(0.3)
+    doc.fontSize(10).font('Helvetica')
+    doc.fillColor('#1B7A4E').text(`Ingresos:  ${fmt(payload.income)}`)
+    doc.fillColor('#7A1B2D').text(`Gastos:    ${fmt(payload.expenses)}`)
+    doc.fillColor(payload.balance >= 0 ? '#1B7A4E' : '#7A1B2D').text(`Balance:   ${fmt(payload.balance)}`)
+    doc.moveDown(1)
+
+    // Categories
+    if (payload.categories.length > 0) {
+      doc.fontSize(11).font('Helvetica-Bold').fillColor('#2D2D2F').text('Gastos por categoría')
+      doc.moveDown(0.3)
+      doc.fontSize(9).font('Helvetica').fillColor('#6B6B6F')
+      for (const cat of payload.categories) {
+        doc.text(`${cat.name}:  ${fmt(cat.amount)}  (${cat.percent}%)`)
+      }
+      doc.moveDown(1)
+    }
+
+    // Transactions table
+    doc.fontSize(11).font('Helvetica-Bold').fillColor('#2D2D2F').text('Movimientos')
+    doc.moveDown(0.3)
+
+    const tableTop = doc.y
+    const col = { date: 50, desc: 130, cat: 310, amount: 430 }
+
+    // Table header
+    doc.fontSize(8).font('Helvetica-Bold').fillColor('#6B6B6F')
+    doc.text('Fecha', col.date, tableTop)
+    doc.text('Descripción', col.desc, tableTop)
+    doc.text('Categoría', col.cat, tableTop)
+    doc.text('Importe', col.amount, tableTop)
+    doc.moveDown(0.5)
+
+    const lineY = doc.y
+    doc.moveTo(50, lineY).lineTo(545, lineY).strokeColor('#E2E0DE').lineWidth(0.5).stroke()
+    doc.moveDown(0.3)
+
+    doc.fontSize(8).font('Helvetica')
+    for (const t of payload.transactions) {
+      if (doc.y > 750) {
+        doc.addPage()
+      }
+      const y = doc.y
+      doc.fillColor('#2D2D2F').text(t.date, col.date, y, { width: 70 })
+      doc.text(t.description || (t.type === 'income' ? 'Ingreso' : 'Gasto'), col.desc, y, { width: 170 })
+      doc.text(t.category, col.cat, y, { width: 110 })
+      doc.fillColor(t.type === 'income' ? '#1B7A4E' : '#7A1B2D')
+        .text(`${t.type === 'income' ? '+' : '−'}${fmt(t.amount)}`, col.amount, y, { width: 115 })
+      doc.moveDown(0.4)
+    }
+
+    doc.end()
+    stream.on('finish', resolve)
+    stream.on('error', reject)
+  })
+}
