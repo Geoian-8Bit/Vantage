@@ -22,8 +22,9 @@ nsis:
   createStartMenuShortcut: true
   shortcutName: Vantage
   deleteAppDataOnUninstall: false
-  # LZMA: mejor ratio compresión, reduce el instalador ~30-40%
-  compression: maximum
+
+# LZMA: mejor ratio compresión, reduce el instalador ~30-40%
+compression: maximum
 
 # asar empaqueta todo el código en un único archivo binario
 asar: true
