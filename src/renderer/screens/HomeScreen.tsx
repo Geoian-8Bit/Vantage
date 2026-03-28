@@ -1,4 +1,5 @@
 import { useState, useCallback, useMemo, useRef } from 'react'
+import * as XLSX from 'xlsx'
 import { useTransactions } from '../hooks/useTransactions'
 import { PageHeader } from '../components/layout/PageHeader'
 import { BalanceSummary } from '../components/BalanceSummary'
@@ -215,6 +216,31 @@ export function HomeScreen() {
     setEditingTransaction(null)
   }, [editingTransaction, updateTransaction])
 
+  async function handleExport(): Promise<void> {
+    if (filteredTransactions.length === 0) return
+    try {
+      const rows = filteredTransactions.map(t => ({
+        'Fecha':       t.date,
+        'Tipo':        t.type === 'income' ? 'Ingreso' : 'Gasto',
+        'Descripción': t.description,
+        'Categoría':   t.category,
+        'Importe':     t.amount,
+      }))
+      const ws = XLSX.utils.json_to_sheet(rows)
+      ws['!cols'] = [12, 10, 36, 20, 12].map(w => ({ wch: w }))
+      const wb = XLSX.utils.book_new()
+      XLSX.utils.book_append_sheet(wb, ws, 'Movimientos')
+      const base64 = XLSX.write(wb, { type: 'base64', bookType: 'xlsx' }) as string
+      await window.api.fileio.exportTransactionsExcel({
+        buffer: base64,
+        defaultPath: `vantage-${new Date().toISOString().slice(0, 10)}.xlsx`,
+      })
+    } catch (err) {
+      console.error('[Export]', err)
+      alert(`Error al exportar: ${err instanceof Error ? err.message : String(err)}`)
+    }
+  }
+
   if (loading) {
     return (
       <div className="flex items-center justify-center h-full">
@@ -237,6 +263,18 @@ export function HomeScreen() {
               className="px-3 py-1.5 rounded-lg text-xs font-medium text-subtext bg-surface hover:bg-border border border-border transition-colors cursor-pointer"
             >
               Demo
+            </button>
+            <button
+              onClick={handleExport}
+              disabled={filteredTransactions.length === 0}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium text-subtext bg-surface hover:bg-border border border-border transition-colors cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed"
+            >
+              <svg aria-hidden="true" xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+                <polyline points="7 10 12 15 17 10"/>
+                <line x1="12" y1="15" x2="12" y2="3"/>
+              </svg>
+              Exportar
             </button>
             <button
               onClick={() => setModalType('expense')}

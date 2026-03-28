@@ -2,11 +2,12 @@ import { useState } from 'react'
 import { useCategories } from '../hooks/useCategories'
 import { PageHeader } from '../components/layout/PageHeader'
 import { Modal } from '../components/Modal'
+import { ImportScreen } from './ImportScreen'
 import type { Category } from '../../shared/types'
 
 // ── Settings hub ───────────────────────────────────────────────────────────────
 
-type SettingsView = 'menu' | 'categories'
+type SettingsView = 'menu' | 'categories' | 'import'
 
 const SETTINGS_OPTIONS = [
   {
@@ -18,6 +19,18 @@ const SETTINGS_OPTIONS = [
         <path d="M9 5H2v7l6.29 6.29c.94.94 2.48.94 3.42 0l3.58-3.58c.94-.94.94-2.48 0-3.42L9 5Z"/>
         <path d="M6 9.01V9"/>
         <path d="m15 5 6.3 6.3a2.4 2.4 0 0 1 0 3.4L17 19"/>
+      </svg>
+    )
+  },
+  {
+    id: 'import' as SettingsView,
+    title: 'Importar datos',
+    description: 'Importa movimientos desde un archivo Excel (.xlsx, .xls) o una base de datos Microsoft Access (.mdb, .accdb).',
+    icon: (
+      <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+        <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+        <polyline points="7 10 12 15 17 10"/>
+        <line x1="12" y1="15" x2="12" y2="3"/>
       </svg>
     )
   }
@@ -146,6 +159,11 @@ export function SettingsScreen() {
         </div>
       </div>
     )
+  }
+
+  // ── Import view ───────────────────────────────────────────────────
+  if (view === 'import') {
+    return <ImportScreen onBack={() => setView('menu')} />
   }
 
   // ── Categories view ───────────────────────────────────────────────

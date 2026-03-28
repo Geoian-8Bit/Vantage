@@ -5,6 +5,14 @@ import { IPC_CHANNELS } from '../shared/types'
 import { initializeDatabase, closeDatabase, setWasmPath } from './database/schema'
 import { getAllTransactions, createTransaction, deleteTransaction, updateTransaction } from './database/transactions'
 import { getAllCategories, createCategory, deleteCategory, updateCategory } from './database/categories'
+import {
+  handleDialogOpenFile,
+  handleExportTransactionsExcel,
+  handleParseExcel,
+  handleAccessTables,
+  handleParseAccess,
+  handleImportCommit,
+} from './importExport'
 
 let mainWindow: BrowserWindow | null = null
 
@@ -98,6 +106,17 @@ function registerIpcHandlers(): void {
   ipcMain.handle(IPC_CHANNELS.CATEGORIES_UPDATE, async (_event, { id, name }) => {
     await dbReady
     return updateCategory(id, name)
+  })
+
+  // ── File I/O ───────────────────────────────────────────────────────────
+  ipcMain.handle(IPC_CHANNELS.DIALOG_OPEN_FILE,            handleDialogOpenFile)
+  ipcMain.handle(IPC_CHANNELS.EXPORT_TRANSACTIONS_EXCEL,   handleExportTransactionsExcel)
+  ipcMain.handle(IPC_CHANNELS.IMPORT_PARSE_EXCEL,          handleParseExcel)
+  ipcMain.handle(IPC_CHANNELS.IMPORT_ACCESS_TABLES,        handleAccessTables)
+  ipcMain.handle(IPC_CHANNELS.IMPORT_PARSE_ACCESS,         handleParseAccess)
+  ipcMain.handle(IPC_CHANNELS.IMPORT_COMMIT, async (e, payload) => {
+    await dbReady
+    return handleImportCommit(e, payload)
   })
 }
 

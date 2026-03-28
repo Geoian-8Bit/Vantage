@@ -2,7 +2,12 @@
   "permissions": {
     "allow": [
       "Bash(git checkout:*)",
-      "WebSearch"
+      "WebSearch",
+      "Bash(npm run:*)",
+      "Bash(node -e \":*)",
+      "Read(//c/Users/iangi/Desktop/**)",
+      "Bash(taskkill /F /IM electron.exe)",
+      "Bash(taskkill /F /IM \"Vantage.exe\")"
     ]
   }
 }
