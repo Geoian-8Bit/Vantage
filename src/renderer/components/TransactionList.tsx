@@ -1,3 +1,4 @@
+import { useMemo } from 'react'
 import type { Transaction } from '../../shared/types'
 import { formatCurrency, formatDate } from '../lib/utils'
 
@@ -39,7 +40,10 @@ export function TransactionList({ transactions, onDelete, onEdit, emptyMessage =
     )
   }
 
-  const sorted = [...transactions].sort((a, b) => b.date.localeCompare(a.date))
+  const sorted = useMemo(
+    () => [...transactions].sort((a, b) => b.date.localeCompare(a.date)),
+    [transactions]
+  )
 
   return (
     <div className="rounded-xl bg-card shadow-sm border border-border overflow-hidden">

@@ -14,10 +14,10 @@ export function useCategories(): UseCategoriesReturn {
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
-    window.api.categories.getAll().then(cats => {
-      setCategories(cats)
-      setLoading(false)
-    })
+    window.api.categories.getAll()
+      .then(cats => setCategories(cats))
+      .catch(console.error)
+      .finally(() => setLoading(false))
   }, [])
 
   const addCategory = useCallback(async (data: CreateCategoryDTO): Promise<Category> => {

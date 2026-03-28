@@ -1,12 +1,9 @@
 import { useState, useMemo } from 'react'
 import { useTransactions } from '../hooks/useTransactions'
 import { PageHeader } from '../components/layout/PageHeader'
-import { formatCurrency } from '../lib/utils'
+import { formatCurrency, pad, MONTH_NAMES_FULL } from '../lib/utils'
 
-const MONTH_NAMES = ['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre']
 const WEEKDAYS = ['Lun','Mar','Mié','Jue','Vie','Sáb','Dom']
-
-function pad(n: number): string { return String(n).padStart(2, '0') }
 
 export function CalendarScreen() {
   const { transactions, loading } = useTransactions()
@@ -108,7 +105,7 @@ export function CalendarScreen() {
           <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M15 18l-6-6 6-6"/></svg>
         </button>
         <div className="text-center">
-          <p className="text-base font-bold text-text">{MONTH_NAMES[month]} {year}</p>
+          <p className="text-base font-bold text-text">{MONTH_NAMES_FULL[month]} {year}</p>
           <div className="flex items-center gap-4 justify-center mt-1">
             <span className="text-xs text-income font-semibold">Ingresos: {formatCurrency(monthTotals.income)}</span>
             <span className="text-xs text-expense font-semibold">Gastos: {formatCurrency(monthTotals.expense)}</span>

@@ -1,22 +1,7 @@
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts'
 import { useDashboard } from '../hooks/useDashboard'
 import { PageHeader } from '../components/layout/PageHeader'
-import { formatCurrency } from '../lib/utils'
-import type { RecurringFrequency } from '../../shared/types'
-
-const MONTH_NAMES_SHORT = ['Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic']
-
-function monthLabel(key: string): string {
-  const [y, m] = key.split('-').map(Number)
-  return `${MONTH_NAMES_SHORT[m - 1]} ${String(y).slice(2)}`
-}
-
-const FREQ_LABELS: Record<RecurringFrequency, string> = {
-  weekly: 'Semanal',
-  monthly: 'Mensual',
-  quarterly: 'Trimestral',
-  annual: 'Anual',
-}
+import { formatCurrency, monthLabel, FREQ_LABELS } from '../lib/utils'
 
 export function DashboardScreen() {
   const { stats, loading } = useDashboard()

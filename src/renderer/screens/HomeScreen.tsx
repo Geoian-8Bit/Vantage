@@ -8,6 +8,7 @@ import { TransactionList } from '../components/TransactionList'
 import { Modal } from '../components/Modal'
 import type { CreateTransactionDTO, CreateRecurringTemplateDTO, Transaction, UpdateTransactionDTO } from '../../shared/types'
 import { CATEGORIES } from '../../shared/types'
+import { pad, MONTH_NAMES_FULL } from '../lib/utils'
 
 type ModalType = 'expense' | 'income' | null
 type Filter = 'all' | 'income' | 'expense'
@@ -28,9 +29,6 @@ const DATE_MODES: { id: DateMode; label: string }[] = [
   { id: 'custom',  label: 'Custom' },
 ]
 
-const MONTH_NAMES = ['Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio', 'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre']
-
-function pad(n: number): string { return String(n).padStart(2, '0') }
 
 const PAGE_SIZE = 10
 
@@ -60,13 +58,15 @@ export function HomeScreen() {
 
   // Auto-process recurring transactions on mount
   useEffect(() => {
+    let timer: ReturnType<typeof setTimeout> | null = null
     window.api.recurring.process().then(({ count }) => {
       if (count > 0) {
         loadTransactions()
         setRecurringBanner(count)
-        setTimeout(() => setRecurringBanner(0), 4000)
+        timer = setTimeout(() => setRecurringBanner(0), 4000)
       }
     }).catch(console.error)
+    return () => { if (timer) clearTimeout(timer) }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
@@ -81,7 +81,7 @@ export function HomeScreen() {
     if (dateMode === 'month')   return {
       fromDate: `${y}-${pad(m + 1)}-01`,
       toDate:   `${y}-${pad(m + 1)}-31`,
-      periodLabel: `${MONTH_NAMES[m]} ${y}`
+      periodLabel: `${MONTH_NAMES_FULL[m]} ${y}`
     }
     if (dateMode === 'quarter') {
       const qs = q * 3

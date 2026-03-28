@@ -6,7 +6,7 @@ import {
 } from 'recharts'
 import { useTransactions } from '../hooks/useTransactions'
 import { PageHeader } from '../components/layout/PageHeader'
-import { formatCurrency } from '../lib/utils'
+import { formatCurrency, pad, MONTH_NAMES_FULL, MONTH_NAMES_SHORT, monthLabel } from '../lib/utils'
 
 type DateMode = 'compare' | 'quarter' | 'year' | 'custom'
 
@@ -17,18 +17,8 @@ const DATE_MODES: { id: DateMode; label: string }[] = [
   { id: 'custom',  label: 'Personalizado' },
 ]
 
-const MONTH_NAMES_FULL  = ['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre']
-const MONTH_NAMES_SHORT = ['Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic']
-
-function pad(n: number): string { return String(n).padStart(2, '0') }
-
 function monthKey(date: Date): string {
   return `${date.getFullYear()}-${pad(date.getMonth() + 1)}`
-}
-
-function monthLabel(key: string): string {
-  const [y, m] = key.split('-').map(Number)
-  return `${MONTH_NAMES_SHORT[m - 1]} ${String(y).slice(2)}`
 }
 
 const CATEGORY_COLORS: Record<string, string> = {
@@ -76,8 +66,6 @@ function PieTooltip({ active, payload }: TooltipProps) {
 export function StatsScreen() {
   const { transactions, loading } = useTransactions()
 
-  const now = new Date()
-
   const [dateMode, setDateMode] = useState<DateMode>('compare')
 
   // Trimestre / Año navigation
@@ -85,6 +73,7 @@ export function StatsScreen() {
 
   // Comparativa: list of "YYYY-MM" keys (individual months to compare)
   const [compareMonths, setCompareMonths] = useState<string[]>(() => {
+    const now = new Date()
     return [2, 1, 0].map(i => {
       const d = new Date(now.getFullYear(), now.getMonth() - i, 1)
       return monthKey(d)
@@ -214,9 +203,9 @@ export function StatsScreen() {
       }
     }
 
+    const monthMap = new Map(months.map(m => [m._key, m]))
     for (const t of transactions) {
-      const tMonth = t.date.slice(0, 7)
-      const entry = months.find(m => m._key === tMonth)
+      const entry = monthMap.get(t.date.slice(0, 7))
       if (!entry) continue
       if (t.type === 'income') entry.Ingresos += t.amount
       else entry.Gastos += t.amount

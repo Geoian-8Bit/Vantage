@@ -10,7 +10,10 @@
       "Bash(taskkill /F /IM \"Vantage.exe\")",
       "Bash(npx tsc:*)",
       "Bash(wc -l /c/Users/iangi/Desktop/Vantage/src/**/*.ts /c/Users/iangi/Desktop/Vantage/src/**/*.tsx)",
-      "Bash(git add:*)"
+      "Bash(git add:*)",
+      "Bash(git commit:*)",
+      "Bash(sed -n '1,10p' /c/Users/iangi/Desktop/Vantage/src/main/importExport.ts)",
+      "Bash(sed -n '48,60p' /c/Users/iangi/Desktop/Vantage/src/main/importExport.ts)"
     ]
   }
 }

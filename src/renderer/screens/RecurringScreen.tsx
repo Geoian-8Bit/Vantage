@@ -1,19 +1,60 @@
 import { useState, useEffect, useCallback } from 'react'
 import type { RecurringTemplate } from '../../shared/types'
 import { PageHeader } from '../components/layout/PageHeader'
+import { formatCurrency, FREQ_LABELS, FREQ_COLORS } from '../lib/utils'
 
-const FREQ_LABEL: Record<string, string> = {
-  weekly:    'Semanal',
-  monthly:   'Mensual',
-  quarterly: 'Trimestral',
-  annual:    'Anual',
+interface TemplateRowProps {
+  tpl: RecurringTemplate
+  onToggle: (id: string) => void
+  onDelete: (id: string) => void
 }
 
-const FREQ_COLOR: Record<string, string> = {
-  weekly:    'bg-brand-light text-brand',
-  monthly:   'bg-income-light text-income',
-  quarterly: 'bg-expense-light text-expense',
-  annual:    'bg-surface text-subtext border border-border',
+function TemplateRow({ tpl, onToggle, onDelete }: TemplateRowProps) {
+  return (
+    <div className="group flex items-center gap-3 px-5 py-3.5 hover:bg-surface/60 transition-colors">
+      <div className={`w-7 h-7 rounded-lg flex items-center justify-center shrink-0 ${tpl.type === 'income' ? 'bg-income-light' : 'bg-expense-light'}`}>
+        <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className={tpl.type === 'income' ? 'text-income' : 'text-expense'}>
+          {tpl.type === 'income'
+            ? <path d="M12 19V5M5 12l7-7 7 7"/>
+            : <path d="M12 5v14M5 12l7 7 7-7"/>
+          }
+        </svg>
+      </div>
+      <div className="flex-1 min-w-0">
+        <p className="text-sm font-semibold text-text truncate">{tpl.description || '—'}</p>
+        <p className="text-xs text-subtext">{tpl.category}</p>
+      </div>
+      <span className={`px-2.5 py-1 rounded-full text-xs font-semibold whitespace-nowrap ${FREQ_COLORS[tpl.frequency] ?? FREQ_COLORS.annual}`}>
+        {FREQ_LABELS[tpl.frequency] ?? tpl.frequency}
+      </span>
+      <span className={`text-sm font-bold tabular-nums w-24 text-right ${tpl.type === 'income' ? 'text-income' : 'text-expense'}`}>
+        {tpl.type === 'income' ? '+' : '−'}{formatCurrency(tpl.amount)}
+      </span>
+      <span className="text-xs text-subtext tabular-nums w-24 text-right">
+        Próx: {tpl.next_date}
+      </span>
+      <button
+        onClick={() => onToggle(tpl.id)}
+        title={tpl.active ? 'Pausar' : 'Activar'}
+        aria-label={tpl.active ? `Pausar ${tpl.description}` : `Activar ${tpl.description}`}
+        className="cursor-pointer"
+      >
+        <div className={`relative w-9 h-5 rounded-full transition-colors ${tpl.active ? 'bg-brand' : 'bg-border'}`}>
+          <span className={`absolute top-0.5 left-0.5 w-4 h-4 rounded-full bg-white shadow transition-transform ${tpl.active ? 'translate-x-4' : ''}`} />
+        </div>
+      </button>
+      <button
+        onClick={() => onDelete(tpl.id)}
+        aria-label={`Eliminar ${tpl.description}`}
+        className="opacity-0 group-hover:opacity-100 rounded-lg p-1.5 text-subtext hover:bg-expense-light hover:text-expense transition-all cursor-pointer"
+      >
+        <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+          <path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/>
+          <path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/>
+        </svg>
+      </button>
+    </div>
+  )
 }
 
 interface RecurringScreenProps {
@@ -48,67 +89,6 @@ export function RecurringScreen({ onBack }: RecurringScreenProps) {
 
   const expense  = templates.filter(t => t.type === 'expense')
   const income   = templates.filter(t => t.type === 'income')
-
-  function TemplateRow({ tpl }: { tpl: RecurringTemplate }) {
-    return (
-      <div className="group flex items-center gap-3 px-5 py-3.5 hover:bg-surface/60 transition-colors">
-        {/* Icon */}
-        <div className={`w-7 h-7 rounded-lg flex items-center justify-center shrink-0 ${tpl.type === 'income' ? 'bg-income-light' : 'bg-expense-light'}`}>
-          <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className={tpl.type === 'income' ? 'text-income' : 'text-expense'}>
-            {tpl.type === 'income'
-              ? <path d="M12 19V5M5 12l7-7 7 7"/>
-              : <path d="M12 5v14M5 12l7 7 7-7"/>
-            }
-          </svg>
-        </div>
-
-        {/* Description + category */}
-        <div className="flex-1 min-w-0">
-          <p className="text-sm font-semibold text-text truncate">{tpl.description || '—'}</p>
-          <p className="text-xs text-subtext">{tpl.category}</p>
-        </div>
-
-        {/* Frequency badge */}
-        <span className={`px-2.5 py-1 rounded-full text-xs font-semibold whitespace-nowrap ${FREQ_COLOR[tpl.frequency] ?? FREQ_COLOR.annual}`}>
-          {FREQ_LABEL[tpl.frequency] ?? tpl.frequency}
-        </span>
-
-        {/* Amount */}
-        <span className={`text-sm font-bold tabular-nums w-24 text-right ${tpl.type === 'income' ? 'text-income' : 'text-expense'}`}>
-          {tpl.type === 'income' ? '+' : '−'}{tpl.amount.toLocaleString('es-ES', { minimumFractionDigits: 2 })} €
-        </span>
-
-        {/* Next date */}
-        <span className="text-xs text-subtext tabular-nums w-24 text-right">
-          Próx: {tpl.next_date}
-        </span>
-
-        {/* Active toggle */}
-        <button
-          onClick={() => handleToggle(tpl.id)}
-          title={tpl.active ? 'Pausar' : 'Activar'}
-          aria-label={tpl.active ? `Pausar ${tpl.description}` : `Activar ${tpl.description}`}
-          className="cursor-pointer"
-        >
-          <div className={`relative w-9 h-5 rounded-full transition-colors ${tpl.active ? 'bg-brand' : 'bg-border'}`}>
-            <span className={`absolute top-0.5 left-0.5 w-4 h-4 rounded-full bg-white shadow transition-transform ${tpl.active ? 'translate-x-4' : ''}`} />
-          </div>
-        </button>
-
-        {/* Delete */}
-        <button
-          onClick={() => handleDelete(tpl.id)}
-          aria-label={`Eliminar ${tpl.description}`}
-          className="opacity-0 group-hover:opacity-100 rounded-lg p-1.5 text-subtext hover:bg-expense-light hover:text-expense transition-all cursor-pointer"
-        >
-          <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-            <path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/>
-            <path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/>
-          </svg>
-        </button>
-      </div>
-    )
-  }
 
   return (
     <div className="space-y-4 lg:space-y-5 w-full">
@@ -152,7 +132,7 @@ export function RecurringScreen({ onBack }: RecurringScreenProps) {
             <div className="divide-y divide-border/40">
               {expense.length === 0
                 ? <p className="px-5 py-4 text-sm text-subtext italic">Sin gastos recurrentes</p>
-                : expense.map(t => <TemplateRow key={t.id} tpl={t} />)
+                : expense.map(t => <TemplateRow key={t.id} tpl={t} onToggle={handleToggle} onDelete={handleDelete} />)
               }
             </div>
           </div>
@@ -167,7 +147,7 @@ export function RecurringScreen({ onBack }: RecurringScreenProps) {
             <div className="divide-y divide-border/40">
               {income.length === 0
                 ? <p className="px-5 py-4 text-sm text-subtext italic">Sin ingresos recurrentes</p>
-                : income.map(t => <TemplateRow key={t.id} tpl={t} />)
+                : income.map(t => <TemplateRow key={t.id} tpl={t} onToggle={handleToggle} onDelete={handleDelete} />)
               }
             </div>
           </div>

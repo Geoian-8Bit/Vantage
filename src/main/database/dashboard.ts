@@ -68,27 +68,39 @@ export function getDashboardStats(): DashboardStats {
   }
   recStmt.free()
 
-  // Monthly trend (last 6 months)
-  const monthlyTrend: DashboardStats['monthlyTrend'] = []
+  // Monthly trend (last 6 months) — single query
+  const trendMonths: { label: string; start: string }[] = []
   for (let i = 5; i >= 0; i--) {
     const d = new Date(year, month - i, 1)
-    const mStart = d.toISOString().slice(0, 10)
-    const mNext = new Date(d.getFullYear(), d.getMonth() + 1, 1)
-    const mEnd = mNext.toISOString().slice(0, 10)
-    const label = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`
-
-    const tStmt = db.prepare(`
-      SELECT
-        COALESCE(SUM(CASE WHEN type='income' THEN amount END), 0) as income,
-        COALESCE(SUM(CASE WHEN type='expense' THEN amount END), 0) as expenses
-      FROM transactions WHERE date >= ? AND date < ?
-    `)
-    tStmt.bind([mStart, mEnd])
-    tStmt.step()
-    const tRow = tStmt.getAsObject() as { income: number; expenses: number }
-    monthlyTrend.push({ month: label, income: Number(tRow.income), expenses: Number(tRow.expenses) })
-    tStmt.free()
+    trendMonths.push({
+      label: `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`,
+      start: d.toISOString().slice(0, 10),
+    })
   }
+  const trendStart = trendMonths[0].start
+  const trendEnd = new Date(year, month + 1, 1).toISOString().slice(0, 10)
+
+  const trendStmt = db.prepare(`
+    SELECT
+      strftime('%Y-%m', date) as month,
+      COALESCE(SUM(CASE WHEN type='income' THEN amount ELSE 0 END), 0) as income,
+      COALESCE(SUM(CASE WHEN type='expense' THEN amount ELSE 0 END), 0) as expenses
+    FROM transactions WHERE date >= ? AND date < ?
+    GROUP BY month
+  `)
+  trendStmt.bind([trendStart, trendEnd])
+  const trendRows: Record<string, { income: number; expenses: number }> = {}
+  while (trendStmt.step()) {
+    const r = trendStmt.getAsObject() as { month: string; income: number; expenses: number }
+    trendRows[r.month] = { income: Number(r.income), expenses: Number(r.expenses) }
+  }
+  trendStmt.free()
+
+  const monthlyTrend = trendMonths.map(m => ({
+    month: m.label,
+    income: trendRows[m.label]?.income ?? 0,
+    expenses: trendRows[m.label]?.expenses ?? 0,
+  }))
 
   return { balance, monthExpenses, prevMonthExpenses, monthExpenseChange, topCategory, upcomingRecurring, monthlyTrend }
 }

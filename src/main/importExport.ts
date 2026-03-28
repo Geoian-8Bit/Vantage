@@ -1,5 +1,6 @@
 import { dialog, BrowserWindow } from 'electron'
 import { readFileSync, writeFileSync } from 'fs'
+import * as XLSX from 'xlsx'
 import type {
   ImportFilePreview,
   RawImportRow,
@@ -171,7 +172,6 @@ export async function handleExportPDF(
   })
   if (canceled || !filePath) return
 
-  const { writeFileSync: _wfs, ..._ } = await import('fs')
   const { createWriteStream } = await import('fs')
 
   return new Promise<void>((resolve, reject) => {
