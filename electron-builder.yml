@@ -12,12 +12,7 @@ files:
 win:
   signAndEditExecutable: false
   target:
-    # Instalador con compresión LZMA máxima — el más pequeño para distribuir
     - target: nsis
-      arch:
-        - x64
-    # ZIP comprimido — fácil de copiar/enviar, Windows lo abre nativo
-    - target: zip
       arch:
         - x64
 
