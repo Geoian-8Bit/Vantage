@@ -6,3 +6,5 @@ build
 out/
 dist-electron/
 *.db
+.claude/settings.local.json
+Vantage_Proyecto.docx.pdf
