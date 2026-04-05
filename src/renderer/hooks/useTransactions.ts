@@ -12,6 +12,7 @@ interface UseTransactionsReturn {
   loadTransactions: () => Promise<void>
   addTransaction: (data: CreateTransactionDTO) => Promise<void>
   removeTransaction: (id: string) => Promise<void>
+  bulkRemoveTransactions: (ids: string[]) => Promise<void>
   updateTransaction: (id: string, data: UpdateTransactionDTO) => Promise<void>
 }
 
@@ -59,6 +60,18 @@ export function useTransactions(): UseTransactionsReturn {
     }
   }, [])
 
+  const bulkRemoveTransactions = useCallback(async (ids: string[]): Promise<void> => {
+    try {
+      setError(null)
+      await window.api.transactions.bulkDelete(ids)
+      const idSet = new Set(ids)
+      setTransactions(prev => prev.filter(t => !idSet.has(t.id)))
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Error al eliminar transacciones')
+      throw err
+    }
+  }, [])
+
   const updateTransaction = useCallback(async (id: string, data: UpdateTransactionDTO): Promise<void> => {
     try {
       setError(null)
@@ -94,6 +107,7 @@ export function useTransactions(): UseTransactionsReturn {
     loadTransactions,
     addTransaction,
     removeTransaction,
+    bulkRemoveTransactions,
     updateTransaction
   }
 }

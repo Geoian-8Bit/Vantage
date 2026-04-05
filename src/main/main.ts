@@ -3,7 +3,7 @@ import { join, dirname } from 'path'
 import { existsSync, mkdirSync } from 'fs'
 import { IPC_CHANNELS } from '../shared/types'
 import { initializeDatabase, closeDatabase, setWasmPath } from './database/schema'
-import { getAllTransactions, createTransaction, deleteTransaction, updateTransaction } from './database/transactions'
+import { getAllTransactions, createTransaction, deleteTransaction, bulkDeleteTransactions, updateTransaction } from './database/transactions'
 import { getAllCategories, createCategory, deleteCategory, updateCategory } from './database/categories'
 import {
   handleDialogOpenFile,
@@ -96,6 +96,11 @@ function registerIpcHandlers(): void {
     deleteTransaction(id)
   })
 
+  ipcMain.handle(IPC_CHANNELS.TRANSACTIONS_BULK_DELETE, async (_event, { ids }) => {
+    await dbReady
+    return bulkDeleteTransactions(ids)
+  })
+
   ipcMain.handle(IPC_CHANNELS.TRANSACTIONS_UPDATE, async (_event, { id, data }) => {
     await dbReady
     return updateTransaction(id, data)
@@ -180,6 +185,10 @@ function registerIpcHandlers(): void {
   ipcMain.handle(IPC_CHANNELS.DB_RESTORE, async () => {
     await dbReady
     return handleRestore()
+  })
+
+  ipcMain.handle(IPC_CHANNELS.APP_QUIT, () => {
+    app.quit()
   })
 }
 

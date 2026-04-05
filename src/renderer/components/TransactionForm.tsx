@@ -47,7 +47,7 @@ export function TransactionForm({ type, onSubmit, onCancel, initialValues, onSub
   async function handleSubmit(e: React.FormEvent): Promise<void> {
     e.preventDefault()
     const parsedAmount = parseFloat(amount)
-    if (isNaN(parsedAmount) || parsedAmount <= 0) return
+    if (isNaN(parsedAmount) || parsedAmount === 0) return
     if (!date) return
     setSubmitting(true)
     try {
@@ -83,7 +83,6 @@ export function TransactionForm({ type, onSubmit, onCancel, initialValues, onSub
           <input
             type="number"
             step="0.01"
-            min="0.01"
             value={amount}
             onChange={e => setAmount(e.target.value)}
             placeholder="0,00"

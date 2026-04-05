@@ -110,7 +110,23 @@ export function Sidebar({ activeModule, onNavigate }: SidebarProps) {
       </nav>
 
       {/* Footer */}
-      <div className="hidden lg:block px-6 py-4 border-t border-sidebar-border">
+      <div className="px-1.5 lg:px-3 pb-2">
+        <button
+          onClick={() => window.api.app.quit()}
+          title="Salir"
+          className="w-full flex items-center justify-center lg:justify-start gap-3 px-1.5 lg:px-3 py-2.5 rounded-lg text-sm font-medium transition-colors cursor-pointer text-sidebar-muted hover:bg-sidebar-hover hover:text-sidebar-text"
+        >
+          <span className="shrink-0">
+            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" />
+              <polyline points="16 17 21 12 16 7" />
+              <line x1="21" y1="12" x2="9" y2="12" />
+            </svg>
+          </span>
+          <span className="hidden lg:block">Salir</span>
+        </button>
+      </div>
+      <div className="hidden lg:block px-6 py-3 border-t border-sidebar-border">
         <p className="text-[11px] text-sidebar-muted/50">Vantage v0.1.0</p>
       </div>
     </aside>

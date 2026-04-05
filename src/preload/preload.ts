@@ -6,6 +6,7 @@ const api = {
     getAll: () => ipcRenderer.invoke(IPC_CHANNELS.TRANSACTIONS_GET_ALL),
     create: (data: unknown) => ipcRenderer.invoke(IPC_CHANNELS.TRANSACTIONS_CREATE, data),
     delete: (id: string) => ipcRenderer.invoke(IPC_CHANNELS.TRANSACTIONS_DELETE, { id }),
+    bulkDelete: (ids: string[]) => ipcRenderer.invoke(IPC_CHANNELS.TRANSACTIONS_BULK_DELETE, { ids }),
     update: (id: string, data: unknown) => ipcRenderer.invoke(IPC_CHANNELS.TRANSACTIONS_UPDATE, { id, data })
   },
   categories: {
@@ -48,6 +49,9 @@ const api = {
   database: {
     backup:  () => ipcRenderer.invoke(IPC_CHANNELS.DB_BACKUP),
     restore: () => ipcRenderer.invoke(IPC_CHANNELS.DB_RESTORE),
+  },
+  app: {
+    quit: () => ipcRenderer.invoke(IPC_CHANNELS.APP_QUIT),
   },
 }
 

@@ -55,7 +55,7 @@ function parseAmount(raw: string): number | null {
     .replace(',', '.')            // normalise decimal comma
 
   const n = parseFloat(cleaned)
-  if (isNaN(n) || n <= 0) return null
+  if (isNaN(n) || n === 0) return null
   return n
 }
 

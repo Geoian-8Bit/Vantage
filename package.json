@@ -30,6 +30,8 @@
     "electron": "^41.1.0",
     "electron-builder": "^26.8.0",
     "electron-vite": "^5.0.0",
+    "jimp": "^1.6.0",
+    "png-to-ico": "^3.0.1",
     "tailwind-merge": "^2.6.0",
     "tailwindcss": "^4.1.0",
     "terser": "^5.46.1",

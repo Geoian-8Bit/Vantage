@@ -7,7 +7,7 @@ import { TransactionForm } from '../components/TransactionForm'
 import { TransactionList } from '../components/TransactionList'
 import { Modal } from '../components/Modal'
 import type { CreateTransactionDTO, CreateRecurringTemplateDTO, Transaction, UpdateTransactionDTO } from '../../shared/types'
-import { CATEGORIES } from '../../shared/types'
+import { useCategories } from '../hooks/useCategories'
 import { pad, MONTH_NAMES_FULL } from '../lib/utils'
 
 type ModalType = 'expense' | 'income' | null
@@ -32,6 +32,25 @@ const DATE_MODES: { id: DateMode; label: string }[] = [
 
 const PAGE_SIZE = 10
 
+function getPageNumbers(current: number, total: number): (number | '...')[] {
+  if (total <= 7) return Array.from({ length: total }, (_, i) => i)
+
+  const pages = new Set<number>()
+  pages.add(0)
+  pages.add(total - 1)
+  for (let i = current - 1; i <= current + 1; i++) {
+    if (i >= 0 && i < total) pages.add(i)
+  }
+
+  const sorted = [...pages].sort((a, b) => a - b)
+  const result: (number | '...')[] = []
+  for (let i = 0; i < sorted.length; i++) {
+    if (i > 0 && sorted[i] - sorted[i - 1] > 1) result.push('...')
+    result.push(sorted[i])
+  }
+  return result
+}
+
 export function HomeScreen() {
   const {
     transactions,
@@ -40,15 +59,20 @@ export function HomeScreen() {
     loadTransactions,
     addTransaction,
     removeTransaction,
+    bulkRemoveTransactions,
     updateTransaction
   } = useTransactions()
+  const { categories } = useCategories()
 
   const [modalType, setModalType] = useState<ModalType>(null)
   const [filter, setFilter] = useState<Filter>('all')
   const [categoryFilter, setCategoryFilter] = useState<string>('all')
   const [searchText, setSearchText] = useState('')
   const [page, setPage] = useState(0)
+  const [showAll, setShowAll] = useState(false)
+  const [goToPage, setGoToPage] = useState('')
   const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null)
+  const [confirmBulkDelete, setConfirmBulkDelete] = useState(false)
   const [editingTransaction, setEditingTransaction] = useState<Transaction | null>(null)
   const [dateMode, setDateMode] = useState<DateMode>('month')
   const [refDate, setRefDate] = useState(() => new Date())
@@ -133,10 +157,11 @@ export function HomeScreen() {
   }
 
   const categoryOptions = useMemo<string[]>(() => {
-    if (filter === 'expense') return [...CATEGORIES.expense]
-    if (filter === 'income')  return [...CATEGORIES.income]
-    return [...new Set([...CATEGORIES.expense, ...CATEGORIES.income])]
-  }, [filter])
+    const filtered = filter === 'all'
+      ? categories
+      : categories.filter(c => c.type === filter)
+    return filtered.map(c => c.name)
+  }, [filter, categories])
 
   const dateFilteredTransactions = useMemo(() => {
     if (!fromDate && !toDate) return transactions
@@ -165,7 +190,9 @@ export function HomeScreen() {
   }, [dateFilteredTransactions, filter, categoryFilter, searchText])
 
   const totalPages = Math.max(1, Math.ceil(filteredTransactions.length / PAGE_SIZE))
-  const pagedTransactions = filteredTransactions.slice(page * PAGE_SIZE, (page + 1) * PAGE_SIZE)
+  const pagedTransactions = showAll
+    ? filteredTransactions
+    : filteredTransactions.slice(page * PAGE_SIZE, (page + 1) * PAGE_SIZE)
 
   function handleFilterChange(newFilter: Filter): void {
     setFilter(newFilter)
@@ -188,6 +215,14 @@ export function HomeScreen() {
     await removeTransaction(confirmDeleteId)
     setConfirmDeleteId(null)
   }, [confirmDeleteId, removeTransaction])
+
+  const handleBulkDeleteConfirm = useCallback(async (): Promise<void> => {
+    const ids = filteredTransactions.map(t => t.id)
+    if (ids.length === 0) return
+    await bulkRemoveTransactions(ids)
+    setConfirmBulkDelete(false)
+    setPage(0)
+  }, [filteredTransactions, bulkRemoveTransactions])
 
   const handleEditSubmit = useCallback(async (data: UpdateTransactionDTO): Promise<void> => {
     if (!editingTransaction) return
@@ -247,6 +282,18 @@ export function HomeScreen() {
         page="Listado"
         actions={
           <>
+            <button
+              onClick={() => setConfirmBulkDelete(true)}
+              disabled={filteredTransactions.length === 0}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium text-expense bg-expense-light hover:bg-expense/20 border border-expense/20 transition-colors cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed"
+            >
+              <svg aria-hidden="true" xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M3 6h18" />
+                <path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6" />
+                <path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2" />
+              </svg>
+              Eliminar filtrados
+            </button>
             <button
               onClick={handleExport}
               disabled={filteredTransactions.length === 0}
@@ -431,38 +478,85 @@ export function HomeScreen() {
       {/* Pagination */}
       {filteredTransactions.length > PAGE_SIZE && (
         <nav aria-label="Paginación" className="flex items-center justify-between px-1">
-          <p className="text-sm text-subtext" aria-live="polite">
-            {page * PAGE_SIZE + 1}–{Math.min((page + 1) * PAGE_SIZE, filteredTransactions.length)} de {filteredTransactions.length}
-          </p>
-          <div className="flex items-center gap-1">
+          <div className="flex items-center gap-2">
+            <p className="text-sm text-subtext" aria-live="polite">
+              {showAll
+                ? `${filteredTransactions.length} movimientos`
+                : `${page * PAGE_SIZE + 1}–${Math.min((page + 1) * PAGE_SIZE, filteredTransactions.length)} de ${filteredTransactions.length}`
+              }
+            </p>
             <button
-              onClick={() => setPage(p => p - 1)}
-              disabled={page === 0}
-              className="rounded-lg px-3 py-1.5 text-sm font-medium text-subtext bg-card border border-border hover:bg-surface disabled:opacity-40 disabled:cursor-not-allowed transition-colors cursor-pointer"
+              onClick={() => { setShowAll(s => !s); setPage(0) }}
+              title={showAll ? 'Ver paginado' : 'Ver todo'}
+              className="rounded-lg p-1.5 text-subtext bg-card border border-border hover:bg-surface transition-colors cursor-pointer"
             >
-              ← Anterior
-            </button>
-            {Array.from({ length: totalPages }, (_, i) => (
-              <button
-                key={i}
-                onClick={() => setPage(i)}
-                aria-label={`Página ${i + 1}`}
-                aria-current={i === page ? 'page' : undefined}
-                className={`rounded-lg w-8 h-8 text-sm font-medium transition-colors cursor-pointer ${
-                  i === page ? 'bg-brand text-white' : 'bg-card border border-border text-subtext hover:bg-surface'
-                }`}
-              >
-                {i + 1}
-              </button>
-            ))}
-            <button
-              onClick={() => setPage(p => p + 1)}
-              disabled={page === totalPages - 1}
-              className="rounded-lg px-3 py-1.5 text-sm font-medium text-subtext bg-card border border-border hover:bg-surface disabled:opacity-40 disabled:cursor-not-allowed transition-colors cursor-pointer"
-            >
-              Siguiente →
+              {showAll ? (
+                <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/>
+                </svg>
+              ) : (
+                <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/>
+                </svg>
+              )}
             </button>
           </div>
+          {!showAll && (
+            <div className="flex items-center gap-1">
+              <button
+                onClick={() => setPage(p => p - 1)}
+                disabled={page === 0}
+                className="rounded-lg px-3 py-1.5 text-sm font-medium text-subtext bg-card border border-border hover:bg-surface disabled:opacity-40 disabled:cursor-not-allowed transition-colors cursor-pointer"
+              >
+                ← Anterior
+              </button>
+              {getPageNumbers(page, totalPages).map((item, idx) =>
+                item === '...' ? (
+                  <span key={`ellipsis-${idx}`} className="w-8 h-8 flex items-center justify-center text-sm text-subtext select-none">
+                    ...
+                  </span>
+                ) : (
+                  <button
+                    key={item}
+                    onClick={() => setPage(item)}
+                    aria-label={`Página ${item + 1}`}
+                    aria-current={item === page ? 'page' : undefined}
+                    className={`rounded-lg w-8 h-8 text-sm font-medium transition-colors cursor-pointer ${
+                      item === page ? 'bg-brand text-white' : 'bg-card border border-border text-subtext hover:bg-surface'
+                    }`}
+                  >
+                    {item + 1}
+                  </button>
+                )
+              )}
+              <button
+                onClick={() => setPage(p => p + 1)}
+                disabled={page === totalPages - 1}
+                className="rounded-lg px-3 py-1.5 text-sm font-medium text-subtext bg-card border border-border hover:bg-surface disabled:opacity-40 disabled:cursor-not-allowed transition-colors cursor-pointer"
+              >
+                Siguiente →
+              </button>
+              <form
+                onSubmit={e => {
+                  e.preventDefault()
+                  const n = parseInt(goToPage, 10)
+                  if (n >= 1 && n <= totalPages) setPage(n - 1)
+                  setGoToPage('')
+                }}
+                className="flex items-center gap-1 ml-2"
+              >
+                <input
+                  type="number"
+                  min={1}
+                  max={totalPages}
+                  value={goToPage}
+                  onChange={e => setGoToPage(e.target.value)}
+                  placeholder="Ir a..."
+                  className="w-16 rounded-lg px-2 py-1.5 text-sm text-text bg-card border border-border focus:outline-none focus:ring-2 focus:ring-brand focus:border-transparent"
+                />
+              </form>
+            </div>
+          )}
         </nav>
       )}
 
@@ -523,6 +617,31 @@ export function HomeScreen() {
             className="flex-1 py-2.5 rounded-lg text-sm font-medium text-white bg-expense hover:bg-expense-hover transition-colors cursor-pointer"
           >
             Eliminar
+          </button>
+        </div>
+      </Modal>
+
+      {/* Modal: bulk delete confirmation */}
+      <Modal
+        isOpen={confirmBulkDelete}
+        onClose={() => setConfirmBulkDelete(false)}
+        title="Eliminar transacciones"
+      >
+        <p className="text-sm text-subtext">
+          ¿Eliminar <strong>{filteredTransactions.length}</strong> {filteredTransactions.length === 1 ? 'transacción' : 'transacciones'}? Esta acción no se puede deshacer.
+        </p>
+        <div className="flex gap-3 pt-4">
+          <button
+            onClick={() => setConfirmBulkDelete(false)}
+            className="flex-1 py-2.5 rounded-lg text-sm font-medium text-subtext bg-surface hover:bg-border transition-colors cursor-pointer"
+          >
+            Cancelar
+          </button>
+          <button
+            onClick={handleBulkDeleteConfirm}
+            className="flex-1 py-2.5 rounded-lg text-sm font-medium text-white bg-expense hover:bg-expense-hover transition-colors cursor-pointer"
+          >
+            Eliminar todo
           </button>
         </div>
       </Modal>

@@ -56,6 +56,15 @@ export function deleteTransaction(id: string): void {
   saveDatabase()
 }
 
+export function bulkDeleteTransactions(ids: string[]): number {
+  if (ids.length === 0) return 0
+  const db = getDatabase()
+  const placeholders = ids.map(() => '?').join(',')
+  db.run(`DELETE FROM transactions WHERE id IN (${placeholders})`, ids)
+  saveDatabase()
+  return ids.length
+}
+
 export function updateTransaction(id: string, data: UpdateTransactionDTO): Transaction {
   const db = getDatabase()
   const note = data.note ?? ''

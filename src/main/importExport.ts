@@ -8,6 +8,7 @@ import type {
   ImportCommitResult,
 } from '../shared/types'
 import { createTransaction } from './database/transactions'
+import { getAllCategories, createCategory } from './database/categories'
 
 // ── Helpers ────────────────────────────────────────────────────────────────
 
@@ -142,6 +143,17 @@ export function handleImportCommit(
   _event: Electron.IpcMainInvokeEvent,
   payload: ImportCommitPayload
 ): ImportCommitResult {
+  // Auto-create categories that don't exist yet
+  const existingNames = new Set(getAllCategories().map(c => c.name.toLowerCase()))
+  const seen = new Set<string>()
+  for (const row of payload.rows) {
+    const cat = row.category?.trim()
+    if (cat && !existingNames.has(cat.toLowerCase()) && !seen.has(cat.toLowerCase())) {
+      seen.add(cat.toLowerCase())
+      createCategory({ name: cat, type: row.type })
+    }
+  }
+
   let inserted = 0
   const errors: string[] = []
 

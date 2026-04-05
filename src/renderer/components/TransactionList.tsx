@@ -110,7 +110,7 @@ export function TransactionList({ transactions, onDelete, onEdit, emptyMessage =
 
               {/* Amount */}
               <span className={`text-xs lg:text-sm font-bold text-right tabular-nums ${transaction.type === 'income' ? 'text-income' : 'text-expense'}`}>
-                {transaction.type === 'income' ? '+' : '−'}{formatCurrency(transaction.amount)}
+                {(transaction.amount >= 0) === (transaction.type === 'income') ? '+' : '−'}{formatCurrency(Math.abs(transaction.amount))}
               </span>
 
               {/* Actions */}

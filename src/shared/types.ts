@@ -74,6 +74,7 @@ export const IPC_CHANNELS = {
   TRANSACTIONS_CREATE: 'db:transactions:create',
   TRANSACTIONS_DELETE: 'db:transactions:delete',
   TRANSACTIONS_UPDATE: 'db:transactions:update',
+  TRANSACTIONS_BULK_DELETE: 'db:transactions:bulkDelete',
   CATEGORIES_GET_ALL: 'db:categories:getAll',
   CATEGORIES_CREATE: 'db:categories:create',
   CATEGORIES_DELETE: 'db:categories:delete',
@@ -98,6 +99,8 @@ export const IPC_CHANNELS = {
   // Backup
   DB_BACKUP:  'db:backup',
   DB_RESTORE: 'db:restore',
+  // App
+  APP_QUIT: 'app:quit',
 } as const
 
 // ── Import / Export types ──────────────────────────────────────────────────

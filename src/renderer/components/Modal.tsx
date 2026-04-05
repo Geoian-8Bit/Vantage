@@ -72,7 +72,7 @@ export function Modal({ isOpen, onClose, title, children }: ModalProps) {
         role="dialog"
         aria-modal="true"
         aria-labelledby={titleId.current}
-        className="relative bg-card rounded-2xl shadow-2xl w-full max-w-md mx-4"
+        className="relative bg-card rounded-2xl shadow-2xl w-full max-w-md mx-4 max-h-[calc(100vh-2rem)] flex flex-col"
       >
         {/* Header */}
         <div className="flex items-center justify-between px-6 py-4 border-b border-border">
@@ -90,7 +90,7 @@ export function Modal({ isOpen, onClose, title, children }: ModalProps) {
         </div>
 
         {/* Content */}
-        <div className="px-6 py-5">
+        <div className="px-6 py-5 overflow-y-auto">
           {children}
         </div>
       </div>
