@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import type { CreateTransactionDTO, CreateRecurringTemplateDTO, RecurringFrequency } from '../../shared/types'
 import { useCategories } from '../hooks/useCategories'
 import { getTodayString } from '../lib/utils'
@@ -24,13 +24,17 @@ export function TransactionForm({ type, onSubmit, onCancel, initialValues, onSub
 
   const availableCategories = categories.filter(c => c.type === type)
 
-  const resolvedInitialCategory = initialValues?.category
-    ?? (availableCategories[0]?.name ?? '')
-
   const [amount,      setAmount]      = useState(initialValues?.amount ?? '')
   const [description, setDescription] = useState(initialValues?.description ?? '')
   const [date,        setDate]        = useState(initialValues?.date ?? getTodayString())
-  const [category,    setCategory]    = useState(resolvedInitialCategory)
+  const [category,    setCategory]    = useState(initialValues?.category ?? '')
+
+  // When categories load async, set initial category if none was selected
+  useEffect(() => {
+    if (!category && availableCategories.length > 0) {
+      setCategory(initialValues?.category ?? availableCategories[0].name)
+    }
+  }, [availableCategories, category, initialValues?.category])
   const [note,        setNote]        = useState(initialValues?.note ?? '')
   const [submitting,  setSubmitting]  = useState(false)
 
@@ -226,7 +230,7 @@ export function TransactionForm({ type, onSubmit, onCancel, initialValues, onSub
           {submitting
             ? 'Guardando…'
             : isRecurring
-              ? (isExpense ? 'Crear recurrente' : 'Crear recurrente')
+              ? 'Crear recurrente'
               : initialValues
                 ? 'Guardar cambios'
                 : isExpense ? 'Registrar gasto' : 'Registrar ingreso'

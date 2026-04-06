@@ -5,7 +5,7 @@ import type {
   CreateRecurringTemplateDTO,
 } from '../../shared/types'
 import { getDatabase, saveDatabase } from './schema'
-import { createTransaction } from './transactions'
+import { createTransactionNoSave } from './transactions'
 
 // ── Date helpers ──────────────────────────────────────────────────────────────
 
@@ -105,7 +105,7 @@ export function processDueRecurring(): number {
 
     // register every missed occurrence (handles app not opened for several days)
     while (date <= today) {
-      createTransaction({
+      createTransactionNoSave({
         amount:      tpl.amount,
         type:        tpl.type,
         description: tpl.description,
@@ -121,6 +121,7 @@ export function processDueRecurring(): number {
     db.run('UPDATE recurring_templates SET next_date = ? WHERE id = ?', [date, tpl.id])
   }
 
+  // Single disk write for all recurring transactions
   if (count > 0) saveDatabase()
   return count
 }

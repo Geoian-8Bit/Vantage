@@ -27,11 +27,6 @@ export interface UpdateTransactionDTO {
   note?: string
 }
 
-export const CATEGORIES = {
-  expense: ['Alimentación', 'Transporte', 'Alquiler', 'Ocio', 'Salud', 'Ropa', 'Servicios', 'Otros'] as const,
-  income: ['Nómina', 'Bizum', 'Regalo', 'Inversión'] as const,
-} as const
-
 export interface Category {
   id: string
   name: string

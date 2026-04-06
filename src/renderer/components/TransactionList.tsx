@@ -1,21 +1,6 @@
-import { useMemo } from 'react'
 import type { Transaction } from '../../shared/types'
 import { formatCurrency, formatDate } from '../lib/utils'
-
-const CATEGORY_STYLE: Record<string, { background: string; color: string }> = {
-  'Alimentación': { background: '#FFF7ED', color: '#C2410C' },
-  'Transporte':   { background: '#EFF6FF', color: '#1D4ED8' },
-  'Alquiler':     { background: '#F5F3FF', color: '#6D28D9' },
-  'Ocio':         { background: '#FFF1F2', color: '#BE185D' },
-  'Salud':        { background: '#F0FDFA', color: '#0F766E' },
-  'Ropa':         { background: '#EEF2FF', color: '#4338CA' },
-  'Servicios':    { background: '#F0F9FF', color: '#0369A1' },
-  'Nómina':       { background: '#F0FDF4', color: '#15803D' },
-  'Bizum':        { background: '#ECFDF5', color: '#059669' },
-  'Regalo':       { background: '#FFF1F2', color: '#BE185D' },
-  'Inversión':    { background: '#FDF4FF', color: '#7C3AED' },
-  'Otros':        { background: '#F7F6F5', color: '#6B6B6F' },
-}
+import { getCategoryColor } from '../lib/categoryColors'
 
 interface TransactionListProps {
   transactions: Transaction[]
@@ -40,11 +25,7 @@ export function TransactionList({ transactions, onDelete, onEdit, emptyMessage =
     )
   }
 
-  const sorted = useMemo(
-    () => [...transactions].sort((a, b) => b.date.localeCompare(a.date)),
-    [transactions]
-  )
-
+  // Data arrives pre-sorted from DB (date DESC) and pre-sliced by pagination
   return (
     <div className="rounded-xl bg-card shadow-sm border border-border overflow-hidden">
       {/* Header */}
@@ -58,8 +39,8 @@ export function TransactionList({ transactions, onDelete, onEdit, emptyMessage =
 
       {/* Rows */}
       <div className="divide-y divide-border/40">
-        {sorted.map(transaction => {
-          const style = CATEGORY_STYLE[transaction.category] ?? CATEGORY_STYLE['Otros']
+        {transactions.map(transaction => {
+          const style = getCategoryColor(transaction.category)
 
           return (
             <div

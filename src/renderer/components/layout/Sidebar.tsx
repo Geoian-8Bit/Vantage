@@ -1,5 +1,4 @@
 import logoIcon from '../../assets/logo-icon.png'
-import logoFull from '../../assets/logo-full.png'
 
 interface NavItem {
   id: string
@@ -127,7 +126,7 @@ export function Sidebar({ activeModule, onNavigate }: SidebarProps) {
         </button>
       </div>
       <div className="hidden lg:block px-6 py-3 border-t border-sidebar-border">
-        <p className="text-[11px] text-sidebar-muted/50">Vantage v0.1.0</p>
+        <p className="text-[11px] text-sidebar-muted/50">Vantage v0.2.0</p>
       </div>
     </aside>
   )

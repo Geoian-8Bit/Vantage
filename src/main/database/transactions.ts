@@ -65,6 +65,21 @@ export function bulkDeleteTransactions(ids: string[]): number {
   return ids.length
 }
 
+/** Create a transaction without saving to disk — caller is responsible for saveDatabase() */
+export function createTransactionNoSave(data: CreateTransactionDTO): Transaction {
+  const db = getDatabase()
+  const id = randomUUID()
+  const created_at = new Date().toISOString()
+  const note = data.note ?? ''
+
+  db.run(
+    'INSERT INTO transactions (id, amount, type, description, date, category, created_at, note) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
+    [id, data.amount, data.type, data.description, data.date, data.category, created_at, note]
+  )
+
+  return { id, amount: data.amount, type: data.type, description: data.description, date: data.date, category: data.category, created_at, note }
+}
+
 export function updateTransaction(id: string, data: UpdateTransactionDTO): Transaction {
   const db = getDatabase()
   const note = data.note ?? ''
@@ -78,10 +93,13 @@ export function updateTransaction(id: string, data: UpdateTransactionDTO): Trans
 
   const stmt = db.prepare('SELECT created_at FROM transactions WHERE id=?')
   stmt.bind([id])
-  stmt.step()
-  const row = stmt.getAsObject() as unknown as { created_at: string }
-  const created_at = String(row.created_at)
+  const found = stmt.step()
+  const created_at = found
+    ? String((stmt.getAsObject() as { created_at: string }).created_at)
+    : new Date().toISOString()
   stmt.free()
+
+  if (!found) throw new Error(`Transaction not found: ${id}`)
 
   return { id, ...data, note, created_at }
 }

@@ -63,7 +63,7 @@ export function useTransactions(): UseTransactionsReturn {
   const bulkRemoveTransactions = useCallback(async (ids: string[]): Promise<void> => {
     try {
       setError(null)
-      await window.api.transactions.bulkDelete(ids)
+      await transactionRepository.bulkDelete(ids)
       const idSet = new Set(ids)
       setTransactions(prev => prev.filter(t => !idSet.has(t.id)))
     } catch (err) {

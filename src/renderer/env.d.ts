@@ -19,6 +19,7 @@ declare global {
         getAll(): Promise<Transaction[]>
         create(data: CreateTransactionDTO): Promise<Transaction>
         delete(id: string): Promise<void>
+        bulkDelete(ids: string[]): Promise<number>
         update(id: string, data: UpdateTransactionDTO): Promise<Transaction>
       }
       categories: {
@@ -49,6 +50,9 @@ declare global {
       database: {
         backup(): Promise<BackupResult>
         restore(): Promise<RestoreResult>
+      }
+      app: {
+        quit(): Promise<void>
       }
     }
   }

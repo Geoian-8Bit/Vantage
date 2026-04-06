@@ -29,7 +29,7 @@ let mainWindow: BrowserWindow | null = null
 let dbReadyResolve!: () => void
 const dbReady = new Promise<void>(resolve => { dbReadyResolve = resolve })
 
-let pendingRecurringCount = 0
+let pendingRecurringCount: number | null = null
 
 function getDbPath(): string {
   // For portable builds, store DB next to the executable
@@ -160,9 +160,13 @@ function registerIpcHandlers(): void {
 
   ipcMain.handle(IPC_CHANNELS.RECURRING_PROCESS, async () => {
     await dbReady
-    const count = pendingRecurringCount
-    pendingRecurringCount = 0
-    return { count }
+    // First call returns the startup count; subsequent calls re-process live
+    if (pendingRecurringCount !== null) {
+      const count = pendingRecurringCount
+      pendingRecurringCount = null
+      return { count }
+    }
+    return { count: processDueRecurring() }
   })
 
   // ── Dashboard ───────────────────────────────────────────────────────

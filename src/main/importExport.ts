@@ -7,10 +7,14 @@ import type {
   ImportCommitPayload,
   ImportCommitResult,
 } from '../shared/types'
-import { createTransaction } from './database/transactions'
+import { createTransactionNoSave } from './database/transactions'
 import { getAllCategories, createCategory } from './database/categories'
+import { saveDatabase } from './database/schema'
 
 // ── Helpers ────────────────────────────────────────────────────────────────
+
+// eslint-disable-next-line @typescript-eslint/no-require-imports
+const MDBReader = require('mdb-reader')
 
 function getFocusedWindow(): BrowserWindow {
   return BrowserWindow.getFocusedWindow() ?? BrowserWindow.getAllWindows()[0]
@@ -93,8 +97,6 @@ export function handleAccessTables(
   _event: Electron.IpcMainInvokeEvent,
   filePath: string
 ): { tables: string[] } {
-  // eslint-disable-next-line @typescript-eslint/no-require-imports
-  const MDBReader = require('mdb-reader')
   const buf    = readFileSync(filePath)
   const reader = new MDBReader(buf)
   const tables = (reader.getTableNames() as string[]).filter(t => !t.startsWith('MSys'))
@@ -107,8 +109,6 @@ export function handleParseAccess(
   _event: Electron.IpcMainInvokeEvent,
   args: { filePath: string; tableName: string }
 ): ImportFilePreview {
-  // eslint-disable-next-line @typescript-eslint/no-require-imports
-  const MDBReader = require('mdb-reader')
   const buf    = readFileSync(args.filePath)
   const reader = new MDBReader(buf)
   const table  = reader.getTable(args.tableName)
@@ -159,12 +159,15 @@ export function handleImportCommit(
 
   for (const row of payload.rows) {
     try {
-      createTransaction(row)
+      createTransactionNoSave(row)
       inserted++
     } catch (err) {
       errors.push(err instanceof Error ? err.message : String(err))
     }
   }
+
+  // Single disk write for the entire import batch
+  if (inserted > 0) saveDatabase()
 
   return { inserted, errors }
 }

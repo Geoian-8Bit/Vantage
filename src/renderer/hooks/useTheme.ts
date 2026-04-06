@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 
 export interface ThemeOption {
   id: string
@@ -45,6 +45,14 @@ function getStoredTheme(): string {
 
 export function useTheme() {
   const [theme, setThemeState] = useState(getStoredTheme)
+
+  // Apply stored theme on cold start
+  useEffect(() => {
+    const stored = getStoredTheme()
+    if (stored !== 'corporativo') {
+      document.documentElement.setAttribute('data-theme', stored)
+    }
+  }, [])
 
   function setTheme(id: string) {
     if (id === 'corporativo') {

@@ -86,8 +86,8 @@ export function DashboardScreen() {
               <XAxis dataKey="month" tickFormatter={monthLabel} tick={{ fontSize: 11, fill: 'var(--color-subtext)' }} />
               <YAxis tick={{ fontSize: 11, fill: 'var(--color-subtext)' }} tickFormatter={v => formatCurrency(v as number)} width={70} />
               <Tooltip
-                formatter={(value: number, name: string) => [formatCurrency(value), name === 'income' ? 'Ingresos' : 'Gastos']}
-                labelFormatter={monthLabel}
+                formatter={(value, name) => [formatCurrency(value as number), name === 'income' ? 'Ingresos' : 'Gastos']}
+                labelFormatter={(label) => monthLabel(String(label))}
                 contentStyle={{ background: 'var(--color-card)', border: '1px solid var(--color-border)', borderRadius: '8px', fontSize: '12px' }}
               />
               <Area type="monotone" dataKey="income" stroke="var(--color-income)" fill="url(#gradIncome)" strokeWidth={2} />

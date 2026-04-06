@@ -1,24 +1,32 @@
 import { contextBridge, ipcRenderer } from 'electron'
-import { IPC_CHANNELS } from '../shared/types'
+import {
+  IPC_CHANNELS,
+  type CreateTransactionDTO,
+  type UpdateTransactionDTO,
+  type CreateCategoryDTO,
+  type CreateRecurringTemplateDTO,
+  type ImportCommitPayload,
+  type PDFExportPayload,
+} from '../shared/types'
 
 const api = {
   transactions: {
     getAll: () => ipcRenderer.invoke(IPC_CHANNELS.TRANSACTIONS_GET_ALL),
-    create: (data: unknown) => ipcRenderer.invoke(IPC_CHANNELS.TRANSACTIONS_CREATE, data),
+    create: (data: CreateTransactionDTO) => ipcRenderer.invoke(IPC_CHANNELS.TRANSACTIONS_CREATE, data),
     delete: (id: string) => ipcRenderer.invoke(IPC_CHANNELS.TRANSACTIONS_DELETE, { id }),
     bulkDelete: (ids: string[]) => ipcRenderer.invoke(IPC_CHANNELS.TRANSACTIONS_BULK_DELETE, { ids }),
-    update: (id: string, data: unknown) => ipcRenderer.invoke(IPC_CHANNELS.TRANSACTIONS_UPDATE, { id, data })
+    update: (id: string, data: UpdateTransactionDTO) => ipcRenderer.invoke(IPC_CHANNELS.TRANSACTIONS_UPDATE, { id, data }),
   },
   categories: {
     getAll: () => ipcRenderer.invoke(IPC_CHANNELS.CATEGORIES_GET_ALL),
-    create: (data: unknown) => ipcRenderer.invoke(IPC_CHANNELS.CATEGORIES_CREATE, data),
+    create: (data: CreateCategoryDTO) => ipcRenderer.invoke(IPC_CHANNELS.CATEGORIES_CREATE, data),
     delete: (id: string) => ipcRenderer.invoke(IPC_CHANNELS.CATEGORIES_DELETE, { id }),
-    update: (id: string, name: string) => ipcRenderer.invoke(IPC_CHANNELS.CATEGORIES_UPDATE, { id, name })
+    update: (id: string, name: string) => ipcRenderer.invoke(IPC_CHANNELS.CATEGORIES_UPDATE, { id, name }),
   },
   fileio: {
-    openFileDialog: (opts: unknown) =>
+    openFileDialog: (opts: { filters: { name: string; extensions: string[] }[]; title?: string }) =>
       ipcRenderer.invoke(IPC_CHANNELS.DIALOG_OPEN_FILE, opts),
-    exportTransactionsExcel: (payload: unknown) =>
+    exportTransactionsExcel: (payload: { buffer: string; defaultPath: string }) =>
       ipcRenderer.invoke(IPC_CHANNELS.EXPORT_TRANSACTIONS_EXCEL, payload),
     parseExcel: (filePath: string) =>
       ipcRenderer.invoke(IPC_CHANNELS.IMPORT_PARSE_EXCEL, filePath),
@@ -26,28 +34,23 @@ const api = {
       ipcRenderer.invoke(IPC_CHANNELS.IMPORT_ACCESS_TABLES, filePath),
     parseAccess: (filePath: string, tableName: string) =>
       ipcRenderer.invoke(IPC_CHANNELS.IMPORT_PARSE_ACCESS, { filePath, tableName }),
-    commitImport: (payload: unknown) =>
+    commitImport: (payload: ImportCommitPayload) =>
       ipcRenderer.invoke(IPC_CHANNELS.IMPORT_COMMIT, payload),
-    exportPDF: (payload: unknown) =>
+    exportPDF: (payload: PDFExportPayload) =>
       ipcRenderer.invoke(IPC_CHANNELS.EXPORT_PDF, payload),
   },
   recurring: {
-    getAll:  () =>
-      ipcRenderer.invoke(IPC_CHANNELS.RECURRING_GET_ALL),
-    create:  (data: unknown) =>
-      ipcRenderer.invoke(IPC_CHANNELS.RECURRING_CREATE, data),
-    delete:  (id: string) =>
-      ipcRenderer.invoke(IPC_CHANNELS.RECURRING_DELETE, { id }),
-    toggle:  (id: string) =>
-      ipcRenderer.invoke(IPC_CHANNELS.RECURRING_TOGGLE, { id }),
-    process: () =>
-      ipcRenderer.invoke(IPC_CHANNELS.RECURRING_PROCESS),
+    getAll: () => ipcRenderer.invoke(IPC_CHANNELS.RECURRING_GET_ALL),
+    create: (data: CreateRecurringTemplateDTO) => ipcRenderer.invoke(IPC_CHANNELS.RECURRING_CREATE, data),
+    delete: (id: string) => ipcRenderer.invoke(IPC_CHANNELS.RECURRING_DELETE, { id }),
+    toggle: (id: string) => ipcRenderer.invoke(IPC_CHANNELS.RECURRING_TOGGLE, { id }),
+    process: () => ipcRenderer.invoke(IPC_CHANNELS.RECURRING_PROCESS),
   },
   dashboard: {
     getStats: () => ipcRenderer.invoke(IPC_CHANNELS.DASHBOARD_STATS),
   },
   database: {
-    backup:  () => ipcRenderer.invoke(IPC_CHANNELS.DB_BACKUP),
+    backup: () => ipcRenderer.invoke(IPC_CHANNELS.DB_BACKUP),
     restore: () => ipcRenderer.invoke(IPC_CHANNELS.DB_RESTORE),
   },
   app: {

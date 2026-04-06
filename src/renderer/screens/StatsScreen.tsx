@@ -7,6 +7,7 @@ import {
 import { useTransactions } from '../hooks/useTransactions'
 import { PageHeader } from '../components/layout/PageHeader'
 import { formatCurrency, pad, MONTH_NAMES_FULL, MONTH_NAMES_SHORT, monthLabel } from '../lib/utils'
+import { getCategoryColor, PIE_COLORS } from '../lib/categoryColors'
 
 type DateMode = 'compare' | 'quarter' | 'year' | 'custom'
 
@@ -20,18 +21,6 @@ const DATE_MODES: { id: DateMode; label: string }[] = [
 function monthKey(date: Date): string {
   return `${date.getFullYear()}-${pad(date.getMonth() + 1)}`
 }
-
-const CATEGORY_COLORS: Record<string, string> = {
-  'Alimentación': '#C2410C',
-  'Transporte':   '#1D4ED8',
-  'Alquiler':     '#6D28D9',
-  'Ocio':         '#BE185D',
-  'Salud':        '#0F766E',
-  'Ropa':         '#4338CA',
-  'Servicios':    '#0369A1',
-  'Otros':        '#6B6B6F',
-}
-const PIE_FALLBACK_COLORS = ['#7A1B2D','#C9A84C','#1B7A4E','#1D4ED8','#6D28D9','#BE185D','#0F766E','#4338CA']
 
 function formatYAxis(value: number): string {
   if (value >= 1000) return `${(value / 1000).toFixed(0)}k`
@@ -478,7 +467,7 @@ export function StatsScreen() {
                 <PieChart>
                   <Pie data={categoryData} cx="50%" cy="50%" innerRadius={50} outerRadius={80} paddingAngle={2} dataKey="value">
                     {categoryData.map((entry, i) => (
-                      <Cell key={entry.name} fill={CATEGORY_COLORS[entry.name] ?? PIE_FALLBACK_COLORS[i % PIE_FALLBACK_COLORS.length]} />
+                      <Cell key={entry.name} fill={getCategoryColor(entry.name).color ?? PIE_COLORS[i % PIE_COLORS.length]} />
                     ))}
                   </Pie>
                   <Tooltip content={<PieTooltip />} />
@@ -488,7 +477,7 @@ export function StatsScreen() {
                 {categoryData.map((entry, i) => (
                   <div key={entry.name} className="flex items-center justify-between text-xs">
                     <div className="flex items-center gap-1.5">
-                      <div className="w-2.5 h-2.5 rounded-full shrink-0" style={{ background: CATEGORY_COLORS[entry.name] ?? PIE_FALLBACK_COLORS[i % PIE_FALLBACK_COLORS.length] }} />
+                      <div className="w-2.5 h-2.5 rounded-full shrink-0" style={{ background: getCategoryColor(entry.name).color ?? PIE_COLORS[i % PIE_COLORS.length] }} />
                       <span className="text-subtext">{entry.name}</span>
                     </div>
                     <span className="font-medium text-text">

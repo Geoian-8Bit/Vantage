@@ -14,6 +14,10 @@ export class LocalTransactionRepository implements TransactionRepository {
     return window.api.transactions.delete(id)
   }
 
+  async bulkDelete(ids: string[]): Promise<number> {
+    return window.api.transactions.bulkDelete(ids)
+  }
+
   async update(id: string, data: UpdateTransactionDTO): Promise<Transaction> {
     return window.api.transactions.update(id, data)
   }
