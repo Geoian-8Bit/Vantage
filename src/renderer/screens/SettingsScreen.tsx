@@ -211,6 +211,7 @@ export function SettingsScreen() {
   const [newName, setNewName]     = useState('')
   const [newType, setNewType]     = useState<'expense' | 'income'>('expense')
   const [saving,  setSaving]      = useState(false)
+  const [catError, setCatError]   = useState('')
 
   const { categories, loading, addCategory, removeCategory, renameCategory } = useCategories()
 
@@ -220,6 +221,7 @@ export function SettingsScreen() {
   function openModal() {
     setNewName('')
     setNewType('expense')
+    setCatError('')
     setShowModal(true)
   }
 
@@ -228,9 +230,12 @@ export function SettingsScreen() {
     const trimmed = newName.trim()
     if (!trimmed) return
     setSaving(true)
+    setCatError('')
     try {
       await addCategory({ name: trimmed, type: newType })
       setShowModal(false)
+    } catch (err) {
+      setCatError(err instanceof Error ? err.message : 'Error al crear categoría')
     } finally {
       setSaving(false)
     }
@@ -408,6 +413,10 @@ export function SettingsScreen() {
               </button>
             </div>
           </div>
+
+          {catError && (
+            <p className="text-xs font-medium text-expense bg-expense-light rounded-lg px-3 py-2">{catError}</p>
+          )}
 
           <div className="flex gap-3 pt-1">
             <button

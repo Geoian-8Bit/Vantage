@@ -1,4 +1,4 @@
-import { useState, useCallback, useMemo, useEffect } from 'react'
+import { useState, useCallback, useMemo, useEffect, useRef } from 'react'
 import * as XLSX from 'xlsx'
 import { useTransactions } from '../hooks/useTransactions'
 import { PageHeader } from '../components/layout/PageHeader'
@@ -73,6 +73,7 @@ export function HomeScreen() {
   const [goToPage, setGoToPage] = useState('')
   const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null)
   const [confirmBulkDelete, setConfirmBulkDelete] = useState(false)
+  const [bulkDeleting, setBulkDeleting] = useState(false)
   const [editingTransaction, setEditingTransaction] = useState<Transaction | null>(null)
   const [dateMode, setDateMode] = useState<DateMode>('month')
   const [refDate, setRefDate] = useState(() => new Date())
@@ -80,18 +81,21 @@ export function HomeScreen() {
   const [customTo, setCustomTo] = useState('')
   const [recurringBanner, setRecurringBanner] = useState(0)
 
+  // Stable ref for loadTransactions to avoid re-running the effect
+  const loadRef = useRef(loadTransactions)
+  loadRef.current = loadTransactions
+
   // Auto-process recurring transactions on mount
   useEffect(() => {
     let timer: ReturnType<typeof setTimeout> | null = null
     window.api.recurring.process().then(({ count }) => {
       if (count > 0) {
-        loadTransactions()
+        loadRef.current()
         setRecurringBanner(count)
         timer = setTimeout(() => setRecurringBanner(0), 4000)
       }
     }).catch(console.error)
     return () => { if (timer) clearTimeout(timer) }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
   const { fromDate, toDate, periodLabel } = useMemo(() => {
@@ -219,9 +223,16 @@ export function HomeScreen() {
   const handleBulkDeleteConfirm = useCallback(async (): Promise<void> => {
     const ids = filteredTransactions.map(t => t.id)
     if (ids.length === 0) return
-    await bulkRemoveTransactions(ids)
-    setConfirmBulkDelete(false)
-    setPage(0)
+    setBulkDeleting(true)
+    try {
+      await bulkRemoveTransactions(ids)
+      setConfirmBulkDelete(false)
+      setPage(0)
+    } catch (err) {
+      console.error('[BulkDelete]', err)
+    } finally {
+      setBulkDeleting(false)
+    }
   }, [filteredTransactions, bulkRemoveTransactions])
 
   const handleEditSubmit = useCallback(async (data: UpdateTransactionDTO): Promise<void> => {
@@ -639,9 +650,10 @@ export function HomeScreen() {
           </button>
           <button
             onClick={handleBulkDeleteConfirm}
-            className="flex-1 py-2.5 rounded-lg text-sm font-medium text-white bg-expense hover:bg-expense-hover transition-colors cursor-pointer"
+            disabled={bulkDeleting}
+            className="flex-1 py-2.5 rounded-lg text-sm font-medium text-white bg-expense hover:bg-expense-hover transition-colors cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
           >
-            Eliminar todo
+            {bulkDeleting ? 'Eliminando…' : 'Eliminar todo'}
           </button>
         </div>
       </Modal>

@@ -1,6 +1,5 @@
 import initSqlJs, { Database } from 'sql.js'
 import { readFileSync, writeFileSync, existsSync } from 'fs'
-import { join } from 'path'
 import { randomUUID } from 'crypto'
 
 let db: Database | null = null
@@ -81,6 +80,13 @@ export async function initializeDatabase(filePath: string): Promise<Database> {
     db.run("ALTER TABLE transactions ADD COLUMN note TEXT NOT NULL DEFAULT ''")
   } catch {
     // Column already exists — safe to ignore
+  }
+
+  // Migration: unique constraint on category name+type
+  try {
+    db.run('CREATE UNIQUE INDEX IF NOT EXISTS idx_categories_name_type ON categories(name, type)')
+  } catch {
+    // Index already exists or duplicate data prevents creation — safe to ignore
   }
 
   // Recurring templates table

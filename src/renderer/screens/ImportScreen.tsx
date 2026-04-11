@@ -407,18 +407,18 @@ export function ImportScreen({ onBack }: ImportScreenProps) {
     try {
       if (type === 'access') {
         const { tables } = await window.api.fileio.getAccessTables(path)
-        if (tables.length === 0) { setError('El archivo no contiene tablas de usuario.'); return }
+        if (tables.length === 0) { setError('El archivo Access no contiene tablas de usuario. Asegúrate de que el archivo .mdb/.accdb tiene datos.'); return }
         setAccessTables(tables)
         setStep('table-select')
       } else {
         const p = await window.api.fileio.parseExcel(path)
-        if (p.columns.length === 0) { setError('No se encontraron columnas en el archivo.'); return }
+        if (p.columns.length === 0) { setError('El archivo Excel no contiene columnas. Verifica que la primera fila tenga encabezados (Fecha, Importe, etc.).'); return }
         setPreview(p)
         setMapping({ amount: null, type: null, date: null, description: null, category: null })
         setStep('column-mapping')
       }
     } catch (e) {
-      setError(e instanceof Error ? e.message : 'Error al leer el archivo.')
+      setError(e instanceof Error ? `Error al leer el archivo: ${e.message}` : 'Error al leer el archivo. Verifica que no esté dañado o abierto en otro programa.')
     } finally {
       setLoading(false)
     }
@@ -429,12 +429,12 @@ export function ImportScreen({ onBack }: ImportScreenProps) {
     setLoading(true)
     try {
       const p = await window.api.fileio.parseAccess(filePath!, tableName)
-      if (p.columns.length === 0) { setError('La tabla seleccionada no tiene columnas.'); return }
+      if (p.columns.length === 0) { setError('La tabla seleccionada no tiene columnas. Prueba con otra tabla del archivo.'); return }
       setPreview(p)
       setMapping({ amount: null, type: null, date: null, description: null, category: null })
       setStep('column-mapping')
     } catch (e) {
-      setError(e instanceof Error ? e.message : 'Error al leer la tabla.')
+      setError(e instanceof Error ? `Error al leer la tabla: ${e.message}` : 'Error al leer la tabla. Verifica que el archivo no esté dañado.')
     } finally {
       setLoading(false)
     }
@@ -447,7 +447,7 @@ export function ImportScreen({ onBack }: ImportScreenProps) {
       const r = await window.api.fileio.commitImport({ rows: validation.validRows })
       setResult(r)
     } catch (e) {
-      setError(e instanceof Error ? e.message : 'Error al importar los datos.')
+      setError(e instanceof Error ? `Error al importar: ${e.message}` : 'Error al importar los datos. Inténtalo de nuevo.')
     } finally {
       setImporting(false)
     }

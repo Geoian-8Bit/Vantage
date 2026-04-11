@@ -97,31 +97,42 @@ export function toggleRecurring(id: string): RecurringTemplate {
 export function processDueRecurring(): number {
   const today     = new Date().toISOString().slice(0, 10)
   const templates = getAllRecurring().filter(t => t.active && t.next_date <= today)
+  if (templates.length === 0) return 0
+
+  const db = getDatabase()
   let count = 0
 
-  for (const tpl of templates) {
-    const db = getDatabase()
-    let date = tpl.next_date
+  // Wrap everything in a SQL transaction so a mid-process crash
+  // doesn't create duplicate transactions on next run.
+  db.run('BEGIN TRANSACTION')
+  try {
+    for (const tpl of templates) {
+      let date = tpl.next_date
 
-    // register every missed occurrence (handles app not opened for several days)
-    while (date <= today) {
-      createTransactionNoSave({
-        amount:      tpl.amount,
-        type:        tpl.type,
-        description: tpl.description,
-        category:    tpl.category,
-        date,
-        note:        '',
-      })
-      date = advanceDate(date, tpl.frequency)
-      count++
+      // register every missed occurrence (handles app not opened for several days)
+      while (date <= today) {
+        createTransactionNoSave({
+          amount:      tpl.amount,
+          type:        tpl.type,
+          description: tpl.description,
+          category:    tpl.category,
+          date,
+          note:        '',
+        })
+        date = advanceDate(date, tpl.frequency)
+        count++
+      }
+
+      // advance next_date to next future occurrence
+      db.run('UPDATE recurring_templates SET next_date = ? WHERE id = ?', [date, tpl.id])
     }
 
-    // advance next_date to next future occurrence
-    db.run('UPDATE recurring_templates SET next_date = ? WHERE id = ?', [date, tpl.id])
+    db.run('COMMIT')
+    saveDatabase()
+  } catch (err) {
+    db.run('ROLLBACK')
+    throw err
   }
 
-  // Single disk write for all recurring transactions
-  if (count > 0) saveDatabase()
   return count
 }

@@ -1,8 +1,14 @@
+/**
+ * Formatea un número como moneda EUR con formato español (punto de miles, coma decimal).
+ * Usa formato manual para evitar problemas con small-icu en Electron.
+ * Ej: 2000 → "2.000,00 €"  |  20000 → "20.000,00 €"  |  1500.5 → "1.500,50 €"
+ */
 export function formatCurrency(amount: number): string {
-  return new Intl.NumberFormat('es-ES', {
-    style: 'currency',
-    currency: 'EUR'
-  }).format(amount)
+  const fixed = Math.abs(amount).toFixed(2)            // "20000.50"
+  const [intPart, decPart] = fixed.split('.')           // ["20000", "50"]
+  const withDots = intPart.replace(/\B(?=(\d{3})+(?!\d))/g, '.')  // "20.000"
+  const sign = amount < 0 ? '-' : ''
+  return `${sign}${withDots},${decPart} €`
 }
 
 export function formatDate(dateStr: string): string {

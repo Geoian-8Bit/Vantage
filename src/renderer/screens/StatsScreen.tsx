@@ -23,8 +23,7 @@ function monthKey(date: Date): string {
 }
 
 function formatYAxis(value: number): string {
-  if (value >= 1000) return `${(value / 1000).toFixed(0)}k`
-  return String(value)
+  return String(Math.round(value)).replace(/\B(?=(\d{3})+(?!\d))/g, '.')
 }
 
 interface TooltipPayload { name: string; value: number; color: string }
@@ -222,11 +221,11 @@ export function StatsScreen() {
       else monthMap[key].expenses += t.amount
     }
     const sorted = Object.keys(monthMap).sort()
-    let running = 0
-    return sorted.map(key => {
-      running += monthMap[key].income - monthMap[key].expenses
-      return { month: monthLabel(key), balance: running }
-    })
+    return sorted.reduce<{ month: string; balance: number }[]>((acc, key) => {
+      const prev = acc.length > 0 ? acc[acc.length - 1].balance : 0
+      acc.push({ month: monthLabel(key), balance: prev + monthMap[key].income - monthMap[key].expenses })
+      return acc
+    }, [])
   }, [periodTransactions])
 
   // ── Comparison table data ────────────────────────────────────────
@@ -447,7 +446,7 @@ export function StatsScreen() {
               <BarChart data={barChartData} barCategoryGap="30%" barGap={4}>
                 <CartesianGrid strokeDasharray="3 3" stroke="var(--color-border)" vertical={false} />
                 <XAxis dataKey="month" tick={{ fontSize: 12, fill: 'var(--color-subtext)' }} axisLine={false} tickLine={false} />
-                <YAxis tickFormatter={formatYAxis} tick={{ fontSize: 12, fill: 'var(--color-subtext)' }} axisLine={false} tickLine={false} width={40} />
+                <YAxis tickFormatter={formatYAxis} tick={{ fontSize: 12, fill: 'var(--color-subtext)' }} axisLine={false} tickLine={false} width={60} />
                 <Tooltip content={<CustomTooltip />} cursor={{ fill: 'var(--color-surface)' }} />
                 <Legend wrapperStyle={{ fontSize: 12, paddingTop: 12 }} />
                 <Bar dataKey="Ingresos" fill="var(--color-income)"  radius={[4, 4, 0, 0]} />
@@ -505,7 +504,7 @@ export function StatsScreen() {
               </defs>
               <CartesianGrid strokeDasharray="3 3" stroke="var(--color-border)" vertical={false} />
               <XAxis dataKey="month" tick={{ fontSize: 11, fill: 'var(--color-subtext)' }} axisLine={false} tickLine={false} />
-              <YAxis tickFormatter={formatYAxis} tick={{ fontSize: 11, fill: 'var(--color-subtext)' }} axisLine={false} tickLine={false} width={45} />
+              <YAxis tickFormatter={formatYAxis} tick={{ fontSize: 11, fill: 'var(--color-subtext)' }} axisLine={false} tickLine={false} width={60} />
               <Tooltip content={<CustomTooltip />} />
               <Area type="monotone" dataKey="balance" stroke="var(--color-brand)" fill="url(#gradBalance)" strokeWidth={2} name="Balance" />
             </AreaChart>

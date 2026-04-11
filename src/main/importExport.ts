@@ -194,7 +194,13 @@ export async function handleExportPDF(
     const stream = createWriteStream(filePath)
     doc.pipe(stream)
 
-    const fmt = (n: number) => n.toLocaleString('es-ES', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + ' €'
+    const fmt = (n: number) => {
+      const fixed = Math.abs(n).toFixed(2)
+      const [intPart, decPart] = fixed.split('.')
+      const withDots = intPart.replace(/\B(?=(\d{3})+(?!\d))/g, '.')
+      const sign = n < 0 ? '-' : ''
+      return `${sign}${withDots},${decPart} €`
+    }
 
     // Header
     doc.fontSize(20).font('Helvetica-Bold').text('Vantage', { align: 'center' })

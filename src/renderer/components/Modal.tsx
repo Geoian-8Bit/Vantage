@@ -1,4 +1,4 @@
-import { useEffect, useRef } from 'react'
+import { useEffect, useId, useRef } from 'react'
 
 interface ModalProps {
   isOpen: boolean
@@ -12,7 +12,7 @@ const FOCUSABLE = 'button:not([disabled]), [href], input:not([disabled]), select
 export function Modal({ isOpen, onClose, title, children }: ModalProps) {
   const panelRef = useRef<HTMLDivElement>(null)
   const previousFocusRef = useRef<HTMLElement | null>(null)
-  const titleId = useRef(`modal-title-${Math.random().toString(36).slice(2)}`)
+  const titleId = useId()
   const onCloseRef = useRef(onClose)
 
   // Keep the ref current without triggering the focus effect
@@ -71,12 +71,12 @@ export function Modal({ isOpen, onClose, title, children }: ModalProps) {
         ref={panelRef}
         role="dialog"
         aria-modal="true"
-        aria-labelledby={titleId.current}
+        aria-labelledby={titleId}
         className="relative bg-card rounded-2xl shadow-2xl w-full max-w-md mx-4 max-h-[calc(100vh-2rem)] flex flex-col"
       >
         {/* Header */}
         <div className="flex items-center justify-between px-6 py-4 border-b border-border">
-          <h2 id={titleId.current} className="text-lg font-semibold text-text">{title}</h2>
+          <h2 id={titleId} className="text-lg font-semibold text-text">{title}</h2>
           <button
             onClick={onClose}
             aria-label="Cerrar"
