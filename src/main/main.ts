@@ -37,7 +37,11 @@ function getDbPath(): string {
   if (portableDir) {
     return join(portableDir, 'vantage-data', 'vantage.db')
   }
-  // For development/installed builds, use user data directory
+  // In development, use a separate DB inside the repo to protect real data
+  if (!app.isPackaged) {
+    return join(process.cwd(), 'vantage-dev.db')
+  }
+  // For installed builds, use user data directory
   return join(app.getPath('userData'), 'vantage.db')
 }
 
@@ -59,7 +63,9 @@ async function createWindow(): Promise<void> {
     height: 700,
     minWidth: 800,
     minHeight: 600,
-    icon: join(__dirname, '../../build/icon.png'),
+    icon: app.isPackaged
+      ? join(process.resourcesPath, 'icon.png')
+      : join(__dirname, '../../build/icon.png'),
     webPreferences: {
       preload: join(__dirname, '../preload/preload.js'),
       contextIsolation: true,
