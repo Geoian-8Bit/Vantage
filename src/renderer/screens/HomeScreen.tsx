@@ -6,6 +6,12 @@ import { BalanceSummary } from '../components/BalanceSummary'
 import { TransactionForm } from '../components/TransactionForm'
 import { TransactionList } from '../components/TransactionList'
 import { Modal } from '../components/Modal'
+import { Tabs } from '../components/Tabs'
+import { HomeSkeleton } from '../components/skeletons/HomeSkeleton'
+import { useModalOrigin, type ModalOrigin } from '../hooks/useModalOrigin'
+import { useToast } from '../components/Toast'
+import { DateInput } from '../components/DateInput'
+import { Select } from '../components/Select'
 import type { CreateTransactionDTO, CreateRecurringTemplateDTO, Transaction, UpdateTransactionDTO } from '../../shared/types'
 import { useCategories } from '../hooks/useCategories'
 import { pad, MONTH_NAMES_FULL } from '../lib/utils'
@@ -79,7 +85,22 @@ export function HomeScreen() {
   const [refDate, setRefDate] = useState(() => new Date())
   const [customFrom, setCustomFrom] = useState('')
   const [customTo, setCustomTo] = useState('')
-  const [recurringBanner, setRecurringBanner] = useState(0)
+
+  // Origin del último botón que disparó un modal — para scale-in desde ese punto
+  const { origin: modalOrigin, captureFromEvent, setOrigin } = useModalOrigin()
+  const toast = useToast()
+  const [createDirty, setCreateDirty] = useState(false)
+  const [editDirty, setEditDirty] = useState(false)
+  const [removingIds, setRemovingIds] = useState<Set<string>>(new Set())
+
+  const handleDeleteRequest = (id: string, originFromList?: ModalOrigin) => {
+    if (originFromList) setOrigin(originFromList)
+    setConfirmDeleteId(id)
+  }
+  const handleEditRequest = (transaction: Transaction, originFromList?: ModalOrigin) => {
+    if (originFromList) setOrigin(originFromList)
+    setEditingTransaction(transaction)
+  }
 
   // Stable ref for loadTransactions to avoid re-running the effect
   const loadRef = useRef(loadTransactions)
@@ -87,16 +108,16 @@ export function HomeScreen() {
 
   // Auto-process recurring transactions on mount
   useEffect(() => {
-    let timer: ReturnType<typeof setTimeout> | null = null
     window.api.recurring.process().then(({ count }) => {
       if (count > 0) {
         loadRef.current()
-        setRecurringBanner(count)
-        timer = setTimeout(() => setRecurringBanner(0), 4000)
+        toast.success(
+          count === 1 ? '1 transacción recurrente registrada' : `${count} transacciones recurrentes registradas`,
+          'Procesado automáticamente al abrir'
+        )
       }
     }).catch(console.error)
-    return () => { if (timer) clearTimeout(timer) }
-  }, [])
+  }, [toast])
 
   const { fromDate, toDate, periodLabel } = useMemo(() => {
     const y = refDate.getFullYear()
@@ -174,15 +195,6 @@ export function HomeScreen() {
     )
   }, [transactions, fromDate, toDate])
 
-  const periodTotals = useMemo(() => {
-    let income = 0, expenses = 0
-    for (const t of dateFilteredTransactions) {
-      if (t.type === 'income') income += t.amount
-      else expenses += t.amount
-    }
-    return { totalIncome: income, totalExpenses: expenses, balance: income - expenses }
-  }, [dateFilteredTransactions])
-
   const filteredTransactions = useMemo(() => {
     let result = filter === 'all' ? dateFilteredTransactions : dateFilteredTransactions.filter(t => t.type === filter)
     if (categoryFilter !== 'all') result = result.filter(t => t.category === categoryFilter)
@@ -192,6 +204,15 @@ export function HomeScreen() {
     }
     return result
   }, [dateFilteredTransactions, filter, categoryFilter, searchText])
+
+  const periodTotals = useMemo(() => {
+    let income = 0, expenses = 0
+    for (const t of filteredTransactions) {
+      if (t.type === 'income') income += t.amount
+      else expenses += t.amount
+    }
+    return { totalIncome: income, totalExpenses: expenses, balance: income - expenses }
+  }, [filteredTransactions])
 
   const totalPages = Math.max(1, Math.ceil(filteredTransactions.length / PAGE_SIZE))
   const pagedTransactions = showAll
@@ -205,41 +226,78 @@ export function HomeScreen() {
   }
 
   const handleSubmit = useCallback(async (data: CreateTransactionDTO): Promise<void> => {
-    await addTransaction(data)
-    setModalType(null)
-  }, [addTransaction])
+    try {
+      await addTransaction(data)
+      setModalType(null)
+      toast.success(data.type === 'income' ? 'Ingreso registrado' : 'Gasto registrado')
+    } catch (err) {
+      toast.error('No se pudo guardar', err instanceof Error ? err.message : undefined)
+    }
+  }, [addTransaction, toast])
 
   const handleSubmitRecurring = useCallback(async (dto: CreateRecurringTemplateDTO): Promise<void> => {
-    await window.api.recurring.create(dto)
-    setModalType(null)
-  }, [])
+    try {
+      await window.api.recurring.create(dto)
+      setModalType(null)
+      toast.success('Plantilla recurrente creada')
+    } catch (err) {
+      toast.error('No se pudo crear', err instanceof Error ? err.message : undefined)
+    }
+  }, [toast])
 
   const handleDeleteConfirm = useCallback(async (): Promise<void> => {
     if (!confirmDeleteId) return
-    await removeTransaction(confirmDeleteId)
+    const idToDelete = confirmDeleteId
     setConfirmDeleteId(null)
-  }, [confirmDeleteId, removeTransaction])
+    // Marcar para animación de salida
+    setRemovingIds(prev => {
+      const next = new Set(prev); next.add(idToDelete); return next
+    })
+    // Esperar la animación (320ms) antes de eliminar realmente
+    await new Promise(r => setTimeout(r, 320))
+    try {
+      await removeTransaction(idToDelete)
+      toast.success('Transacción eliminada')
+    } catch (err) {
+      toast.error('No se pudo eliminar', err instanceof Error ? err.message : undefined)
+    } finally {
+      setRemovingIds(prev => {
+        const next = new Set(prev); next.delete(idToDelete); return next
+      })
+    }
+  }, [confirmDeleteId, removeTransaction, toast])
 
   const handleBulkDeleteConfirm = useCallback(async (): Promise<void> => {
     const ids = filteredTransactions.map(t => t.id)
     if (ids.length === 0) return
     setBulkDeleting(true)
+    setConfirmBulkDelete(false)
+    // Marcar todos para animación, con un stagger sutil (cada uno 30ms más tarde)
+    setRemovingIds(new Set(ids))
+    await new Promise(r => setTimeout(r, 320 + Math.min(ids.length, 8) * 30))
     try {
       await bulkRemoveTransactions(ids)
-      setConfirmBulkDelete(false)
       setPage(0)
+      toast.success(`${ids.length} ${ids.length === 1 ? 'transacción eliminada' : 'transacciones eliminadas'}`)
     } catch (err) {
       console.error('[BulkDelete]', err)
+      toast.error('No se pudieron eliminar', err instanceof Error ? err.message : undefined)
     } finally {
+      setRemovingIds(new Set())
       setBulkDeleting(false)
     }
-  }, [filteredTransactions, bulkRemoveTransactions])
+  }, [filteredTransactions, bulkRemoveTransactions, toast])
 
   const handleEditSubmit = useCallback(async (data: UpdateTransactionDTO): Promise<void> => {
     if (!editingTransaction) return
-    await updateTransaction(editingTransaction.id, data)
-    setEditingTransaction(null)
-  }, [editingTransaction, updateTransaction])
+    try {
+      await updateTransaction(editingTransaction.id, data)
+      setEditingTransaction(null)
+      toast.success('Cambios guardados')
+    } catch (err) {
+      toast.error('No se pudo actualizar', err instanceof Error ? err.message : undefined)
+    }
+  }, [editingTransaction, updateTransaction, toast])
 
   async function handleExport(): Promise<void> {
     if (filteredTransactions.length === 0) return
@@ -260,32 +318,19 @@ export function HomeScreen() {
         buffer: base64,
         defaultPath: `vantage-${new Date().toISOString().slice(0, 10)}.xlsx`,
       })
+      toast.success(`${filteredTransactions.length} movimientos exportados`)
     } catch (err) {
       console.error('[Export]', err)
-      alert(`Error al exportar: ${err instanceof Error ? err.message : String(err)}`)
+      toast.error('No se pudo exportar', err instanceof Error ? err.message : String(err))
     }
   }
 
   if (loading) {
-    return (
-      <div className="flex items-center justify-center h-full">
-        <p className="text-subtext text-lg">Cargando...</p>
-      </div>
-    )
+    return <HomeSkeleton />
   }
 
   return (
     <div className="space-y-4 lg:space-y-5 w-full">
-
-      {/* Recurring banner */}
-      {recurringBanner > 0 && (
-        <div className="flex items-center gap-2.5 rounded-xl bg-income-light border border-income/20 px-4 py-3 text-sm font-medium text-income">
-          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-            <path d="M20 6 9 17l-5-5"/>
-          </svg>
-          Se {recurringBanner === 1 ? 'ha registrado 1 transacción recurrente' : `han registrado ${recurringBanner} transacciones recurrentes`} automáticamente
-        </div>
-      )}
 
       {/* Page header */}
       <PageHeader
@@ -294,7 +339,7 @@ export function HomeScreen() {
         actions={
           <>
             <button
-              onClick={() => setConfirmBulkDelete(true)}
+              onClick={(e) => { captureFromEvent(e); setConfirmBulkDelete(true) }}
               disabled={filteredTransactions.length === 0}
               className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium text-expense bg-expense-light hover:bg-expense/20 border border-expense/20 transition-colors cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed"
             >
@@ -318,7 +363,7 @@ export function HomeScreen() {
               Exportar
             </button>
             <button
-              onClick={() => setModalType('expense')}
+              onClick={(e) => { captureFromEvent(e); setModalType('expense') }}
               className="flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-semibold text-white bg-expense hover:bg-expense-hover transition-colors cursor-pointer"
             >
               <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
@@ -327,7 +372,7 @@ export function HomeScreen() {
               Gasto
             </button>
             <button
-              onClick={() => setModalType('income')}
+              onClick={(e) => { captureFromEvent(e); setModalType('income') }}
               className="flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-semibold text-white bg-income hover:bg-income-hover transition-colors cursor-pointer"
             >
               <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
@@ -385,20 +430,18 @@ export function HomeScreen() {
 
           {dateMode === 'custom' && (
             <div className="flex items-center gap-2 ml-1">
-              <input
-                type="date"
+              <DateInput
                 value={customFrom}
-                onChange={e => { setCustomFrom(e.target.value); setPage(0) }}
-                aria-label="Fecha de inicio"
-                className="rounded-lg border border-border bg-surface px-3 py-1.5 text-sm text-text focus:outline-none focus:ring-2 focus:ring-brand"
+                onChange={v => { setCustomFrom(v); setPage(0) }}
+                ariaLabel="Fecha de inicio"
+                placeholder="Desde"
               />
               <span className="text-subtext text-sm" aria-hidden="true">—</span>
-              <input
-                type="date"
+              <DateInput
                 value={customTo}
-                onChange={e => { setCustomTo(e.target.value); setPage(0) }}
-                aria-label="Fecha de fin"
-                className="rounded-lg border border-border bg-surface px-3 py-1.5 text-sm text-text focus:outline-none focus:ring-2 focus:ring-brand"
+                onChange={v => { setCustomTo(v); setPage(0) }}
+                ariaLabel="Fecha de fin"
+                placeholder="Hasta"
               />
             </div>
           )}
@@ -407,51 +450,35 @@ export function HomeScreen() {
         {/* Divider */}
         <div className="w-px h-5 bg-border shrink-0" aria-hidden="true" />
 
-        {/* Date mode pills */}
-        <div className="flex gap-1 bg-surface rounded-lg p-1 border border-border">
-          {DATE_MODES.map(m => (
-            <button
-              key={m.id}
-              onClick={() => handleDateModeChange(m.id)}
-              className={`px-3 py-1.5 rounded-md text-xs font-semibold transition-colors cursor-pointer ${
-                dateMode === m.id ? 'bg-card text-text shadow-sm' : 'text-subtext hover:text-text'
-              }`}
-            >
-              {m.label}
-            </button>
-          ))}
-        </div>
+        {/* Date mode pills con underline deslizante */}
+        <Tabs
+          items={DATE_MODES}
+          activeId={dateMode}
+          onChange={handleDateModeChange}
+          ariaLabel="Periodo"
+        />
 
         {/* Spacer */}
         <div className="flex-1" />
 
-        {/* Type filter pills */}
-        <div className="flex gap-1 bg-surface rounded-lg p-1 border border-border">
-          {TABS.map(tab => (
-            <button
-              key={tab.id}
-              onClick={() => handleFilterChange(tab.id)}
-              className={`px-3 py-1.5 rounded-md text-xs font-semibold transition-colors cursor-pointer ${
-                filter === tab.id ? 'bg-card text-text shadow-sm' : 'text-subtext hover:text-text'
-              }`}
-            >
-              {tab.label}
-            </button>
-          ))}
-        </div>
+        {/* Type filter pills con underline deslizante */}
+        <Tabs
+          items={TABS}
+          activeId={filter}
+          onChange={handleFilterChange}
+          ariaLabel="Tipo de movimiento"
+        />
 
         {/* Category dropdown */}
-        <select
+        <Select
           value={categoryFilter}
-          onChange={e => { setCategoryFilter(e.target.value); setPage(0) }}
-          aria-label="Filtrar por categoría"
-          className="rounded-lg border border-border bg-surface px-3 py-1.5 text-xs font-medium text-subtext focus:outline-none focus:ring-2 focus:ring-brand cursor-pointer"
-        >
-          <option value="all">Todas las categorías</option>
-          {categoryOptions.map(cat => (
-            <option key={cat} value={cat}>{cat}</option>
-          ))}
-        </select>
+          onChange={v => { setCategoryFilter(v); setPage(0) }}
+          ariaLabel="Filtrar por categoría"
+          options={[
+            { value: 'all', label: 'Todas las categorías' },
+            ...categoryOptions.map(cat => ({ value: cat, label: cat })),
+          ]}
+        />
 
         {/* Search */}
         <div className="relative">
@@ -477,8 +504,10 @@ export function HomeScreen() {
       {/* Transaction list */}
       <TransactionList
         transactions={pagedTransactions}
-        onDelete={setConfirmDeleteId}
-        onEdit={setEditingTransaction}
+        onDelete={handleDeleteRequest}
+        onEdit={handleEditRequest}
+        listKey={`${filter}|${categoryFilter}|${dateMode}|${page}|${searchText}`}
+        removingIds={removingIds}
         emptyMessage={
           filter === 'income'  ? 'No hay ingresos en este periodo' :
           filter === 'expense' ? 'No hay gastos en este periodo'   :
@@ -574,15 +603,18 @@ export function HomeScreen() {
       {/* Modal: new transaction */}
       <Modal
         isOpen={modalType !== null}
-        onClose={() => setModalType(null)}
+        onClose={() => { setModalType(null); setCreateDirty(false) }}
         title={modalType === 'expense' ? 'Nuevo gasto' : 'Nuevo ingreso'}
+        origin={modalOrigin}
+        dirty={createDirty}
       >
         {modalType && (
           <TransactionForm
             type={modalType}
             onSubmit={handleSubmit}
-            onCancel={() => setModalType(null)}
+            onCancel={() => { setModalType(null); setCreateDirty(false) }}
             onSubmitRecurring={handleSubmitRecurring}
+            onDirtyChange={setCreateDirty}
           />
         )}
       </Modal>
@@ -590,14 +622,17 @@ export function HomeScreen() {
       {/* Modal: edit transaction */}
       <Modal
         isOpen={editingTransaction !== null}
-        onClose={() => setEditingTransaction(null)}
+        onClose={() => { setEditingTransaction(null); setEditDirty(false) }}
         title={editingTransaction?.type === 'expense' ? 'Editar gasto' : 'Editar ingreso'}
+        origin={modalOrigin}
+        dirty={editDirty}
       >
         {editingTransaction && (
           <TransactionForm
             type={editingTransaction.type}
             onSubmit={handleEditSubmit}
-            onCancel={() => setEditingTransaction(null)}
+            onCancel={() => { setEditingTransaction(null); setEditDirty(false) }}
+            onDirtyChange={setEditDirty}
             initialValues={{
               amount: String(editingTransaction.amount),
               description: editingTransaction.description,
@@ -614,6 +649,7 @@ export function HomeScreen() {
         isOpen={confirmDeleteId !== null}
         onClose={() => setConfirmDeleteId(null)}
         title="Eliminar transacción"
+        origin={modalOrigin}
       >
         <p className="text-sm text-subtext">¿Seguro que quieres eliminar esta transacción? Esta acción no se puede deshacer.</p>
         <div className="flex gap-3 pt-4">
@@ -637,6 +673,7 @@ export function HomeScreen() {
         isOpen={confirmBulkDelete}
         onClose={() => setConfirmBulkDelete(false)}
         title="Eliminar transacciones"
+        origin={modalOrigin}
       >
         <p className="text-sm text-subtext">
           ¿Eliminar <strong>{filteredTransactions.length}</strong> {filteredTransactions.length === 1 ? 'transacción' : 'transacciones'}? Esta acción no se puede deshacer.

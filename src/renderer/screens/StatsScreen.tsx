@@ -6,8 +6,26 @@ import {
 } from 'recharts'
 import { useTransactions } from '../hooks/useTransactions'
 import { PageHeader } from '../components/layout/PageHeader'
+import { TiltCard } from '../components/TiltCard'
+import { Tabs } from '../components/Tabs'
+import { StatsSkeleton } from '../components/skeletons/StatsSkeleton'
+import { EmptyState } from '../components/EmptyState'
+import { useToast } from '../components/Toast'
 import { formatCurrency, pad, MONTH_NAMES_FULL, MONTH_NAMES_SHORT, monthLabel } from '../lib/utils'
 import { getCategoryColor, PIE_COLORS } from '../lib/categoryColors'
+import { ChartTooltip, ChartPieTooltip, PieActiveSector } from '../components/charts/ChartTheme'
+import {
+  CHART_GRID_PROPS,
+  CHART_AXIS_PROPS,
+  CHART_BAR_RADIUS,
+  CHART_CURSOR_BAR,
+  CHART_CURSOR_LINE,
+  CHART_LEGEND_STYLE,
+  CHART_ANIM_EASING,
+  CHART_ANIM_DURATION,
+  chartAnimationBegin,
+  chartActiveDot,
+} from '../components/charts/chartTokens'
 
 type DateMode = 'compare' | 'quarter' | 'year' | 'custom'
 
@@ -26,33 +44,9 @@ function formatYAxis(value: number): string {
   return String(Math.round(value)).replace(/\B(?=(\d{3})+(?!\d))/g, '.')
 }
 
-interface TooltipPayload { name: string; value: number; color: string }
-interface TooltipProps { active?: boolean; payload?: TooltipPayload[]; label?: string }
-
-function CustomTooltip({ active, payload, label }: TooltipProps) {
-  if (!active || !payload?.length) return null
-  return (
-    <div className="rounded-lg bg-card border border-border shadow-md px-3 py-2 text-sm">
-      <p className="font-medium text-text mb-1">{label}</p>
-      {payload.map(p => (
-        <p key={p.name} style={{ color: p.color }}>{p.name}: {formatCurrency(p.value)}</p>
-      ))}
-    </div>
-  )
-}
-
-function PieTooltip({ active, payload }: TooltipProps) {
-  if (!active || !payload?.length) return null
-  return (
-    <div className="rounded-lg bg-card border border-border shadow-md px-3 py-2 text-sm">
-      <p className="font-medium text-text">{payload[0].name}</p>
-      <p className="text-subtext">{formatCurrency(payload[0].value)}</p>
-    </div>
-  )
-}
-
 export function StatsScreen() {
   const { transactions, loading } = useTransactions()
+  const toast = useToast()
 
   const [dateMode, setDateMode] = useState<DateMode>('compare')
 
@@ -284,8 +278,10 @@ export function StatsScreen() {
         categories: cats,
         transactions: txs,
       })
+      toast.success('Reporte PDF exportado', `Periodo: ${periodLabel}`)
     } catch (err) {
       console.error('[PDF Export]', err)
+      toast.error('No se pudo exportar el PDF', err instanceof Error ? err.message : undefined)
     }
   }
 
@@ -293,11 +289,7 @@ export function StatsScreen() {
     ? `Comparativa — ${compareMonths.length} meses seleccionados`
     : `Ingresos vs Gastos — ${periodLabel}`
 
-  if (loading) return (
-    <div className="flex items-center justify-center h-full">
-      <p className="text-subtext text-lg">Cargando...</p>
-    </div>
-  )
+  if (loading) return <StatsSkeleton />
 
   return (
     <div className="space-y-4 lg:space-y-5 w-full">
@@ -326,19 +318,12 @@ export function StatsScreen() {
 
         {/* Mode pills + period navigation */}
         <div className="flex items-center gap-2 lg:gap-4 flex-wrap">
-          <div className="flex gap-1 bg-surface rounded-lg p-1 border border-border">
-            {DATE_MODES.map(m => (
-              <button
-                key={m.id}
-                onClick={() => setDateMode(m.id)}
-                className={`px-3 py-1.5 rounded-md text-xs font-semibold transition-colors cursor-pointer ${
-                  dateMode === m.id ? 'bg-card text-text shadow-sm' : 'text-subtext hover:text-text'
-                }`}
-              >
-                {m.label}
-              </button>
-            ))}
-          </div>
+          <Tabs
+            items={DATE_MODES}
+            activeId={dateMode}
+            onChange={setDateMode}
+            ariaLabel="Modo de periodo"
+          />
 
           {showNavigation && (
             <>
@@ -417,20 +402,24 @@ export function StatsScreen() {
 
       {/* Summary cards */}
       <div className="grid grid-cols-3 gap-3 lg:gap-4">
-        <div className="rounded-xl bg-card p-4 lg:p-5 shadow-sm border border-border">
+        <TiltCard intensity={3} className="card-anim rounded-xl bg-card p-4 lg:p-5 shadow-sm border border-border" style={{ animationDelay: '0ms' }}>
           <p className="text-xs font-medium text-subtext uppercase tracking-wider mb-1">Ingresos</p>
           <p className="text-xl lg:text-2xl font-bold text-income tabular-nums">{formatCurrency(periodStats.income)}</p>
-        </div>
-        <div className="rounded-xl bg-card p-4 lg:p-5 shadow-sm border border-border">
+        </TiltCard>
+        <TiltCard intensity={3} className="card-anim rounded-xl bg-card p-4 lg:p-5 shadow-sm border border-border" style={{ animationDelay: '60ms' }}>
           <p className="text-xs font-medium text-subtext uppercase tracking-wider mb-1">Gastos</p>
           <p className="text-xl lg:text-2xl font-bold text-expense tabular-nums">{formatCurrency(periodStats.expenses)}</p>
-        </div>
-        <div className={`rounded-xl p-4 lg:p-5 shadow-sm border ${periodStats.balance >= 0 ? 'bg-income-light border-income/20' : 'bg-expense-light border-expense/20'}`}>
+        </TiltCard>
+        <TiltCard
+          intensity={3}
+          className={`card-anim rounded-xl p-4 lg:p-5 shadow-sm border ${periodStats.balance >= 0 ? 'bg-income-light border-income/20' : 'bg-expense-light border-expense/20'}`}
+          style={{ animationDelay: '120ms' }}
+        >
           <p className="text-xs font-medium text-subtext uppercase tracking-wider mb-1">Balance</p>
           <p className={`text-xl lg:text-2xl font-bold tabular-nums ${periodStats.balance >= 0 ? 'text-income' : 'text-expense'}`}>
             {periodStats.balance >= 0 ? '+' : ''}{formatCurrency(periodStats.balance)}
           </p>
-        </div>
+        </TiltCard>
       </div>
 
       {/* Charts */}
@@ -438,19 +427,56 @@ export function StatsScreen() {
         <div className="rounded-xl bg-card p-5 shadow-sm border border-border">
           <h3 className="text-sm font-semibold text-text mb-4">{barChartTitle}</h3>
           {barChartData.length === 0 ? (
-            <div className="flex items-center justify-center h-[240px] text-subtext text-sm">
-              {dateMode === 'compare' ? 'Añade meses para comparar' : 'Sin datos para el periodo seleccionado'}
-            </div>
+            <EmptyState
+              className="!py-8"
+              icon={
+                dateMode === 'compare' ? (
+                  <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <rect x="3" y="4" width="18" height="18" rx="2" ry="2" />
+                    <line x1="16" y1="2" x2="16" y2="6" />
+                    <line x1="8" y1="2" x2="8" y2="6" />
+                    <line x1="3" y1="10" x2="21" y2="10" />
+                    <path d="M12 14v4M10 16h4" />
+                  </svg>
+                ) : (
+                  <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <line x1="12" y1="20" x2="12" y2="10" />
+                    <line x1="18" y1="20" x2="18" y2="4" />
+                    <line x1="6" y1="20" x2="6" y2="16" />
+                  </svg>
+                )
+              }
+              title={dateMode === 'compare' ? 'Añade meses para comparar' : 'Sin datos en este periodo'}
+              description={
+                dateMode === 'compare'
+                  ? 'Selecciona uno o varios meses arriba para empezar la comparativa.'
+                  : 'Cambia el periodo o registra movimientos para ver la evolución.'
+              }
+            />
           ) : (
             <ResponsiveContainer width="100%" height={240}>
               <BarChart data={barChartData} barCategoryGap="30%" barGap={4}>
-                <CartesianGrid strokeDasharray="3 3" stroke="var(--color-border)" vertical={false} />
-                <XAxis dataKey="month" tick={{ fontSize: 12, fill: 'var(--color-subtext)' }} axisLine={false} tickLine={false} />
-                <YAxis tickFormatter={formatYAxis} tick={{ fontSize: 12, fill: 'var(--color-subtext)' }} axisLine={false} tickLine={false} width={60} />
-                <Tooltip content={<CustomTooltip />} cursor={{ fill: 'var(--color-surface)' }} />
-                <Legend wrapperStyle={{ fontSize: 12, paddingTop: 12 }} />
-                <Bar dataKey="Ingresos" fill="var(--color-income)"  radius={[4, 4, 0, 0]} />
-                <Bar dataKey="Gastos"   fill="var(--color-expense)" radius={[4, 4, 0, 0]} />
+                <CartesianGrid {...CHART_GRID_PROPS} />
+                <XAxis dataKey="month" {...CHART_AXIS_PROPS} />
+                <YAxis tickFormatter={formatYAxis} width={60} {...CHART_AXIS_PROPS} />
+                <Tooltip content={<ChartTooltip valueFormatter={formatCurrency} />} cursor={CHART_CURSOR_BAR} />
+                <Legend wrapperStyle={CHART_LEGEND_STYLE} />
+                <Bar
+                  dataKey="Ingresos"
+                  fill="var(--color-income)"
+                  radius={CHART_BAR_RADIUS}
+                  animationBegin={chartAnimationBegin(0)}
+                  animationDuration={CHART_ANIM_DURATION}
+                  animationEasing={CHART_ANIM_EASING}
+                />
+                <Bar
+                  dataKey="Gastos"
+                  fill="var(--color-expense)"
+                  radius={CHART_BAR_RADIUS}
+                  animationBegin={chartAnimationBegin(1)}
+                  animationDuration={CHART_ANIM_DURATION}
+                  animationEasing={CHART_ANIM_EASING}
+                />
               </BarChart>
             </ResponsiveContainer>
           )}
@@ -459,24 +485,50 @@ export function StatsScreen() {
         <div className="rounded-xl bg-card p-5 shadow-sm border border-border lg:min-w-0">
           <h3 className="text-sm font-semibold text-text mb-4">Gastos por categoría</h3>
           {categoryData.length === 0 ? (
-            <div className="flex items-center justify-center h-[240px] text-subtext text-sm">Sin gastos en este periodo</div>
+            <EmptyState
+              className="!py-8"
+              icon={
+                <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M21.21 15.89A10 10 0 1 1 8 2.83" />
+                  <path d="M22 12A10 10 0 0 0 12 2v10z" />
+                </svg>
+              }
+              title="Aún no hay gastos"
+              description="Las categorías aparecerán aquí cuando registres movimientos en este periodo."
+            />
           ) : (
             <div className="flex flex-col gap-3">
               <ResponsiveContainer width="100%" height={180}>
                 <PieChart>
-                  <Pie data={categoryData} cx="50%" cy="50%" innerRadius={50} outerRadius={80} paddingAngle={2} dataKey="value">
+                  <Pie
+                    data={categoryData}
+                    cx="50%"
+                    cy="50%"
+                    innerRadius={50}
+                    outerRadius={80}
+                    paddingAngle={2}
+                    dataKey="value"
+                    animationBegin={chartAnimationBegin(0)}
+                    animationDuration={CHART_ANIM_DURATION}
+                    animationEasing={CHART_ANIM_EASING}
+                    activeShape={PieActiveSector}
+                  >
                     {categoryData.map((entry, i) => (
-                      <Cell key={entry.name} fill={getCategoryColor(entry.name).color ?? PIE_COLORS[i % PIE_COLORS.length]} />
+                      <Cell
+                        key={entry.name}
+                        fill={getCategoryColor(entry.name).base ?? PIE_COLORS[i % PIE_COLORS.length]}
+                        style={{ cursor: 'pointer' }}
+                      />
                     ))}
                   </Pie>
-                  <Tooltip content={<PieTooltip />} />
+                  <Tooltip content={<ChartPieTooltip total={periodStats.expenses} valueFormatter={formatCurrency} />} />
                 </PieChart>
               </ResponsiveContainer>
               <div className="space-y-1.5">
                 {categoryData.map((entry, i) => (
                   <div key={entry.name} className="flex items-center justify-between text-xs">
                     <div className="flex items-center gap-1.5">
-                      <div className="w-2.5 h-2.5 rounded-full shrink-0" style={{ background: getCategoryColor(entry.name).color ?? PIE_COLORS[i % PIE_COLORS.length] }} />
+                      <div className="w-2.5 h-2.5 rounded-full shrink-0" style={{ background: getCategoryColor(entry.name).base ?? PIE_COLORS[i % PIE_COLORS.length] }} />
                       <span className="text-subtext">{entry.name}</span>
                     </div>
                     <span className="font-medium text-text">
@@ -502,11 +554,22 @@ export function StatsScreen() {
                   <stop offset="100%" stopColor="var(--color-brand)" stopOpacity={0} />
                 </linearGradient>
               </defs>
-              <CartesianGrid strokeDasharray="3 3" stroke="var(--color-border)" vertical={false} />
-              <XAxis dataKey="month" tick={{ fontSize: 11, fill: 'var(--color-subtext)' }} axisLine={false} tickLine={false} />
-              <YAxis tickFormatter={formatYAxis} tick={{ fontSize: 11, fill: 'var(--color-subtext)' }} axisLine={false} tickLine={false} width={60} />
-              <Tooltip content={<CustomTooltip />} />
-              <Area type="monotone" dataKey="balance" stroke="var(--color-brand)" fill="url(#gradBalance)" strokeWidth={2} name="Balance" />
+              <CartesianGrid {...CHART_GRID_PROPS} />
+              <XAxis dataKey="month" {...CHART_AXIS_PROPS} />
+              <YAxis tickFormatter={formatYAxis} width={60} {...CHART_AXIS_PROPS} />
+              <Tooltip content={<ChartTooltip valueFormatter={formatCurrency} />} cursor={CHART_CURSOR_LINE} />
+              <Area
+                type="monotone"
+                dataKey="balance"
+                stroke="var(--color-brand)"
+                fill="url(#gradBalance)"
+                strokeWidth={2}
+                name="Balance"
+                animationBegin={chartAnimationBegin(0)}
+                animationDuration={CHART_ANIM_DURATION}
+                animationEasing={CHART_ANIM_EASING}
+                activeDot={chartActiveDot('var(--color-brand)')}
+              />
             </AreaChart>
           </ResponsiveContainer>
         </div>
@@ -530,8 +593,8 @@ export function StatsScreen() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-border/40">
-                {comparisonTableData.map(row => (
-                  <tr key={row.month} className="hover:bg-surface/60 transition-colors">
+                {comparisonTableData.map((row, idx) => (
+                  <tr key={row.month} data-stagger={idx % 8} className="tx-row hover:bg-surface/60 transition-colors">
                     <td className="px-5 py-2.5 font-medium text-text">{row.month}</td>
                     <td className="px-5 py-2.5 text-right text-income tabular-nums">{formatCurrency(row.income)}</td>
                     <td className="px-5 py-2.5 text-right text-expense tabular-nums">{formatCurrency(row.expenses)}</td>
@@ -560,8 +623,8 @@ export function StatsScreen() {
         <div className="rounded-xl bg-card p-5 shadow-sm border border-border">
           <h3 className="text-sm font-semibold text-text mb-4">Gasto promedio por día de la semana</h3>
           <div className="grid grid-cols-7 gap-2">
-            {weekdayData.map(d => (
-              <div key={d.name} className="text-center space-y-2">
+            {weekdayData.map((d, i) => (
+              <div key={d.name} data-stagger={i} className="heatmap-cell text-center space-y-2">
                 <p className="text-xs font-semibold text-subtext">{d.name}</p>
                 <div
                   className="mx-auto w-12 h-12 lg:w-16 lg:h-16 rounded-xl flex items-center justify-center transition-colors"

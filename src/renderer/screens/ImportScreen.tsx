@@ -1,5 +1,8 @@
 import { useState } from 'react'
 import { PageHeader } from '../components/layout/PageHeader'
+import { useToast } from '../components/Toast'
+import { TiltCard } from '../components/TiltCard'
+import { Skeleton } from '../components/Skeleton'
 import { validateRows } from '../lib/importValidation'
 import type {
   ImportFilePreview,
@@ -18,13 +21,45 @@ interface ImportScreenProps {
 
 // ── Sub-components ─────────────────────────────────────────────────────────
 
-function StepBadge({ n, label, active }: { n: number; label: string; active: boolean }) {
+interface StepBadgeProps {
+  n: number
+  label: string
+  state: 'pending' | 'active' | 'done'
+}
+
+function StepBadge({ n, label, state }: StepBadgeProps) {
+  const isActive = state === 'active'
+  const isDone = state === 'done'
+  const textColor = isActive ? 'text-brand' : isDone ? 'text-text' : 'text-subtext'
   return (
-    <div className={`flex items-center gap-2 ${active ? 'text-brand' : 'text-subtext'}`}>
-      <span className={`w-6 h-6 rounded-full text-xs font-bold flex items-center justify-center ${active ? 'bg-brand text-white' : 'bg-surface border border-border text-subtext'}`}>
-        {n}
+    <div className={`flex items-center gap-2 transition-colors ${textColor}`}>
+      <span
+        className="w-7 h-7 rounded-full text-xs font-bold flex items-center justify-center transition-all"
+        style={{
+          background: isActive
+            ? 'var(--color-brand)'
+            : isDone
+              ? 'var(--color-income-light)'
+              : 'var(--color-surface)',
+          color: isActive ? '#fff' : isDone ? 'var(--color-income)' : 'var(--color-subtext)',
+          border: isActive
+            ? '0'
+            : isDone
+              ? '1px solid color-mix(in srgb, var(--color-income) 30%, transparent)'
+              : '1px solid var(--color-border)',
+          boxShadow: isActive ? '0 0 0 4px var(--color-brand-light)' : 'none',
+          transform: isActive ? 'scale(1.05)' : 'scale(1)',
+        }}
+      >
+        {isDone ? (
+          <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M20 6 9 17l-5-5" />
+          </svg>
+        ) : (
+          n
+        )}
       </span>
-      <span className="text-xs font-medium">{label}</span>
+      <span className="text-xs font-medium hidden sm:inline">{label}</span>
     </div>
   )
 }
@@ -36,16 +71,35 @@ function StepIndicator({ step, fileType }: { step: ImportStep; fileType: 'excel'
     { key: 'column-mapping', label: 'Columnas' },
     { key: 'confirm',        label: 'Confirmar' },
   ]
+  const currentIdx = steps.findIndex(s => s.key === step)
   return (
-    <div className="flex items-center gap-2 lg:gap-4 px-4 lg:px-6 py-3 bg-card rounded-xl border border-border flex-wrap">
-      {steps.map((s, i) => (
-        <div key={s.key} className="flex items-center gap-3">
-          <StepBadge n={i + 1} label={s.label} active={s.key === step} />
-          {i < steps.length - 1 && (
-            <div className="w-8 h-px bg-border" />
-          )}
-        </div>
-      ))}
+    <div
+      className="flex items-center gap-3 lg:gap-5 px-4 lg:px-6 py-3.5 rounded-2xl border flex-wrap"
+      style={{
+        background: 'var(--color-card)',
+        borderColor: 'var(--color-border)',
+        boxShadow: 'var(--shadow-sm)',
+      }}
+    >
+      {steps.map((s, i) => {
+        const state: StepBadgeProps['state'] = i < currentIdx ? 'done' : i === currentIdx ? 'active' : 'pending'
+        const connectorDone = i < currentIdx
+        return (
+          <div key={s.key} className="flex items-center gap-3 lg:gap-5">
+            <StepBadge n={i + 1} label={s.label} state={state} />
+            {i < steps.length - 1 && (
+              <div
+                className="h-0.5 w-6 lg:w-12 rounded-full transition-colors"
+                style={{
+                  background: connectorDone
+                    ? 'var(--color-income)'
+                    : 'var(--color-border)',
+                }}
+              />
+            )}
+          </div>
+        )
+      })}
     </div>
   )
 }
@@ -58,49 +112,69 @@ interface FileSelectStepProps {
 }
 
 function FileSelectStep({ onChoose, loading }: FileSelectStepProps) {
+  if (loading) {
+    return (
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+        {[0, 1].map(i => (
+          <div key={i} className="rounded-xl bg-card border border-border shadow-sm p-6 flex items-start gap-4">
+            <Skeleton width={48} height={48} rounded="lg" />
+            <div className="flex-1 space-y-2">
+              <Skeleton width={120} height={14} />
+              <Skeleton width="90%" height={11} />
+              <Skeleton width="60%" height={11} />
+            </div>
+          </div>
+        ))}
+      </div>
+    )
+  }
   return (
     <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-      <button
-        onClick={() => onChoose('excel')}
-        disabled={loading}
-        className="rounded-xl bg-card border border-border shadow-sm p-6 text-left flex items-start gap-4 hover:bg-surface/60 hover:border-brand/40 transition-all cursor-pointer group disabled:opacity-50 disabled:cursor-not-allowed"
-      >
-        <div className="w-12 h-12 rounded-xl bg-income-light flex items-center justify-center text-income shrink-0 group-hover:bg-income group-hover:text-white transition-colors">
-          <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-            <path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z"/>
-            <polyline points="14 2 14 8 20 8"/>
-            <path d="M8 13h2"/><path d="M8 17h2"/><path d="M14 13h2"/><path d="M14 17h2"/>
+      <TiltCard intensity={4} className="card-anim">
+        <button
+          onClick={() => onChoose('excel')}
+          disabled={loading}
+          className="w-full rounded-xl bg-card border border-border shadow-sm p-6 text-left flex items-start gap-4 hover:bg-surface/60 hover:border-brand/40 hover:-translate-y-0.5 transition-all cursor-pointer group disabled:opacity-50 disabled:cursor-not-allowed"
+        >
+          <div className="w-12 h-12 rounded-xl bg-income-light flex items-center justify-center text-income shrink-0 group-hover:bg-income group-hover:text-white transition-colors">
+            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z"/>
+              <polyline points="14 2 14 8 20 8"/>
+              <path d="M8 13h2"/><path d="M8 17h2"/><path d="M14 13h2"/><path d="M14 17h2"/>
+            </svg>
+          </div>
+          <div className="flex-1">
+            <p className="text-sm font-bold text-text">Excel</p>
+            <p className="text-xs text-subtext mt-1 leading-relaxed">Archivos .xlsx o .xls. Compatible con Excel, Google Sheets, LibreOffice.</p>
+          </div>
+          <svg className="text-subtext mt-1 shrink-0 transition-transform group-hover:translate-x-1" xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M9 18l6-6-6-6"/>
           </svg>
-        </div>
-        <div className="flex-1">
-          <p className="text-sm font-bold text-text">Excel</p>
-          <p className="text-xs text-subtext mt-1 leading-relaxed">Archivos .xlsx o .xls. Compatible con Excel, Google Sheets, LibreOffice.</p>
-        </div>
-        <svg className="text-subtext mt-1 shrink-0" xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-          <path d="M9 18l6-6-6-6"/>
-        </svg>
-      </button>
+        </button>
+      </TiltCard>
 
-      <button
-        onClick={() => onChoose('access')}
-        disabled={loading}
-        className="rounded-xl bg-card border border-border shadow-sm p-6 text-left flex items-start gap-4 hover:bg-surface/60 hover:border-brand/40 transition-all cursor-pointer group disabled:opacity-50 disabled:cursor-not-allowed"
-      >
-        <div className="w-12 h-12 rounded-xl bg-brand-light flex items-center justify-center text-brand shrink-0 group-hover:bg-brand group-hover:text-white transition-colors">
-          <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-            <ellipse cx="12" cy="5" rx="9" ry="3"/>
-            <path d="M3 5v14c0 1.657 4.03 3 9 3s9-1.343 9-3V5"/>
-            <path d="M3 12c0 1.657 4.03 3 9 3s9-1.343 9-3"/>
+      <TiltCard intensity={4} className="card-anim">
+        <button
+          onClick={() => onChoose('access')}
+          disabled={loading}
+          className="w-full rounded-xl bg-card border border-border shadow-sm p-6 text-left flex items-start gap-4 hover:bg-surface/60 hover:border-brand/40 hover:-translate-y-0.5 transition-all cursor-pointer group disabled:opacity-50 disabled:cursor-not-allowed"
+        >
+          <div className="w-12 h-12 rounded-xl bg-brand-light flex items-center justify-center text-brand shrink-0 group-hover:bg-brand group-hover:text-white transition-colors">
+            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <ellipse cx="12" cy="5" rx="9" ry="3"/>
+              <path d="M3 5v14c0 1.657 4.03 3 9 3s9-1.343 9-3V5"/>
+              <path d="M3 12c0 1.657 4.03 3 9 3s9-1.343 9-3"/>
+            </svg>
+          </div>
+          <div className="flex-1">
+            <p className="text-sm font-bold text-text">Microsoft Access</p>
+            <p className="text-xs text-subtext mt-1 leading-relaxed">Archivos .mdb o .accdb. Ideal para migrar desde una base de datos existente.</p>
+          </div>
+          <svg className="text-subtext mt-1 shrink-0 transition-transform group-hover:translate-x-1" xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M9 18l6-6-6-6"/>
           </svg>
-        </div>
-        <div className="flex-1">
-          <p className="text-sm font-bold text-text">Microsoft Access</p>
-          <p className="text-xs text-subtext mt-1 leading-relaxed">Archivos .mdb o .accdb. Ideal para migrar desde una base de datos existente.</p>
-        </div>
-        <svg className="text-subtext mt-1 shrink-0" xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-          <path d="M9 18l6-6-6-6"/>
-        </svg>
-      </button>
+        </button>
+      </TiltCard>
     </div>
   )
 }
@@ -118,28 +192,40 @@ function TableSelectStep({ tables, onChoose, loading }: TableSelectStepProps) {
     <div className="rounded-xl bg-card border border-border shadow-sm overflow-hidden">
       <div className="px-5 py-3 border-b border-border bg-surface/60">
         <p className="text-sm font-semibold text-text">Selecciona una tabla</p>
-        <p className="text-xs text-subtext mt-0.5">{tables.length} tablas encontradas</p>
+        <p className="text-xs text-subtext mt-0.5">{tables.length} tabla{tables.length === 1 ? '' : 's'} encontrada{tables.length === 1 ? '' : 's'}</p>
       </div>
-      <div className="divide-y divide-border/40">
-        {tables.map(t => (
-          <button
-            key={t}
-            onClick={() => onChoose(t)}
-            disabled={loading}
-            className="w-full text-left px-5 py-3 hover:bg-surface/60 transition-colors flex items-center justify-between group cursor-pointer disabled:opacity-50"
-          >
-            <div className="flex items-center gap-3">
-              <svg className="text-subtext" xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                <rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18M3 15h18M9 3v18"/>
-              </svg>
-              <span className="text-sm font-medium text-text">{t}</span>
+      {loading ? (
+        <div className="divide-y divide-border/40">
+          {[0, 1, 2].map(i => (
+            <div key={i} className="px-5 py-3 flex items-center gap-3">
+              <Skeleton width={14} height={14} rounded="sm" />
+              <Skeleton width={`${40 + i * 12}%`} height={14} />
             </div>
-            <svg className="text-subtext opacity-0 group-hover:opacity-100 transition-opacity" xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-              <path d="M9 18l6-6-6-6"/>
-            </svg>
-          </button>
-        ))}
-      </div>
+          ))}
+        </div>
+      ) : (
+        <div className="divide-y divide-border/40">
+          {tables.map((t, idx) => (
+            <button
+              key={t}
+              onClick={() => onChoose(t)}
+              disabled={loading}
+              data-stagger={idx % 8}
+              className="tx-row w-full text-left px-5 py-3 hover:bg-surface/60 transition-colors flex items-center justify-between group cursor-pointer disabled:opacity-50"
+            >
+              <div className="flex items-center gap-3">
+                <svg className="text-subtext transition-colors group-hover:text-brand" xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18M3 15h18M9 3v18"/>
+                </svg>
+                <span className="text-sm font-medium text-text">{t}</span>
+              </div>
+              <svg className="text-subtext opacity-0 group-hover:opacity-100 group-hover:translate-x-1 transition-all" xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M9 18l6-6-6-6"/>
+              </svg>
+            </button>
+          ))}
+        </div>
+      )}
     </div>
   )
 }
@@ -268,22 +354,33 @@ function ConfirmStep({ validation, importing, result, onConfirm, onBack, onDone 
 
   if (result) {
     return (
-      <div className="rounded-xl bg-card border border-border shadow-sm p-8 text-center space-y-4">
-        <div className="w-14 h-14 rounded-full bg-income-light flex items-center justify-center text-income mx-auto">
-          <svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-            <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/>
-            <polyline points="22 4 12 14.01 9 11.01"/>
+      <div
+        className="rounded-2xl border p-10 text-center flex flex-col items-center"
+        style={{
+          background: 'var(--color-card)',
+          borderColor: 'var(--color-border)',
+          boxShadow: 'var(--shadow-md)',
+        }}
+      >
+        <div className="success-checkmark mb-5">
+          <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
+            <polyline points="20 6 9 17 4 12" />
           </svg>
         </div>
-        <p className="text-lg font-bold text-text">
+        <p
+          className="success-text mb-1"
+          style={{ fontSize: 22, fontFamily: 'var(--font-display)', letterSpacing: 'var(--letter-spacing-display)' }}
+        >
           {result.inserted === 1 ? '1 movimiento importado' : `${result.inserted} movimientos importados`}
         </p>
         {result.errors.length > 0 && (
-          <p className="text-xs text-subtext">{result.errors.length} filas no pudieron importarse</p>
+          <p className="text-sm text-subtext mt-1">
+            {result.errors.length} fila{result.errors.length === 1 ? '' : 's'} no pud{result.errors.length === 1 ? 'o' : 'ieron'} importarse
+          </p>
         )}
         <button
           onClick={onDone}
-          className="px-6 py-2.5 rounded-xl text-sm font-semibold text-white bg-brand hover:bg-brand-hover transition-colors cursor-pointer"
+          className="mt-6 px-6 py-2.5 rounded-xl text-sm font-semibold text-white bg-brand hover:bg-brand-hover transition-colors cursor-pointer"
         >
           Volver a Ajustes
         </button>
@@ -380,6 +477,7 @@ export function ImportScreen({ onBack }: ImportScreenProps) {
   const [importing,    setImporting]    = useState(false)
   const [result,       setResult]       = useState<ImportCommitResult | null>(null)
   const [error,        setError]        = useState<string | null>(null)
+  const toast = useToast()
 
   function handleMappingChange(field: keyof ColumnMapping, value: string) {
     setMapping(prev => ({ ...prev, [field]: value === '' ? null : value }))
@@ -407,7 +505,7 @@ export function ImportScreen({ onBack }: ImportScreenProps) {
     try {
       if (type === 'access') {
         const { tables } = await window.api.fileio.getAccessTables(path)
-        if (tables.length === 0) { setError('El archivo Access no contiene tablas de usuario. Asegúrate de que el archivo .mdb/.accdb tiene datos.'); return }
+        if (tables.length === 0) { setError('El archivo Access no contiene tablas de usuario. Comprueba que el .mdb/.accdb tenga datos.'); return }
         setAccessTables(tables)
         setStep('table-select')
       } else {
@@ -418,7 +516,7 @@ export function ImportScreen({ onBack }: ImportScreenProps) {
         setStep('column-mapping')
       }
     } catch (e) {
-      setError(e instanceof Error ? `Error al leer el archivo: ${e.message}` : 'Error al leer el archivo. Verifica que no esté dañado o abierto en otro programa.')
+      setError(e instanceof Error ? `No se pudo leer el archivo: ${e.message}` : 'No se pudo leer el archivo. Comprueba que no esté dañado ni abierto en otro programa.')
     } finally {
       setLoading(false)
     }
@@ -434,7 +532,7 @@ export function ImportScreen({ onBack }: ImportScreenProps) {
       setMapping({ amount: null, type: null, date: null, description: null, category: null })
       setStep('column-mapping')
     } catch (e) {
-      setError(e instanceof Error ? `Error al leer la tabla: ${e.message}` : 'Error al leer la tabla. Verifica que el archivo no esté dañado.')
+      setError(e instanceof Error ? `No se pudo leer la tabla: ${e.message}` : 'No se pudo leer la tabla. Comprueba que el archivo no esté dañado.')
     } finally {
       setLoading(false)
     }
@@ -446,8 +544,14 @@ export function ImportScreen({ onBack }: ImportScreenProps) {
     try {
       const r = await window.api.fileio.commitImport({ rows: validation.validRows })
       setResult(r)
+      toast.success(
+        `${r.inserted ?? validation.validRows.length} movimientos importados`,
+        r.skipped ? `${r.skipped} duplicados omitidos` : undefined
+      )
     } catch (e) {
-      setError(e instanceof Error ? `Error al importar: ${e.message}` : 'Error al importar los datos. Inténtalo de nuevo.')
+      const msg = e instanceof Error ? `No se pudo importar: ${e.message}` : 'No se pudo importar. Vuelve a intentarlo.'
+      setError(msg)
+      toast.error('No se pudo importar', e instanceof Error ? e.message : undefined)
     } finally {
       setImporting(false)
     }

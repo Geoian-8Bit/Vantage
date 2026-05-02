@@ -2,6 +2,8 @@ import { useState, useEffect } from 'react'
 import type { CreateTransactionDTO, CreateRecurringTemplateDTO, RecurringFrequency } from '../../shared/types'
 import { useCategories } from '../hooks/useCategories'
 import { getTodayString } from '../lib/utils'
+import { DateInput } from './DateInput'
+import { Skeleton } from './Skeleton'
 
 interface TransactionFormProps {
   type: 'expense' | 'income'
@@ -10,6 +12,8 @@ interface TransactionFormProps {
   initialValues?: { amount: string; description: string; date: string; category: string; note?: string }
   /** If provided, a "Repeat automatically" toggle appears in create mode */
   onSubmitRecurring?: (dto: CreateRecurringTemplateDTO) => Promise<void>
+  /** Callback que recibe true cuando el form tiene cambios sin guardar */
+  onDirtyChange?: (dirty: boolean) => void
 }
 
 const PAYMENT_METHODS = ['Efectivo', 'Visa', 'Transferencia', 'Bizum'] as const
@@ -21,7 +25,7 @@ const FREQ_OPTIONS: { value: RecurringFrequency; label: string }[] = [
   { value: 'annual',    label: 'Anual'       },
 ]
 
-export function TransactionForm({ type, onSubmit, onCancel, initialValues, onSubmitRecurring }: TransactionFormProps) {
+export function TransactionForm({ type, onSubmit, onCancel, initialValues, onSubmitRecurring, onDirtyChange }: TransactionFormProps) {
   const { categories, loading: catsLoading } = useCategories()
 
   const availableCategories = categories.filter(c => c.type === type)
@@ -49,6 +53,21 @@ export function TransactionForm({ type, onSubmit, onCancel, initialValues, onSub
   const [note,          setNote]          = useState(parsedNote)
   const [paymentMethod, setPaymentMethod] = useState(parsedMethod)
   const [submitting,    setSubmitting]    = useState(false)
+  const [success,       setSuccess]       = useState(false)
+
+  // Detectar cambios sin guardar y propagar al padre
+  useEffect(() => {
+    if (!onDirtyChange) return
+    const isDirty = initialValues
+      ? amount !== initialValues.amount ||
+        description !== initialValues.description ||
+        date !== initialValues.date ||
+        category !== initialValues.category ||
+        note !== parsedNote ||
+        paymentMethod !== parsedMethod
+      : amount.length > 0 || description.length > 0 || note.length > 0 || paymentMethod !== ''
+    onDirtyChange(isDirty)
+  }, [amount, description, date, category, note, paymentMethod, initialValues, parsedNote, parsedMethod, onDirtyChange])
 
   // Recurring fields — only shown in create mode when onSubmitRecurring is available
   const showRecurringToggle = !!onSubmitRecurring && !initialValues
@@ -80,21 +99,54 @@ export function TransactionForm({ type, onSubmit, onCancel, initialValues, onSub
         const finalNote = paymentMethod ? `[${paymentMethod}] ${note.trim()}`.trim() : note.trim()
         await onSubmit({ amount: parsedAmount, type, description: description.trim(), date, category, note: finalNote })
       }
+      // Mostrar success state breve antes de cerrar
+      setSuccess(true)
+      onDirtyChange?.(false)
+      window.setTimeout(() => onCancel(), 760)
+    } catch {
+      // El error se muestra desde el padre (toast). Mantener form abierto.
     } finally {
       setSubmitting(false)
     }
   }
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-5">
+    <form onSubmit={handleSubmit} className="relative space-y-5">
+      {success && (
+        <div className="form-success-overlay">
+          <div className="success-checkmark">
+            <svg width="34" height="34" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
+              <polyline points="20 6 9 17 4 12" />
+            </svg>
+          </div>
+          <p className="success-text">
+            {initialValues
+              ? 'Cambios guardados'
+              : isRecurring
+                ? 'Recurrente creado'
+                : isExpense ? 'Gasto registrado' : 'Ingreso registrado'}
+          </p>
+        </div>
+      )}
 
       {/* Amount */}
       <div>
         <label className="block text-xs font-semibold text-subtext uppercase tracking-wider mb-2">
           Cantidad
         </label>
-        <div className="relative">
-          <span className={`absolute left-4 top-1/2 -translate-y-1/2 text-xl font-bold pointer-events-none ${accentColor}`}>
+        <div
+          className="relative rounded-2xl"
+          style={{
+            background: 'var(--color-card)',
+            border: '2px solid var(--color-border)',
+            boxShadow: 'var(--shadow-sm)',
+            transition: 'border-color var(--duration-base) var(--ease-default), box-shadow var(--duration-base) var(--ease-default)',
+          }}
+        >
+          <span
+            className={`absolute left-5 top-1/2 -translate-y-1/2 text-2xl pointer-events-none ${accentColor}`}
+            style={{ fontFamily: 'var(--font-display)' }}
+          >
             €
           </span>
           <input
@@ -106,7 +158,8 @@ export function TransactionForm({ type, onSubmit, onCancel, initialValues, onSub
             placeholder="0,00"
             required
             autoFocus
-            className="w-full rounded-xl border-2 border-border bg-surface pl-10 pr-4 py-3.5 text-2xl font-bold text-text text-right focus:outline-none focus:border-brand transition-colors"
+            className="w-full rounded-2xl bg-transparent pl-11 pr-5 py-4 text-3xl text-text text-right focus:outline-none border-none tabular-nums"
+            style={{ fontFamily: 'var(--font-display)', letterSpacing: 'var(--letter-spacing-display)' }}
           />
         </div>
       </div>
@@ -131,7 +184,11 @@ export function TransactionForm({ type, onSubmit, onCancel, initialValues, onSub
           Categoría
         </label>
         {catsLoading ? (
-          <p className="text-sm text-subtext">Cargando categorías…</p>
+          <div className="flex flex-wrap gap-2">
+            {[64, 92, 76, 110, 80].map((w, i) => (
+              <Skeleton key={i} width={w} height={28} rounded="full" />
+            ))}
+          </div>
         ) : (
           <div className="flex flex-wrap gap-2">
             {availableCategories.map(cat => {
@@ -141,9 +198,9 @@ export function TransactionForm({ type, onSubmit, onCancel, initialValues, onSub
                   key={cat.id}
                   type="button"
                   onClick={() => setCategory(cat.name)}
-                  className={`px-3 py-1.5 rounded-full text-sm font-medium transition-all cursor-pointer ${
+                  className={`pill-bounce px-3 py-1.5 rounded-full text-sm font-medium cursor-pointer ${
                     isSelected
-                      ? `${accentBg} text-white shadow-sm`
+                      ? `${accentBg} text-white shadow-sm pill-active`
                       : 'bg-surface border border-border text-subtext hover:border-brand/40 hover:text-text'
                   }`}
                 >
@@ -165,12 +222,12 @@ export function TransactionForm({ type, onSubmit, onCancel, initialValues, onSub
         <label className="block text-xs font-semibold text-subtext uppercase tracking-wider mb-2">
           Fecha
         </label>
-        <input
-          type="date"
+        <DateInput
           value={date}
-          onChange={e => setDate(e.target.value)}
+          onChange={setDate}
           required
-          className="w-full rounded-xl border border-border bg-surface px-4 py-2.5 text-sm text-text focus:outline-none focus:ring-2 focus:ring-brand focus:border-transparent"
+          ariaLabel="Fecha de la transacción"
+          className="w-full"
         />
       </div>
 
@@ -188,9 +245,9 @@ export function TransactionForm({ type, onSubmit, onCancel, initialValues, onSub
                   key={method}
                   type="button"
                   onClick={() => setPaymentMethod(isSelected ? '' : method)}
-                  className={`px-3 py-1.5 rounded-full text-sm font-medium transition-all cursor-pointer ${
+                  className={`pill-bounce px-3 py-1.5 rounded-full text-sm font-medium cursor-pointer ${
                     isSelected
-                      ? 'bg-income text-white shadow-sm'
+                      ? 'bg-income text-white shadow-sm pill-active'
                       : 'bg-surface border border-border text-subtext hover:border-brand/40 hover:text-text'
                   }`}
                 >
@@ -222,10 +279,10 @@ export function TransactionForm({ type, onSubmit, onCancel, initialValues, onSub
           <label className="flex items-center gap-3 cursor-pointer select-none">
             <div
               onClick={() => setIsRecurring(v => !v)}
-              className={`relative w-10 h-5 rounded-full transition-colors cursor-pointer ${isRecurring ? 'bg-brand' : 'bg-border'}`}
+              className={`toggle-switch relative w-10 h-5 rounded-full cursor-pointer ${isRecurring ? 'bg-brand toggle-on' : 'bg-border'}`}
             >
               <span
-                className={`absolute top-0.5 left-0.5 w-4 h-4 rounded-full bg-white shadow transition-transform ${isRecurring ? 'translate-x-5' : ''}`}
+                className={`toggle-thumb absolute top-0.5 left-0.5 w-4 h-4 rounded-full bg-white shadow ${isRecurring ? 'toggle-thumb-on' : ''}`}
               />
             </div>
             <span className="text-sm font-semibold text-text">Repetir automáticamente</span>
@@ -240,9 +297,9 @@ export function TransactionForm({ type, onSubmit, onCancel, initialValues, onSub
                     key={opt.value}
                     type="button"
                     onClick={() => setFrequency(opt.value)}
-                    className={`px-3 py-1.5 rounded-full text-sm font-medium transition-all cursor-pointer ${
+                    className={`pill-bounce px-3 py-1.5 rounded-full text-sm font-medium cursor-pointer ${
                       frequency === opt.value
-                        ? `${accentBg} text-white shadow-sm`
+                        ? `${accentBg} text-white shadow-sm pill-active`
                         : 'bg-surface border border-border text-subtext hover:border-brand/40 hover:text-text'
                     }`}
                   >
@@ -256,19 +313,22 @@ export function TransactionForm({ type, onSubmit, onCancel, initialValues, onSub
       )}
 
       {/* Actions */}
-      <div className="flex gap-3 pt-1">
+      <div className="flex gap-3 pt-2">
         <button
           type="button"
           onClick={onCancel}
-          className="flex-1 py-2.5 rounded-xl text-sm font-semibold text-subtext bg-surface hover:bg-border transition-colors cursor-pointer"
+          className="flex-1 py-2.5 rounded-xl text-sm font-semibold text-subtext bg-surface border border-border hover:bg-border hover:text-text transition-colors cursor-pointer"
         >
           Cancelar
         </button>
         <button
           type="submit"
           disabled={submitting || !amount || !date}
-          className={`flex-1 py-2.5 rounded-xl text-sm font-semibold text-white transition-colors cursor-pointer ${accentBg} ${accentHover} disabled:opacity-50 disabled:cursor-not-allowed`}
+          className={`flex-1 py-2.5 rounded-xl text-sm font-semibold text-white transition-colors cursor-pointer flex items-center justify-center gap-2 ${accentBg} ${accentHover} disabled:opacity-50 disabled:cursor-not-allowed`}
         >
+          {submitting && (
+            <span className="w-4 h-4 rounded-full border-2 border-white/40 border-t-white animate-spin" />
+          )}
           {submitting
             ? 'Guardando…'
             : isRecurring

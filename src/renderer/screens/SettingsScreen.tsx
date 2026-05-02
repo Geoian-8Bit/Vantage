@@ -1,8 +1,11 @@
 import { useState } from 'react'
 import { useCategories } from '../hooks/useCategories'
-import { useTheme } from '../hooks/useTheme'
+import { useDesignTheme, type DesignThemeId, type ThemeMode } from '../hooks/useDesignTheme'
 import { PageHeader } from '../components/layout/PageHeader'
 import { Modal } from '../components/Modal'
+import { useToast } from '../components/Toast'
+import { EmptyState } from '../components/EmptyState'
+import { Skeleton } from '../components/Skeleton'
 import { ImportScreen } from './ImportScreen'
 import { RecurringScreen } from './RecurringScreen'
 import { BackupScreen } from './BackupScreen'
@@ -86,6 +89,7 @@ interface CategoryRowProps {
 function CategoryRow({ cat, onDelete, onRename }: CategoryRowProps) {
   const [editingName, setEditingName] = useState('')
   const [isEditing,   setIsEditing]   = useState(false)
+  const toast = useToast()
 
   function startEdit() {
     setEditingName(cat.name)
@@ -94,7 +98,14 @@ function CategoryRow({ cat, onDelete, onRename }: CategoryRowProps) {
 
   async function commitEdit() {
     const trimmed = editingName.trim()
-    if (trimmed && trimmed !== cat.name) await onRename(cat.id, trimmed)
+    if (trimmed && trimmed !== cat.name) {
+      try {
+        await onRename(cat.id, trimmed)
+        toast.success('Categoría renombrada')
+      } catch (err) {
+        toast.error('No se pudo renombrar', err instanceof Error ? err.message : undefined)
+      }
+    }
     setIsEditing(false)
   }
 
@@ -140,11 +151,41 @@ function CategoryRow({ cat, onDelete, onRename }: CategoryRowProps) {
 
 // ── Appearance view ────────────────────────────────────────────────────────────
 
+function fireThemeRipple(x: number, y: number, color: string) {
+  const ripple = document.createElement('div')
+  ripple.className = 'theme-ripple'
+  ripple.style.left = `${x}px`
+  ripple.style.top = `${y}px`
+  ripple.style.width = '40px'
+  ripple.style.height = '40px'
+  ripple.style.background = color
+  document.body.appendChild(ripple)
+  setTimeout(() => ripple.remove(), 800)
+}
+
 function AppearanceView({ onBack }: { onBack: () => void }) {
-  const { theme, setTheme, themes } = useTheme()
+  const { activeId, activeMode, setTheme, setMode, themes } = useDesignTheme()
+
+  function handlePaletteClick(e: React.MouseEvent<HTMLButtonElement>, id: DesignThemeId, color: string) {
+    if (id === activeId) return
+    const rect = e.currentTarget.getBoundingClientRect()
+    fireThemeRipple(rect.left + rect.width / 2, rect.top + rect.height / 2, color)
+    setTheme(id)
+  }
+
+  function handleModeClick(e: React.MouseEvent<HTMLButtonElement>, mode: ThemeMode) {
+    if (mode === activeMode) return
+    const rect = e.currentTarget.getBoundingClientRect()
+    const meta = themes.find(t => t.id === activeId) ?? themes[0]
+    const color = mode === 'dark'
+      ? (meta.previewDark?.brand ?? meta.preview.brand)
+      : meta.preview.brand
+    fireThemeRipple(rect.left + rect.width / 2, rect.top + rect.height / 2, color)
+    setMode(mode)
+  }
 
   return (
-    <div className="space-y-4 lg:space-y-5 w-full">
+    <div className="space-y-5 lg:space-y-6 w-full">
       <PageHeader
         section="Ajustes"
         page="Apariencia"
@@ -161,44 +202,134 @@ function AppearanceView({ onBack }: { onBack: () => void }) {
         }
       />
 
-      <div className="grid grid-cols-2 lg:grid-cols-3 gap-4">
-        {themes.map(t => {
-          const isActive = theme === t.id
-          return (
-            <button
-              key={t.id}
-              onClick={() => setTheme(t.id)}
-              className={`relative rounded-xl border-2 p-4 text-left transition-all cursor-pointer ${
-                isActive
-                  ? 'border-brand shadow-md'
-                  : 'border-border hover:border-brand/40'
-              }`}
-            >
-              {isActive && (
-                <div className="absolute top-2.5 right-2.5 w-5 h-5 rounded-full bg-brand flex items-center justify-center">
-                  <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
-                    <path d="M20 6 9 17l-5-5"/>
-                  </svg>
+      {/* ── Mode (light / dark) ────────────────────────────────────── */}
+      <section className="rounded-xl bg-card border border-border shadow-sm p-5">
+        <p className="text-xs font-semibold text-subtext uppercase tracking-wider mb-3">Modo</p>
+        <div className="grid grid-cols-2 gap-3">
+          {(['light', 'dark'] as const).map(mode => {
+            const isActive = activeMode === mode
+            return (
+              <button
+                key={mode}
+                onClick={(e) => handleModeClick(e, mode)}
+                className={`relative flex items-center gap-3 p-4 rounded-2xl border-2 text-left transition-all cursor-pointer ${
+                  isActive
+                    ? 'border-brand bg-brand-light shadow-md'
+                    : 'border-border bg-surface hover:border-brand/40 hover:-translate-y-0.5'
+                }`}
+              >
+                <div
+                  className="w-12 h-12 rounded-xl flex items-center justify-center shrink-0"
+                  style={{
+                    background: mode === 'dark' ? '#1F1B1A' : '#FFFFFF',
+                    border: '1px solid var(--color-border)',
+                    color: mode === 'dark' ? '#FFD580' : '#FF7A59',
+                  }}
+                >
+                  {mode === 'dark' ? (
+                    <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                      <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z" />
+                    </svg>
+                  ) : (
+                    <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                      <circle cx="12" cy="12" r="4" />
+                      <line x1="12" y1="2" x2="12" y2="4" /><line x1="12" y1="20" x2="12" y2="22" />
+                      <line x1="4.93" y1="4.93" x2="6.34" y2="6.34" /><line x1="17.66" y1="17.66" x2="19.07" y2="19.07" />
+                      <line x1="2" y1="12" x2="4" y2="12" /><line x1="20" y1="12" x2="22" y2="12" />
+                      <line x1="4.93" y1="19.07" x2="6.34" y2="17.66" /><line x1="17.66" y1="6.34" x2="19.07" y2="4.93" />
+                    </svg>
+                  )}
                 </div>
-              )}
-              {/* Color preview */}
-              <div className="rounded-lg overflow-hidden border border-border/50 mb-3">
-                <div className="flex h-16">
-                  <div className="w-8" style={{ background: t.colors.sidebar }} />
-                  <div className="flex-1 p-1.5" style={{ background: t.colors.surface }}>
-                    <div className="rounded h-full flex flex-col gap-1 p-1.5" style={{ background: t.colors.card }}>
-                      <div className="h-1.5 w-10 rounded-full" style={{ background: t.colors.brand }} />
-                      <div className="h-1 w-14 rounded-full opacity-40" style={{ background: t.colors.text }} />
-                      <div className="h-1 w-8 rounded-full opacity-20" style={{ background: t.colors.text }} />
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-bold text-text">{mode === 'dark' ? 'Oscuro' : 'Claro'}</p>
+                  <p className="text-xs text-subtext mt-0.5">
+                    {mode === 'dark' ? 'Cálido y reposado de noche' : 'Suave y luminoso de día'}
+                  </p>
+                </div>
+                {isActive && (
+                  <div className="w-5 h-5 rounded-full bg-brand flex items-center justify-center shrink-0">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
+                      <path d="M20 6 9 17l-5-5"/>
+                    </svg>
+                  </div>
+                )}
+              </button>
+            )
+          })}
+        </div>
+      </section>
+
+      {/* ── Palette ────────────────────────────────────────────────── */}
+      <section>
+        <div className="flex items-baseline gap-3 mb-3 px-1">
+          <p className="text-xs font-semibold text-subtext uppercase tracking-wider">Paleta de diseño</p>
+          <span className="text-[11px] text-subtext">{themes.length} variantes Clay</span>
+        </div>
+        <div className="grid grid-cols-2 lg:grid-cols-2 gap-4">
+          {themes.map(t => {
+            const isActive = activeId === t.id
+            const preview = activeMode === 'dark' ? (t.previewDark ?? t.preview) : t.preview
+            return (
+              <button
+                key={t.id}
+                onClick={(e) => handlePaletteClick(e, t.id, preview.brand)}
+                className={`relative rounded-2xl border-2 p-4 text-left transition-all cursor-pointer ${
+                  isActive
+                    ? 'border-brand shadow-md'
+                    : 'border-border hover:border-brand/40 hover:-translate-y-0.5'
+                }`}
+              >
+                {isActive && (
+                  <div className="absolute top-2.5 right-2.5 w-6 h-6 rounded-full bg-brand flex items-center justify-center shadow-sm z-10">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
+                      <path d="M20 6 9 17l-5-5"/>
+                    </svg>
+                  </div>
+                )}
+                {/* Preview de paleta: superficie + card con elementos representativos */}
+                <div
+                  className="rounded-xl overflow-hidden border mb-3 relative"
+                  style={{ background: preview.bg, borderColor: 'var(--color-border)' }}
+                >
+                  {/* Glow de fondo cálido */}
+                  <div
+                    className="absolute inset-0 opacity-70 pointer-events-none"
+                    style={{
+                      background: `radial-gradient(circle at 18% 22%, ${preview.brand}33 0%, transparent 55%), radial-gradient(circle at 82% 78%, ${preview.accent}33 0%, transparent 55%)`,
+                    }}
+                  />
+                  <div className="relative flex flex-col gap-1.5 p-3 h-24">
+                    <div
+                      className="rounded-lg p-2 flex items-center gap-2"
+                      style={{ background: preview.card, boxShadow: `0 4px 12px ${preview.text}10` }}
+                    >
+                      <div
+                        className="w-3 h-3 rounded-full shrink-0"
+                        style={{ background: preview.brand, boxShadow: `0 0 0 2px ${preview.brand}33` }}
+                      />
+                      <div className="h-1.5 flex-1 rounded-full" style={{ background: preview.text, opacity: 0.18 }} />
+                    </div>
+                    <div className="flex gap-1.5">
+                      <div
+                        className="flex-1 h-6 rounded-md flex items-center px-1.5"
+                        style={{ background: preview.card, boxShadow: `0 2px 6px ${preview.text}10` }}
+                      >
+                        <div className="h-1 w-2/3 rounded-full" style={{ background: preview.text, opacity: 0.28 }} />
+                      </div>
+                      <div
+                        className="w-10 h-6 rounded-md"
+                        style={{ background: preview.accent, opacity: 0.85 }}
+                      />
                     </div>
                   </div>
                 </div>
-              </div>
-              <p className="text-sm font-bold text-text">{t.name}</p>
-            </button>
-          )
-        })}
-      </div>
+                <p className="text-sm font-bold text-text" style={{ fontFamily: 'var(--font-display)' }}>{t.name}</p>
+                <p className="text-xs text-subtext mt-0.5">{t.tagline}</p>
+              </button>
+            )
+          })}
+        </div>
+      </section>
     </div>
   )
 }
@@ -212,8 +343,18 @@ export function SettingsScreen() {
   const [newType, setNewType]     = useState<'expense' | 'income'>('expense')
   const [saving,  setSaving]      = useState(false)
   const [catError, setCatError]   = useState('')
+  const toast = useToast()
 
   const { categories, loading, addCategory, removeCategory, renameCategory } = useCategories()
+
+  const handleDeleteCategory = async (id: string) => {
+    try {
+      await removeCategory(id)
+      toast.success('Categoría eliminada')
+    } catch (err) {
+      toast.error('No se pudo eliminar', err instanceof Error ? err.message : undefined)
+    }
+  }
 
   const expenseCategories = categories.filter(c => c.type === 'expense')
   const incomeCategories  = categories.filter(c => c.type === 'income')
@@ -234,8 +375,9 @@ export function SettingsScreen() {
     try {
       await addCategory({ name: trimmed, type: newType })
       setShowModal(false)
+      toast.success('Categoría creada', `${newType === 'expense' ? 'Gasto' : 'Ingreso'}: ${trimmed}`)
     } catch (err) {
-      setCatError(err instanceof Error ? err.message : 'Error al crear categoría')
+      setCatError(err instanceof Error ? err.message : 'No se pudo crear la categoría')
     } finally {
       setSaving(false)
     }
@@ -244,7 +386,7 @@ export function SettingsScreen() {
   // ── Settings hub ──────────────────────────────────────────────────
   if (view === 'menu') {
     return (
-      <div className="space-y-4 lg:space-y-5 w-full">
+      <div key="settings-menu" className="settings-view-anim space-y-4 lg:space-y-5 w-full">
         <PageHeader section="Ajustes" page="Ajustes" />
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
           {SETTINGS_OPTIONS.map(opt => (
@@ -272,27 +414,27 @@ export function SettingsScreen() {
 
   // ── Import view ───────────────────────────────────────────────────
   if (view === 'import') {
-    return <ImportScreen onBack={() => setView('menu')} />
+    return <div key="settings-import" className="settings-view-anim"><ImportScreen onBack={() => setView('menu')} /></div>
   }
 
   // ── Recurring view ────────────────────────────────────────────────
   if (view === 'recurring') {
-    return <RecurringScreen onBack={() => setView('menu')} />
+    return <div key="settings-recurring" className="settings-view-anim"><RecurringScreen onBack={() => setView('menu')} /></div>
   }
 
   // ── Backup view ─────────────────────────────────────────────────
   if (view === 'backup') {
-    return <BackupScreen onBack={() => setView('menu')} />
+    return <div key="settings-backup" className="settings-view-anim"><BackupScreen onBack={() => setView('menu')} /></div>
   }
 
   // ── Appearance view ────────────────────────────────────────────
   if (view === 'appearance') {
-    return <AppearanceView onBack={() => setView('menu')} />
+    return <div key="settings-appearance" className="settings-view-anim"><AppearanceView onBack={() => setView('menu')} /></div>
   }
 
   // ── Categories view ───────────────────────────────────────────────
   return (
-    <div className="space-y-4 lg:space-y-5 w-full">
+    <div key="settings-categories" className="settings-view-anim space-y-4 lg:space-y-5 w-full">
       <PageHeader
         section="Ajustes"
         page="Categorías"
@@ -321,7 +463,24 @@ export function SettingsScreen() {
       />
 
       {loading ? (
-        <p className="text-subtext text-sm">Cargando…</p>
+        <div className="flex flex-col lg:flex-row gap-4">
+          {[0, 1].map(col => (
+            <div key={col} className="flex-1 rounded-xl bg-card border border-border shadow-sm overflow-hidden">
+              <div className="px-5 py-3 border-b border-border bg-surface/60 flex items-center gap-2">
+                <Skeleton width={8} height={8} rounded="full" />
+                <Skeleton width={70} height={14} />
+                <Skeleton width={20} height={11} className="ml-auto" />
+              </div>
+              <div className="divide-y divide-border/40">
+                {[0, 1, 2, 3].map(i => (
+                  <div key={i} className="px-5 py-3 flex items-center gap-3">
+                    <Skeleton width={`${40 + i * 12}%`} height={14} />
+                  </div>
+                ))}
+              </div>
+            </div>
+          ))}
+        </div>
       ) : (
         <div className="flex flex-col lg:flex-row gap-4">
           {/* Gastos column */}
@@ -333,9 +492,22 @@ export function SettingsScreen() {
             </div>
             <div className="divide-y divide-border/40">
               {expenseCategories.length === 0
-                ? <p className="px-5 py-4 text-sm text-subtext italic">Sin categorías</p>
+                ? (
+                    <EmptyState
+                      className="!py-8 !px-4"
+                      icon={
+                        <svg xmlns="http://www.w3.org/2000/svg" width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+                          <path d="M9 5H2v7l6.29 6.29c.94.94 2.48.94 3.42 0l3.58-3.58c.94-.94.94-2.48 0-3.42L9 5Z"/>
+                          <path d="M6 9.01V9"/>
+                          <path d="m15 5 6.3 6.3a2.4 2.4 0 0 1 0 3.4L17 19"/>
+                        </svg>
+                      }
+                      title="Sin categorías"
+                      description='Pulsa «+ Añadir categoría» arriba para crear la primera.'
+                    />
+                  )
                 : expenseCategories.map(cat => (
-                    <CategoryRow key={cat.id} cat={cat} onDelete={removeCategory} onRename={renameCategory} />
+                    <CategoryRow key={cat.id} cat={cat} onDelete={handleDeleteCategory} onRename={renameCategory} />
                   ))
               }
             </div>
@@ -350,9 +522,22 @@ export function SettingsScreen() {
             </div>
             <div className="divide-y divide-border/40">
               {incomeCategories.length === 0
-                ? <p className="px-5 py-4 text-sm text-subtext italic">Sin categorías</p>
+                ? (
+                    <EmptyState
+                      className="!py-8 !px-4"
+                      icon={
+                        <svg xmlns="http://www.w3.org/2000/svg" width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+                          <path d="M9 5H2v7l6.29 6.29c.94.94 2.48.94 3.42 0l3.58-3.58c.94-.94.94-2.48 0-3.42L9 5Z"/>
+                          <path d="M6 9.01V9"/>
+                          <path d="m15 5 6.3 6.3a2.4 2.4 0 0 1 0 3.4L17 19"/>
+                        </svg>
+                      }
+                      title="Sin categorías"
+                      description='Pulsa «+ Añadir categoría» arriba para crear la primera.'
+                    />
+                  )
                 : incomeCategories.map(cat => (
-                    <CategoryRow key={cat.id} cat={cat} onDelete={removeCategory} onRename={renameCategory} />
+                    <CategoryRow key={cat.id} cat={cat} onDelete={handleDeleteCategory} onRename={renameCategory} />
                   ))
               }
             </div>
@@ -415,7 +600,12 @@ export function SettingsScreen() {
           </div>
 
           {catError && (
-            <p className="text-xs font-medium text-expense bg-expense-light rounded-lg px-3 py-2">{catError}</p>
+            <p
+              key={catError}
+              className="shake-error text-xs font-medium text-expense bg-expense-light rounded-lg px-3 py-2"
+            >
+              {catError}
+            </p>
           )}
 
           <div className="flex gap-3 pt-1">

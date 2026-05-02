@@ -5,9 +5,18 @@ import { HomeScreen } from './screens/HomeScreen'
 import { StatsScreen } from './screens/StatsScreen'
 import { CalendarScreen } from './screens/CalendarScreen'
 import { SettingsScreen } from './screens/SettingsScreen'
+import { HubScreen } from './screens/HubScreen'
 
 export default function App() {
-  const [activeModule, setActiveModule] = useState('dashboard')
+  const [activeModule, setActiveModule] = useState('hub')
+
+  if (activeModule === 'hub') {
+    return (
+      <AppLayout activeModule={activeModule} onNavigate={setActiveModule}>
+        <HubScreen onEnter={setActiveModule} />
+      </AppLayout>
+    )
+  }
 
   return (
     <AppLayout activeModule={activeModule} onNavigate={setActiveModule}>
