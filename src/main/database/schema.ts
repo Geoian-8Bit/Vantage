@@ -68,6 +68,19 @@ export async function initializeDatabase(filePath: string): Promise<Database> {
     }
   }
 
+  // Asegurar que existe la categoría reservada "Ahorro" en ambos tipos
+  // (se asigna automáticamente a transacciones que van/vienen de apartados)
+  for (const type of ['expense', 'income'] as const) {
+    const check = db.prepare('SELECT COUNT(*) as cnt FROM categories WHERE name = ? AND type = ?')
+    check.bind(['Ahorro', type])
+    check.step()
+    const exists = Number((check.getAsObject() as { cnt: number }).cnt) > 0
+    check.free()
+    if (!exists) {
+      db.run('INSERT INTO categories (id, name, type) VALUES (?, ?, ?)', [randomUUID(), 'Ahorro', type])
+    }
+  }
+
   // Migration: add category column if it does not yet exist
   try {
     db.run("ALTER TABLE transactions ADD COLUMN category TEXT NOT NULL DEFAULT 'Otros'")
@@ -89,6 +102,27 @@ export async function initializeDatabase(filePath: string): Promise<Database> {
     // Index already exists or duplicate data prevents creation — safe to ignore
   }
 
+  // ── Ahorros (apartados / sub-cuentas) ────────────────────────────────
+  db.run(`
+    CREATE TABLE IF NOT EXISTS savings_accounts (
+      id            TEXT PRIMARY KEY,
+      name          TEXT NOT NULL,
+      color         TEXT,
+      target_amount REAL,
+      created_at    TEXT NOT NULL DEFAULT (datetime('now'))
+    )
+  `)
+  db.run('CREATE UNIQUE INDEX IF NOT EXISTS idx_savings_accounts_name ON savings_accounts(name)')
+
+  // Migration: añadir savings_account_id a transactions (FK lógica, sin CASCADE
+  // porque el borrado de apartados se bloquea cuando hay saldo)
+  try {
+    db.run('ALTER TABLE transactions ADD COLUMN savings_account_id TEXT')
+  } catch {
+    // Column already exists — safe to ignore
+  }
+  db.run('CREATE INDEX IF NOT EXISTS idx_transactions_savings ON transactions(savings_account_id)')
+
   // Recurring templates table
   db.run(`
     CREATE TABLE IF NOT EXISTS recurring_templates (
@@ -105,6 +139,15 @@ export async function initializeDatabase(filePath: string): Promise<Database> {
   `)
 
   saveDatabase()
+
+  // Migración idempotente: hex literales de apartados → slots semánticos.
+  // Imports tardíos para evitar ciclos (savingsMigration usa getDatabase de aquí).
+  try {
+    const { migrateSavingsHexToSlots } = require('./savingsMigration') as typeof import('./savingsMigration')
+    migrateSavingsHexToSlots()
+  } catch (err) {
+    console.warn('[savings] migration to slots failed:', err)
+  }
 
   return db
 }
@@ -147,7 +190,27 @@ export async function replaceDatabase(buffer: Buffer): Promise<void> {
   // Re-run migrations for older backups
   try { db.run("ALTER TABLE transactions ADD COLUMN category TEXT NOT NULL DEFAULT 'Otros'") } catch { /* exists */ }
   try { db.run("ALTER TABLE transactions ADD COLUMN note TEXT NOT NULL DEFAULT ''") } catch { /* exists */ }
+  try { db.run('ALTER TABLE transactions ADD COLUMN savings_account_id TEXT') } catch { /* exists */ }
+  try {
+    db.run(`
+      CREATE TABLE IF NOT EXISTS savings_accounts (
+        id            TEXT PRIMARY KEY,
+        name          TEXT NOT NULL,
+        color         TEXT,
+        target_amount REAL,
+        created_at    TEXT NOT NULL DEFAULT (datetime('now'))
+      )
+    `)
+  } catch { /* exists */ }
   saveDatabase()
+
+  // Migrar colores hex importados a slots para que se armonicen con el tema.
+  try {
+    const { migrateSavingsHexToSlots } = require('./savingsMigration') as typeof import('./savingsMigration')
+    migrateSavingsHexToSlots()
+  } catch (err) {
+    console.warn('[savings] migration to slots failed on replaceDatabase:', err)
+  }
 }
 
 export function getDbPath(): string {

@@ -4,6 +4,8 @@ import {
   type CreateTransactionDTO,
   type UpdateTransactionDTO,
   type CreateCategoryDTO,
+  type CreateSavingsAccountDTO,
+  type UpdateSavingsAccountDTO,
   type CreateRecurringTemplateDTO,
   type ImportCommitPayload,
   type PDFExportPayload,
@@ -22,6 +24,12 @@ const api = {
     create: (data: CreateCategoryDTO) => ipcRenderer.invoke(IPC_CHANNELS.CATEGORIES_CREATE, data),
     delete: (id: string) => ipcRenderer.invoke(IPC_CHANNELS.CATEGORIES_DELETE, { id }),
     update: (id: string, name: string) => ipcRenderer.invoke(IPC_CHANNELS.CATEGORIES_UPDATE, { id, name }),
+  },
+  savings: {
+    getAll: () => ipcRenderer.invoke(IPC_CHANNELS.SAVINGS_GET_ALL),
+    create: (data: CreateSavingsAccountDTO) => ipcRenderer.invoke(IPC_CHANNELS.SAVINGS_CREATE, data),
+    update: (id: string, data: UpdateSavingsAccountDTO) => ipcRenderer.invoke(IPC_CHANNELS.SAVINGS_UPDATE, { id, data }),
+    delete: (id: string) => ipcRenderer.invoke(IPC_CHANNELS.SAVINGS_DELETE, { id }),
   },
   fileio: {
     openFileDialog: (opts: { filters: { name: string; extensions: string[] }[]; title?: string }) =>

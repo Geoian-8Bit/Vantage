@@ -6,6 +6,7 @@ declare module '*.png' {
 import type {
   Transaction, CreateTransactionDTO, UpdateTransactionDTO,
   Category, CreateCategoryDTO,
+  SavingsAccount, CreateSavingsAccountDTO, UpdateSavingsAccountDTO,
   ImportFilePreview, ImportCommitPayload, ImportCommitResult,
   RecurringTemplate, CreateRecurringTemplateDTO,
   DashboardStats, BackupResult, RestoreResult,
@@ -27,6 +28,12 @@ declare global {
         create(data: CreateCategoryDTO): Promise<Category>
         delete(id: string): Promise<void>
         update(id: string, name: string): Promise<Category>
+      }
+      savings: {
+        getAll(): Promise<SavingsAccount[]>
+        create(data: CreateSavingsAccountDTO): Promise<SavingsAccount>
+        update(id: string, data: UpdateSavingsAccountDTO): Promise<SavingsAccount>
+        delete(id: string): Promise<void>
       }
       fileio: {
         openFileDialog(opts: { filters: { name: string; extensions: string[] }[]; title?: string }): Promise<string | null>

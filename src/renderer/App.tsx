@@ -5,6 +5,7 @@ import { HomeScreen } from './screens/HomeScreen'
 import { StatsScreen } from './screens/StatsScreen'
 import { CalendarScreen } from './screens/CalendarScreen'
 import { SettingsScreen } from './screens/SettingsScreen'
+import { SavingsScreen } from './screens/SavingsScreen'
 
 // HubScreen y HubParticles quedan como código legacy: no se enrutan desde
 // aquí pero los archivos se mantienen por si en el futuro se reabre el
@@ -19,6 +20,7 @@ export default function App() {
     <AppLayout activeModule={activeModule} onNavigate={setActiveModule}>
       {activeModule === 'dashboard' && <DashboardScreen />}
       {activeModule === 'expenses'  && <HomeScreen />}
+      {activeModule === 'savings'   && <SavingsScreen />}
       {activeModule === 'analytics' && <StatsScreen />}
       {activeModule === 'calendar'  && <CalendarScreen />}
       {activeModule === 'settings'  && <SettingsScreen />}

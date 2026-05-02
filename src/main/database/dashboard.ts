@@ -1,5 +1,6 @@
 import type { DashboardStats } from '../../shared/types'
 import { getDatabase } from './schema'
+import { getTotalSavings } from './savings'
 
 export function getDashboardStats(): DashboardStats {
   const db = getDatabase()
@@ -102,5 +103,19 @@ export function getDashboardStats(): DashboardStats {
     expenses: trendRows[m.label]?.expenses ?? 0,
   }))
 
-  return { balance, monthExpenses, prevMonthExpenses, monthExpenseChange, topCategory, upcomingRecurring, monthlyTrend }
+  // Savings: saldo total acumulado en apartados y patrimonio total
+  const totalSavings = getTotalSavings()
+  const netWorth = balance + totalSavings
+
+  return {
+    balance,
+    monthExpenses,
+    prevMonthExpenses,
+    monthExpenseChange,
+    topCategory,
+    upcomingRecurring,
+    monthlyTrend,
+    totalSavings,
+    netWorth,
+  }
 }

@@ -24,6 +24,8 @@ export function DashboardScreen() {
   const animBalance = useAnimatedNumber(stats?.balance ?? 0)
   const animMonthExpenses = useAnimatedNumber(stats?.monthExpenses ?? 0)
   const animTopCategoryAmount = useAnimatedNumber(stats?.topCategory?.amount ?? 0)
+  const animSavings = useAnimatedNumber(stats?.totalSavings ?? 0)
+  const animNetWorth = useAnimatedNumber(stats?.netWorth ?? 0)
 
   if (loading || !stats) {
     return <DashboardSkeleton />
@@ -37,16 +39,40 @@ export function DashboardScreen() {
     <div className="space-y-4 lg:space-y-5 w-full">
       <PageHeader section="Inicio" page="Panel" />
 
-      {/* Balance card */}
+      {/* Patrimonio + Balance líquido + Ahorros (3 vistas del mismo dinero) */}
       <TiltCard intensity={1.2} className="card-anim rounded-xl bg-card border border-border shadow-sm p-6 min-w-0" style={{ animationDelay: '0ms' }}>
-        <p className="text-xs font-semibold text-subtext uppercase tracking-wider mb-1">Balance total</p>
+        <p className="text-xs font-semibold text-subtext uppercase tracking-wider mb-1">Patrimonio total</p>
         <p
-          className={`font-bold tabular-nums truncate ${stats.balance >= 0 ? 'text-income' : 'text-expense'}`}
+          className={`font-bold tabular-nums truncate ${stats.netWorth >= 0 ? 'text-income' : 'text-expense'}`}
           style={{ fontSize: 'clamp(1.5rem, 3vw, 2rem)', lineHeight: 1.15 }}
-          title={`${stats.balance >= 0 ? '+' : '−'}${formatCurrency(Math.abs(stats.balance))}`}
+          title={`${stats.netWorth < 0 ? '−' : ''}${formatCurrency(Math.abs(stats.netWorth))}`}
         >
-          {stats.balance >= 0 ? '+' : '−'}{formatCurrency(Math.abs(animBalance))}
+          {stats.netWorth < 0 ? '−' : ''}{formatCurrency(Math.abs(animNetWorth))}
         </p>
+        <div className="grid grid-cols-2 gap-4 mt-4 pt-4 border-t border-border/60">
+          <div className="min-w-0">
+            <p className="text-[11px] font-semibold text-subtext uppercase tracking-wider mb-0.5">Balance líquido</p>
+            <p
+              className={`font-bold tabular-nums truncate ${stats.balance >= 0 ? 'text-income' : 'text-expense'}`}
+              style={{ fontSize: 'clamp(1rem, 1.6vw, 1.25rem)' }}
+              title={`${stats.balance < 0 ? '−' : ''}${formatCurrency(Math.abs(stats.balance))}`}
+            >
+              {stats.balance < 0 ? '−' : ''}{formatCurrency(Math.abs(animBalance))}
+            </p>
+            <p className="text-[11px] text-subtext mt-0.5">Disponible para gastar</p>
+          </div>
+          <div className="min-w-0">
+            <p className="text-[11px] font-semibold text-subtext uppercase tracking-wider mb-0.5">Ahorrado</p>
+            <p
+              className="font-bold text-brand tabular-nums truncate"
+              style={{ fontSize: 'clamp(1rem, 1.6vw, 1.25rem)' }}
+              title={formatCurrency(stats.totalSavings)}
+            >
+              {formatCurrency(animSavings)}
+            </p>
+            <p className="text-[11px] text-subtext mt-0.5">Reservado en apartados</p>
+          </div>
+        </div>
       </TiltCard>
 
       {/* Stat cards row */}

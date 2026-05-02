@@ -14,6 +14,7 @@ import { DateInput } from '../components/DateInput'
 import { Select } from '../components/Select'
 import type { CreateTransactionDTO, CreateRecurringTemplateDTO, Transaction, UpdateTransactionDTO } from '../../shared/types'
 import { useCategories } from '../hooks/useCategories'
+import { useSavings } from '../hooks/useSavings'
 import { pad, MONTH_NAMES_FULL } from '../lib/utils'
 
 type ModalType = 'expense' | 'income' | null
@@ -69,6 +70,7 @@ export function HomeScreen() {
     updateTransaction
   } = useTransactions()
   const { categories } = useCategories()
+  const { accounts: savingsAccounts, loadAccounts: reloadSavings } = useSavings()
 
   const [modalType, setModalType] = useState<ModalType>(null)
   const [filter, setFilter] = useState<Filter>('all')
@@ -231,11 +233,15 @@ export function HomeScreen() {
     try {
       await addTransaction(data)
       setModalType(null)
+      if (data.savings_account_id) {
+        // Refrescar saldos de apartados tras una aportación/retirada
+        reloadSavings()
+      }
       toast.success(data.type === 'income' ? 'Ingreso registrado' : 'Gasto registrado')
     } catch (err) {
       toast.error('No se pudo guardar', err instanceof Error ? err.message : undefined)
     }
-  }, [addTransaction, toast])
+  }, [addTransaction, reloadSavings, toast])
 
   const handleSubmitRecurring = useCallback(async (dto: CreateRecurringTemplateDTO): Promise<void> => {
     try {
@@ -250,6 +256,8 @@ export function HomeScreen() {
   const handleDeleteConfirm = useCallback(async (): Promise<void> => {
     if (!confirmDeleteId) return
     const idToDelete = confirmDeleteId
+    const txn = transactions.find(t => t.id === idToDelete)
+    const touchedSavings = !!txn?.savings_account_id
     setConfirmDeleteId(null)
     // Marcar para animación de salida
     setRemovingIds(prev => {
@@ -259,6 +267,7 @@ export function HomeScreen() {
     await new Promise(r => setTimeout(r, 320))
     try {
       await removeTransaction(idToDelete)
+      if (touchedSavings) reloadSavings()
       toast.success('Transacción eliminada')
     } catch (err) {
       toast.error('No se pudo eliminar', err instanceof Error ? err.message : undefined)
@@ -267,7 +276,7 @@ export function HomeScreen() {
         const next = new Set(prev); next.delete(idToDelete); return next
       })
     }
-  }, [confirmDeleteId, removeTransaction, toast])
+  }, [confirmDeleteId, removeTransaction, transactions, reloadSavings, toast])
 
   const handleBulkDeleteConfirm = useCallback(async (): Promise<void> => {
     const ids = filteredTransactions.map(t => t.id)
@@ -293,9 +302,11 @@ export function HomeScreen() {
   const handleEditSubmit = useCallback(async (data: UpdateTransactionDTO): Promise<void> => {
     if (!editingTransaction) return
     const editedId = editingTransaction.id
+    const touchedSavings = !!(data.savings_account_id || editingTransaction.savings_account_id)
     try {
       await updateTransaction(editedId, data)
       setEditingTransaction(null)
+      if (touchedSavings) reloadSavings()
       toast.success('Cambios guardados')
       // Marca la fila editada para tx-flash, igual que las nuevas
       setEditedIds(prev => {
@@ -309,7 +320,7 @@ export function HomeScreen() {
     } catch (err) {
       toast.error('No se pudo actualizar', err instanceof Error ? err.message : undefined)
     }
-  }, [editingTransaction, updateTransaction, toast])
+  }, [editingTransaction, updateTransaction, reloadSavings, toast])
 
   async function handleExport(): Promise<void> {
     if (filteredTransactions.length === 0 || exporting) return
@@ -541,6 +552,7 @@ export function HomeScreen() {
         listKey={`${filter}|${categoryFilter}|${dateMode}|${page}|${searchText}`}
         removingIds={removingIds}
         flashIds={editedIds}
+        savingsAccounts={savingsAccounts}
         hasActiveFilter={
           // El usuario está restringiendo el conjunto si: hay search, hay
           // categoría específica, o el filtro de tipo no es "todo". Con un
@@ -689,6 +701,7 @@ export function HomeScreen() {
               date: editingTransaction.date,
               category: editingTransaction.category,
               note: editingTransaction.note ?? '',
+              savings_account_id: editingTransaction.savings_account_id ?? null,
             }}
           />
         )}

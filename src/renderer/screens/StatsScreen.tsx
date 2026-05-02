@@ -5,6 +5,7 @@ import {
   AreaChart, Area
 } from 'recharts'
 import { useTransactions } from '../hooks/useTransactions'
+import { useSavings } from '../hooks/useSavings'
 import { PageHeader } from '../components/layout/PageHeader'
 import { TiltCard } from '../components/TiltCard'
 import { Tabs } from '../components/Tabs'
@@ -13,6 +14,7 @@ import { EmptyState } from '../components/EmptyState'
 import { useToast } from '../components/Toast'
 import { formatCurrency, pad, MONTH_NAMES_FULL, MONTH_NAMES_SHORT, monthLabel } from '../lib/utils'
 import { getCategoryColor, PIE_COLORS } from '../lib/categoryColors'
+import { resolveSavingsColor } from '../lib/savingsColors'
 import { ChartTooltip, ChartPieTooltip, PieActiveSector } from '../components/charts/ChartTheme'
 import {
   CHART_GRID_PROPS,
@@ -46,6 +48,7 @@ function formatYAxis(value: number): string {
 
 export function StatsScreen() {
   const { transactions, loading } = useTransactions()
+  const { accounts: savingsAccounts } = useSavings()
   const toast = useToast()
 
   const [dateMode, setDateMode] = useState<DateMode>('compare')
@@ -144,33 +147,40 @@ export function StatsScreen() {
 
   // ── Summary stats ──────────────────────────────────────────────────
   const periodStats = useMemo(() => {
-    let income = 0, expenses = 0
+    let income = 0, expenses = 0, savedNet = 0
     for (const t of periodTransactions) {
       if (t.type === 'income') income += t.amount
       else expenses += t.amount
+      // Ahorrado neto del periodo: aportaciones menos retiradas de apartados
+      if (t.savings_account_id) {
+        savedNet += t.type === 'expense' ? t.amount : -t.amount
+      }
     }
-    return { income, expenses, balance: income - expenses }
+    return { income, expenses, balance: income - expenses, savedNet }
   }, [periodTransactions])
 
   // ── Bar chart data ─────────────────────────────────────────────────
+  // Gastos = GastosPuros + Aportado (stacked). El usuario ve la altura total
+  // del gasto, pero distinguible visualmente la parte que fue al ahorro.
   const barChartData = useMemo(() => {
-    const months: { month: string; Ingresos: number; Gastos: number; _key: string }[] = []
+    type Row = { month: string; Ingresos: number; GastosPuros: number; Aportado: number; _key: string }
+    const months: Row[] = []
 
     if (dateMode === 'compare') {
       for (const key of compareMonths) {
-        months.push({ month: monthLabel(key), Ingresos: 0, Gastos: 0, _key: key })
+        months.push({ month: monthLabel(key), Ingresos: 0, GastosPuros: 0, Aportado: 0, _key: key })
       }
     } else if (dateMode === 'quarter') {
       const y = refDate.getFullYear()
       const q = Math.floor(refDate.getMonth() / 3)
       for (let i = 0; i < 3; i++) {
         const m = q * 3 + i
-        months.push({ month: MONTH_NAMES_SHORT[m], Ingresos: 0, Gastos: 0, _key: `${y}-${pad(m + 1)}` })
+        months.push({ month: MONTH_NAMES_SHORT[m], Ingresos: 0, GastosPuros: 0, Aportado: 0, _key: `${y}-${pad(m + 1)}` })
       }
     } else if (dateMode === 'year') {
       const y = refDate.getFullYear()
       for (let m = 0; m < 12; m++) {
-        months.push({ month: MONTH_NAMES_SHORT[m], Ingresos: 0, Gastos: 0, _key: `${y}-${pad(m + 1)}` })
+        months.push({ month: MONTH_NAMES_SHORT[m], Ingresos: 0, GastosPuros: 0, Aportado: 0, _key: `${y}-${pad(m + 1)}` })
       }
     } else if (dateMode === 'custom' && rangeFrom && rangeTo) {
       const [sy, sm] = rangeFrom.split('-').map(Number)
@@ -180,7 +190,7 @@ export function StatsScreen() {
       while (cur <= end) {
         months.push({
           month: `${MONTH_NAMES_SHORT[cur.getMonth()]} ${String(cur.getFullYear()).slice(2)}`,
-          Ingresos: 0, Gastos: 0,
+          Ingresos: 0, GastosPuros: 0, Aportado: 0,
           _key: `${cur.getFullYear()}-${pad(cur.getMonth() + 1)}`
         })
         cur.setMonth(cur.getMonth() + 1)
@@ -191,8 +201,13 @@ export function StatsScreen() {
     for (const t of transactions) {
       const entry = monthMap.get(t.date.slice(0, 7))
       if (!entry) continue
-      if (t.type === 'income') entry.Ingresos += t.amount
-      else entry.Gastos += t.amount
+      if (t.type === 'income') {
+        entry.Ingresos += t.amount
+      } else {
+        // expense: separa gasto puro de aportación al ahorro
+        if (t.savings_account_id) entry.Aportado += t.amount
+        else entry.GastosPuros += t.amount
+      }
     }
     return months
   }, [dateMode, refDate, compareMonths, transactions, rangeFrom, rangeTo])
@@ -207,33 +222,90 @@ export function StatsScreen() {
     return Object.entries(map).map(([name, value]) => ({ name, value })).sort((a, b) => b.value - a.value)
   }, [periodTransactions])
 
-  // ── Balance evolution data ─────────────────────────────────────────
-  const balanceEvolutionData = useMemo(() => {
-    const monthMap: Record<string, { income: number; expenses: number }> = {}
-    for (const t of periodTransactions) {
+  // ── Evolución combinada: Patrimonio + Ahorrado mes a mes ─────────────
+  // - Balance líquido = income - expenses (todo, las aportaciones cuentan como expense)
+  // - Ahorrado       = aportaciones (expense con apartado) - retiradas (income con apartado)
+  // - Patrimonio     = Balance líquido + Ahorrado
+  const evolutionData = useMemo(() => {
+    const periodKeys = barChartData.map(m => m._key).sort()
+    if (periodKeys.length === 0) return []
+    const firstMonth = periodKeys[0]
+
+    // Estado inicial: acumular todo lo anterior al primer mes del periodo
+    let liquido = 0, ahorrado = 0
+    const monthDelta = new Map<string, { liq: number; ahor: number }>()
+    for (const t of transactions) {
       const key = t.date.slice(0, 7)
-      if (!monthMap[key]) monthMap[key] = { income: 0, expenses: 0 }
-      if (t.type === 'income') monthMap[key].income += t.amount
-      else monthMap[key].expenses += t.amount
+      const liqDelta = t.type === 'income' ? t.amount : -t.amount
+      const ahorDelta = t.savings_account_id
+        ? (t.type === 'expense' ? t.amount : -t.amount)
+        : 0
+      if (key < firstMonth) {
+        liquido += liqDelta
+        ahorrado += ahorDelta
+      } else {
+        const cur = monthDelta.get(key) ?? { liq: 0, ahor: 0 }
+        cur.liq += liqDelta
+        cur.ahor += ahorDelta
+        monthDelta.set(key, cur)
+      }
     }
-    const sorted = Object.keys(monthMap).sort()
-    return sorted.reduce<{ month: string; balance: number }[]>((acc, key) => {
-      const prev = acc.length > 0 ? acc[acc.length - 1].balance : 0
-      acc.push({ month: monthLabel(key), balance: prev + monthMap[key].income - monthMap[key].expenses })
-      return acc
-    }, [])
-  }, [periodTransactions])
+
+    type Row = { month: string; patrimonio: number; ahorrado: number; _key: string }
+    const series: Row[] = []
+    for (const m of barChartData) {
+      const d = monthDelta.get(m._key) ?? { liq: 0, ahor: 0 }
+      liquido += d.liq
+      ahorrado += d.ahor
+      series.push({ month: m.month, patrimonio: liquido + ahorrado, ahorrado, _key: m._key })
+    }
+    return series
+  }, [barChartData, transactions])
 
   // ── Comparison table data ────────────────────────────────────────
   const comparisonTableData = useMemo(() => {
     return barChartData.map((m, i) => {
-      const balance = m.Ingresos - m.Gastos
+      const totalGastos = m.GastosPuros + m.Aportado
+      const balance = m.Ingresos - totalGastos
       const prev = i > 0 ? barChartData[i - 1] : null
-      const prevExpenses = prev ? prev.Gastos : 0
-      const change = prevExpenses > 0 ? ((m.Gastos - prevExpenses) / prevExpenses * 100) : 0
-      return { month: m.month, income: m.Ingresos, expenses: m.Gastos, balance, change: i > 0 ? change : null }
+      const prevExpenses = prev ? prev.GastosPuros + prev.Aportado : 0
+      const change = prevExpenses > 0 ? ((totalGastos - prevExpenses) / prevExpenses * 100) : 0
+      return {
+        month: m.month,
+        income: m.Ingresos,
+        expenses: totalGastos,
+        saved: m.Aportado,
+        balance,
+        change: i > 0 ? change : null,
+      }
     })
   }, [barChartData])
+
+  const savingsBreakdown = useMemo(() => {
+    // Saldo actual de cada apartado restringido a las transacciones del periodo.
+    const map = new Map<string, number>()
+    for (const acc of savingsAccounts) map.set(acc.id, 0)
+    for (const t of periodTransactions) {
+      if (!t.savings_account_id) continue
+      if (!map.has(t.savings_account_id)) continue
+      const cur = map.get(t.savings_account_id) ?? 0
+      map.set(t.savings_account_id, cur + (t.type === 'expense' ? t.amount : -t.amount))
+    }
+    return savingsAccounts
+      .map(acc => ({
+        id:    acc.id,
+        name:  acc.name,
+        color: resolveSavingsColor(acc.color),
+        net:   map.get(acc.id) ?? 0,
+      }))
+      .filter(r => Math.abs(r.net) > 0.005)
+      .sort((a, b) => Math.abs(b.net) - Math.abs(a.net))
+  }, [periodTransactions, savingsAccounts])
+
+  const savingsTotalNet = savingsBreakdown.reduce((acc, r) => acc + r.net, 0)
+  const savingsMaxAbs = Math.max(...savingsBreakdown.map(r => Math.abs(r.net)), 1)
+  const hasEvolutionData = evolutionData.length > 1
+  const hasSavingsData = savingsBreakdown.length > 0 || evolutionData.some(d => Math.abs(d.ahorrado) > 0.005)
 
   // ── Heatmap: expenses by day of week ─────────────────────────────
   const weekdayData = useMemo(() => {
@@ -415,33 +487,69 @@ export function StatsScreen() {
         )}
       </div>
 
-      {/* Summary cards — key={dateMode} fuerza remount al cambiar de modo
-          para que las cards crossfaden suavemente con la nueva info. */}
-      <div key={dateMode} className="grid grid-cols-3 gap-3 lg:gap-4">
-        <TiltCard intensity={3} className="card-anim rounded-xl bg-card p-4 lg:p-5 shadow-sm border border-border" style={{ animationDelay: '0ms' }}>
-          <p className="text-xs font-medium text-subtext uppercase tracking-wider mb-1">Ingresos</p>
-          <p className="text-xl lg:text-2xl font-bold text-income tabular-nums">{formatCurrency(periodStats.income)}</p>
-        </TiltCard>
-        <TiltCard intensity={3} className="card-anim rounded-xl bg-card p-4 lg:p-5 shadow-sm border border-border" style={{ animationDelay: '60ms' }}>
-          <p className="text-xs font-medium text-subtext uppercase tracking-wider mb-1">Gastos</p>
-          <p className="text-xl lg:text-2xl font-bold text-expense tabular-nums">{formatCurrency(periodStats.expenses)}</p>
-        </TiltCard>
-        <TiltCard
-          intensity={3}
-          className={`card-anim rounded-xl p-4 lg:p-5 shadow-sm border ${periodStats.balance >= 0 ? 'bg-income-light border-income/20' : 'bg-expense-light border-expense/20'}`}
-          style={{ animationDelay: '120ms' }}
+      {/* ──────────────────────────────────────────────────────────────────
+          ZONA 1 · HERO — visión sintética del periodo en una sola unidad
+          ────────────────────────────────────────────────────────────── */}
+      <TiltCard
+        key={dateMode}
+        intensity={1.5}
+        className={`card-anim rounded-2xl p-5 lg:p-6 shadow-md border ${
+          periodStats.balance >= 0 ? 'bg-card border-border' : 'bg-expense-light border-expense/20'
+        }`}
+        style={{ animationDelay: '0ms' }}
+      >
+        <p className="text-xs font-semibold text-subtext uppercase tracking-wider mb-1">
+          Balance del periodo
+        </p>
+        <p
+          className={`font-bold tabular-nums ${periodStats.balance >= 0 ? 'text-text' : 'text-expense'}`}
+          style={{
+            fontSize: 'clamp(1.75rem, 3.5vw, 2.5rem)',
+            lineHeight: 1.1,
+            fontFamily: 'var(--font-display)',
+            letterSpacing: 'var(--letter-spacing-display)',
+          }}
         >
-          <p className="text-xs font-medium text-subtext uppercase tracking-wider mb-1">Balance</p>
-          <p className={`text-xl lg:text-2xl font-bold tabular-nums ${periodStats.balance >= 0 ? 'text-income' : 'text-expense'}`}>
-            {periodStats.balance >= 0 ? '+' : ''}{formatCurrency(periodStats.balance)}
-          </p>
-        </TiltCard>
-      </div>
+          {periodStats.balance >= 0 ? '+' : '−'}{formatCurrency(Math.abs(periodStats.balance))}
+        </p>
 
-      {/* Charts */}
+        {/* Mini-stats: Ingresos / Gastos / Ahorrado */}
+        <div className="grid grid-cols-3 gap-3 lg:gap-5 mt-5 pt-5 border-t border-border/60">
+          <div className="min-w-0">
+            <p className="text-[11px] font-semibold text-subtext uppercase tracking-wider mb-0.5">Ingresos</p>
+            <p className="font-bold text-income tabular-nums truncate" style={{ fontSize: 'clamp(0.95rem, 1.5vw, 1.15rem)' }} title={formatCurrency(periodStats.income)}>
+              {formatCurrency(periodStats.income)}
+            </p>
+          </div>
+          <div className="min-w-0">
+            <p className="text-[11px] font-semibold text-subtext uppercase tracking-wider mb-0.5">Gastos</p>
+            <p className="font-bold text-expense tabular-nums truncate" style={{ fontSize: 'clamp(0.95rem, 1.5vw, 1.15rem)' }} title={formatCurrency(periodStats.expenses)}>
+              {formatCurrency(periodStats.expenses)}
+            </p>
+          </div>
+          <div className="min-w-0">
+            <p className="text-[11px] font-semibold text-subtext uppercase tracking-wider mb-0.5">Ahorrado</p>
+            <p
+              className={`font-bold tabular-nums truncate ${periodStats.savedNet >= 0 ? 'text-brand' : 'text-subtext'}`}
+              style={{ fontSize: 'clamp(0.95rem, 1.5vw, 1.15rem)' }}
+              title={`${periodStats.savedNet >= 0 ? '+' : '−'}${formatCurrency(Math.abs(periodStats.savedNet))}`}
+            >
+              {periodStats.savedNet >= 0 ? '+' : '−'}{formatCurrency(Math.abs(periodStats.savedNet))}
+            </p>
+          </div>
+        </div>
+      </TiltCard>
+
+      {/* ──────────────────────────────────────────────────────────────────
+          ZONA 2 · VISIÓN — composición del periodo (qué entró, qué salió,
+          dónde fue cada euro)
+          ────────────────────────────────────────────────────────────── */}
       <div className="flex flex-col lg:grid lg:grid-cols-[1fr_300px] gap-4">
         <div className="rounded-xl bg-card p-5 shadow-sm border border-border">
-          <h3 className="text-sm font-semibold text-text mb-4">{barChartTitle}</h3>
+          <h3 className="text-sm font-semibold text-text mb-1">{barChartTitle}</h3>
+          <p className="text-[11px] text-subtext mb-4">
+            La parte coral de cada gasto es lo que fuiste a apartados de ahorro.
+          </p>
           {barChartData.length === 0 ? (
             <EmptyState
               className="!py-8"
@@ -485,11 +593,23 @@ export function StatsScreen() {
                   animationDuration={CHART_ANIM_DURATION}
                   animationEasing={CHART_ANIM_EASING}
                 />
+                {/* Stacked: GastosPuros + Aportado, ambos forman la barra "Gastos" total */}
                 <Bar
-                  dataKey="Gastos"
+                  dataKey="GastosPuros"
+                  name="Gastos"
+                  stackId="gastos"
                   fill="var(--color-expense)"
-                  radius={CHART_BAR_RADIUS}
                   animationBegin={chartAnimationBegin(1)}
+                  animationDuration={CHART_ANIM_DURATION}
+                  animationEasing={CHART_ANIM_EASING}
+                />
+                <Bar
+                  dataKey="Aportado"
+                  name="Ahorrado"
+                  stackId="gastos"
+                  fill="var(--color-brand)"
+                  radius={CHART_BAR_RADIUS}
+                  animationBegin={chartAnimationBegin(2)}
                   animationDuration={CHART_ANIM_DURATION}
                   animationEasing={CHART_ANIM_EASING}
                 />
@@ -558,108 +678,209 @@ export function StatsScreen() {
         </div>
       </div>
 
-      {/* ── Balance evolution ─────────────────────────────────────────── */}
-      {balanceEvolutionData.length > 1 && (
+      {/* ──────────────────────────────────────────────────────────────────
+          ZONA 3 · TENDENCIAS — patrimonio acumulado vs ahorrado, con
+          breakdown por apartado al lado
+          ────────────────────────────────────────────────────────────── */}
+      {(hasEvolutionData || hasSavingsData) && (
         <div className="rounded-xl bg-card p-5 shadow-sm border border-border">
-          <h3 className="text-sm font-semibold text-text mb-4">Evolución del balance</h3>
-          <ResponsiveContainer width="100%" height={200}>
-            <AreaChart data={balanceEvolutionData}>
-              <defs>
-                <linearGradient id="gradBalance" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="0%" stopColor="var(--color-brand)" stopOpacity={0.3} />
-                  <stop offset="100%" stopColor="var(--color-brand)" stopOpacity={0} />
-                </linearGradient>
-              </defs>
-              <CartesianGrid {...CHART_GRID_PROPS} />
-              <XAxis dataKey="month" {...CHART_AXIS_PROPS} />
-              <YAxis tickFormatter={formatYAxis} width={60} {...CHART_AXIS_PROPS} />
-              <Tooltip content={<ChartTooltip valueFormatter={formatCurrency} />} cursor={CHART_CURSOR_LINE} />
-              <Area
-                type="monotone"
-                dataKey="balance"
-                stroke="var(--color-brand)"
-                fill="url(#gradBalance)"
-                strokeWidth={2}
-                name="Balance"
-                animationBegin={chartAnimationBegin(0)}
-                animationDuration={CHART_ANIM_DURATION}
-                animationEasing={CHART_ANIM_EASING}
-                activeDot={chartActiveDot('var(--color-brand)')}
-              />
-            </AreaChart>
-          </ResponsiveContainer>
-        </div>
-      )}
-
-      {/* ── Comparison table ──────────────────────────────────────────── */}
-      {comparisonTableData.length > 1 && (
-        <div className="rounded-xl bg-card shadow-sm border border-border overflow-hidden">
-          <div className="px-5 py-3 border-b border-border">
-            <h3 className="text-sm font-semibold text-text">Comparativa mensual</h3>
+          <div className="flex items-baseline justify-between gap-3 mb-4 flex-wrap">
+            <div>
+              <h3 className="text-sm font-semibold text-text">Tendencia del periodo</h3>
+              <p className="text-[11px] text-subtext">
+                Patrimonio total acumulado y la parte que has reservado en apartados.
+              </p>
+            </div>
+            {hasSavingsData && (
+              <span className="text-xs text-subtext">
+                Ahorrado neto:{' '}
+                <span className={`font-bold tabular-nums ${savingsTotalNet >= 0 ? 'text-brand' : 'text-expense'}`}>
+                  {savingsTotalNet >= 0 ? '+' : '−'}{formatCurrency(Math.abs(savingsTotalNet))}
+                </span>
+              </span>
+            )}
           </div>
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="bg-surface text-xs font-semibold text-subtext uppercase tracking-wider">
-                  <th className="px-5 py-2.5 text-left">Mes</th>
-                  <th className="px-5 py-2.5 text-right">Ingresos</th>
-                  <th className="px-5 py-2.5 text-right">Gastos</th>
-                  <th className="px-5 py-2.5 text-right">Balance</th>
-                  <th className="px-5 py-2.5 text-right">Δ Gastos</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-border/40">
-                {comparisonTableData.map((row, idx) => (
-                  <tr key={row.month} data-stagger={idx % 8} className="tx-row hover:bg-surface/60 transition-colors">
-                    <td className="px-5 py-2.5 font-medium text-text">{row.month}</td>
-                    <td className="px-5 py-2.5 text-right text-income tabular-nums">{formatCurrency(row.income)}</td>
-                    <td className="px-5 py-2.5 text-right text-expense tabular-nums">{formatCurrency(row.expenses)}</td>
-                    <td className={`px-5 py-2.5 text-right font-semibold tabular-nums ${row.balance >= 0 ? 'text-income' : 'text-expense'}`}>
-                      {row.balance >= 0 ? '+' : ''}{formatCurrency(row.balance)}
-                    </td>
-                    <td className="px-5 py-2.5 text-right tabular-nums">
-                      {row.change !== null ? (
-                        <span className={`text-xs font-semibold ${row.change > 0 ? 'text-expense' : 'text-income'}`}>
-                          {row.change > 0 ? '↑' : '↓'} {Math.abs(row.change).toFixed(1)}%
-                        </span>
-                      ) : (
-                        <span className="text-subtext">—</span>
-                      )}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </div>
-      )}
 
-      {/* ── Heatmap: expenses by weekday ──────────────────────────────── */}
-      {weekdayData.some(d => d.total > 0) && (
-        <div className="rounded-xl bg-card p-5 shadow-sm border border-border">
-          <h3 className="text-sm font-semibold text-text mb-4">Gasto promedio por día de la semana</h3>
-          <div className="grid grid-cols-7 gap-2">
-            {weekdayData.map((d, i) => (
-              <div key={d.name} data-stagger={i} className="heatmap-cell text-center space-y-2">
-                <p className="text-xs font-semibold text-subtext">{d.name}</p>
-                <div
-                  className="mx-auto w-12 h-12 lg:w-16 lg:h-16 rounded-xl flex items-center justify-center transition-colors"
-                  style={{
-                    backgroundColor: d.intensity > 0
-                      ? `color-mix(in srgb, var(--color-expense) ${Math.round(d.intensity * 80 + 20)}%, var(--color-expense-light))`
-                      : 'var(--color-surface)',
-                  }}
-                >
-                  <span className={`text-xs lg:text-sm font-bold tabular-nums ${d.intensity > 0.3 ? 'text-white' : 'text-subtext'}`}>
-                    {d.avg > 0 ? formatCurrency(d.avg) : '—'}
-                  </span>
-                </div>
-                <p className="text-[10px] text-subtext">
-                  {d.total > 0 ? `Total: ${formatCurrency(d.total)}` : ''}
+          <div className={`flex flex-col ${savingsBreakdown.length > 0 ? 'lg:grid lg:grid-cols-[1fr_280px]' : ''} gap-5`}>
+            {/* AreaChart combinado: Patrimonio (área grande) + Ahorrado (área interior) */}
+            <div>
+              {hasEvolutionData ? (
+                <ResponsiveContainer width="100%" height={220}>
+                  <AreaChart data={evolutionData}>
+                    <defs>
+                      <linearGradient id="gradPatrimonio" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="0%" stopColor="var(--color-income)" stopOpacity={0.30} />
+                        <stop offset="100%" stopColor="var(--color-income)" stopOpacity={0} />
+                      </linearGradient>
+                      <linearGradient id="gradAhorradoOver" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="0%" stopColor="var(--color-brand)" stopOpacity={0.42} />
+                        <stop offset="100%" stopColor="var(--color-brand)" stopOpacity={0.08} />
+                      </linearGradient>
+                    </defs>
+                    <CartesianGrid {...CHART_GRID_PROPS} />
+                    <XAxis dataKey="month" {...CHART_AXIS_PROPS} />
+                    <YAxis tickFormatter={formatYAxis} width={60} {...CHART_AXIS_PROPS} />
+                    <Tooltip content={<ChartTooltip valueFormatter={formatCurrency} />} cursor={CHART_CURSOR_LINE} />
+                    <Legend wrapperStyle={CHART_LEGEND_STYLE} />
+                    {/* Patrimonio total — área de fondo (verde income), suma de líquido + ahorrado */}
+                    <Area
+                      type="monotone"
+                      dataKey="patrimonio"
+                      name="Patrimonio total"
+                      stroke="var(--color-income)"
+                      fill="url(#gradPatrimonio)"
+                      strokeWidth={2}
+                      animationBegin={chartAnimationBegin(0)}
+                      animationDuration={CHART_ANIM_DURATION}
+                      animationEasing={CHART_ANIM_EASING}
+                      activeDot={chartActiveDot('var(--color-income)')}
+                    />
+                    {/* Ahorrado — área interior superpuesta (brand), la diferencia con patrimonio es el balance líquido */}
+                    <Area
+                      type="monotone"
+                      dataKey="ahorrado"
+                      name="Ahorrado"
+                      stroke="var(--color-brand)"
+                      fill="url(#gradAhorradoOver)"
+                      strokeWidth={2}
+                      animationBegin={chartAnimationBegin(1)}
+                      animationDuration={CHART_ANIM_DURATION}
+                      animationEasing={CHART_ANIM_EASING}
+                      activeDot={chartActiveDot('var(--color-brand)')}
+                    />
+                  </AreaChart>
+                </ResponsiveContainer>
+              ) : (
+                <p className="text-sm text-subtext italic py-8 text-center">
+                  Necesitas al menos dos meses con movimientos para ver la tendencia.
                 </p>
+              )}
+            </div>
+
+            {/* Breakdown por apartado — solo si hay datos */}
+            {savingsBreakdown.length > 0 && (
+              <div className="lg:border-l lg:border-border lg:pl-5">
+                <p className="text-xs font-semibold text-subtext uppercase tracking-wider mb-3">
+                  Por apartado
+                </p>
+                <div className="space-y-2.5">
+                  {savingsBreakdown.map(row => {
+                    const pct = (Math.abs(row.net) / savingsMaxAbs) * 100
+                    const isPositive = row.net > 0
+                    return (
+                      <div key={row.id} className="space-y-1">
+                        <div className="flex items-baseline justify-between gap-2 text-xs">
+                          <span className="text-text font-medium truncate" title={row.name}>{row.name}</span>
+                          <span className={`tabular-nums font-semibold shrink-0 ${isPositive ? 'text-text' : 'text-subtext'}`}>
+                            {isPositive ? '+' : '−'}{formatCurrency(Math.abs(row.net))}
+                          </span>
+                        </div>
+                        <div className="h-1.5 rounded-full bg-surface overflow-hidden">
+                          <div
+                            className="h-full rounded-full transition-all"
+                            style={{
+                              width: `${pct}%`,
+                              background: row.color,
+                              opacity: isPositive ? 1 : 0.5,
+                              transition: 'width var(--duration-slow) var(--ease-spring)',
+                            }}
+                          />
+                        </div>
+                      </div>
+                    )
+                  })}
+                </div>
               </div>
-            ))}
+            )}
           </div>
+        </div>
+      )}
+
+      {/* ──────────────────────────────────────────────────────────────────
+          ZONA 4 · DETALLE — exploración fina de los números: tabla y heatmap
+          ────────────────────────────────────────────────────────────── */}
+      {(comparisonTableData.length > 1 || weekdayData.some(d => d.total > 0)) && (
+        <div className="space-y-4 lg:space-y-5 pt-2">
+          <div className="flex items-baseline gap-3">
+            <h2 className="text-xs font-semibold text-subtext uppercase tracking-wider">Detalle</h2>
+            <div className="flex-1 h-px bg-border" />
+          </div>
+
+          {/* Comparison table */}
+          {comparisonTableData.length > 1 && (
+            <div className="rounded-xl bg-card shadow-sm border border-border overflow-hidden">
+              <div className="px-5 py-3 border-b border-border">
+                <h3 className="text-sm font-semibold text-text">Comparativa mensual</h3>
+              </div>
+              <div className="overflow-x-auto">
+                <table className="w-full text-sm">
+                  <thead>
+                    <tr className="bg-surface text-xs font-semibold text-subtext uppercase tracking-wider">
+                      <th className="px-5 py-2.5 text-left">Mes</th>
+                      <th className="px-5 py-2.5 text-right">Ingresos</th>
+                      <th className="px-5 py-2.5 text-right">Gastos</th>
+                      <th className="px-5 py-2.5 text-right">Ahorrado</th>
+                      <th className="px-5 py-2.5 text-right">Balance</th>
+                      <th className="px-5 py-2.5 text-right">Δ Gastos</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-border/40">
+                    {comparisonTableData.map((row, idx) => (
+                      <tr key={row.month} data-stagger={idx % 8} className="tx-row hover:bg-surface/60 transition-colors">
+                        <td className="px-5 py-2.5 font-medium text-text">{row.month}</td>
+                        <td className="px-5 py-2.5 text-right text-income tabular-nums">{formatCurrency(row.income)}</td>
+                        <td className="px-5 py-2.5 text-right text-expense tabular-nums">{formatCurrency(row.expenses)}</td>
+                        <td className={`px-5 py-2.5 text-right tabular-nums ${row.saved > 0.005 ? 'text-brand font-semibold' : 'text-subtext'}`}>
+                          {row.saved > 0.005 ? `+${formatCurrency(row.saved)}` : '—'}
+                        </td>
+                        <td className={`px-5 py-2.5 text-right font-semibold tabular-nums ${row.balance >= 0 ? 'text-income' : 'text-expense'}`}>
+                          {row.balance >= 0 ? '+' : ''}{formatCurrency(row.balance)}
+                        </td>
+                        <td className="px-5 py-2.5 text-right tabular-nums">
+                          {row.change !== null ? (
+                            <span className={`text-xs font-semibold ${row.change > 0 ? 'text-expense' : 'text-income'}`}>
+                              {row.change > 0 ? '↑' : '↓'} {Math.abs(row.change).toFixed(1)}%
+                            </span>
+                          ) : (
+                            <span className="text-subtext">—</span>
+                          )}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          )}
+
+          {/* Heatmap: expenses by weekday */}
+          {weekdayData.some(d => d.total > 0) && (
+            <div className="rounded-xl bg-card p-5 shadow-sm border border-border">
+              <h3 className="text-sm font-semibold text-text mb-4">Gasto promedio por día de la semana</h3>
+              <div className="grid grid-cols-7 gap-2">
+                {weekdayData.map((d, i) => (
+                  <div key={d.name} data-stagger={i} className="heatmap-cell text-center space-y-2">
+                    <p className="text-xs font-semibold text-subtext">{d.name}</p>
+                    <div
+                      className="mx-auto w-12 h-12 lg:w-16 lg:h-16 rounded-xl flex items-center justify-center transition-colors"
+                      style={{
+                        backgroundColor: d.intensity > 0
+                          ? `color-mix(in srgb, var(--color-expense) ${Math.round(d.intensity * 80 + 20)}%, var(--color-expense-light))`
+                          : 'var(--color-surface)',
+                      }}
+                    >
+                      <span className={`text-xs lg:text-sm font-bold tabular-nums ${d.intensity > 0.3 ? 'text-white' : 'text-subtext'}`}>
+                        {d.avg > 0 ? formatCurrency(d.avg) : '—'}
+                      </span>
+                    </div>
+                    <p className="text-[10px] text-subtext">
+                      {d.total > 0 ? `Total: ${formatCurrency(d.total)}` : ''}
+                    </p>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
         </div>
       )}
     </div>

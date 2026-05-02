@@ -6,6 +6,12 @@ import { initializeDatabase, closeDatabase, setWasmPath } from './database/schem
 import { getAllTransactions, createTransaction, deleteTransaction, bulkDeleteTransactions, updateTransaction } from './database/transactions'
 import { getAllCategories, createCategory, deleteCategory, updateCategory } from './database/categories'
 import {
+  getAllSavingsAccounts,
+  createSavingsAccount,
+  updateSavingsAccount,
+  deleteSavingsAccount,
+} from './database/savings'
+import {
   handleDialogOpenFile,
   handleExportTransactionsExcel,
   handleParseExcel,
@@ -130,6 +136,27 @@ function registerIpcHandlers(): void {
   ipcMain.handle(IPC_CHANNELS.CATEGORIES_UPDATE, async (_event, { id, name }) => {
     await dbReady
     return updateCategory(id, name)
+  })
+
+  // ── Savings (apartados de ahorro) ──────────────────────────────────────
+  ipcMain.handle(IPC_CHANNELS.SAVINGS_GET_ALL, async () => {
+    await dbReady
+    return getAllSavingsAccounts()
+  })
+
+  ipcMain.handle(IPC_CHANNELS.SAVINGS_CREATE, async (_event, data) => {
+    await dbReady
+    return createSavingsAccount(data)
+  })
+
+  ipcMain.handle(IPC_CHANNELS.SAVINGS_UPDATE, async (_event, { id, data }) => {
+    await dbReady
+    return updateSavingsAccount(id, data)
+  })
+
+  ipcMain.handle(IPC_CHANNELS.SAVINGS_DELETE, async (_event, { id }) => {
+    await dbReady
+    deleteSavingsAccount(id)
   })
 
   // ── File I/O ───────────────────────────────────────────────────────────

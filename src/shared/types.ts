@@ -7,6 +7,11 @@ export interface Transaction {
   category: string
   created_at: string // ISO timestamp
   note?: string
+  /** ID del apartado de ahorro al que afecta. Si está presente:
+   *  - type='expense' = aportación al apartado (sale del profit, suma al apartado)
+   *  - type='income'  = retirada del apartado (entra al profit, resta del apartado)
+   */
+  savings_account_id?: string | null
 }
 
 export interface CreateTransactionDTO {
@@ -16,6 +21,7 @@ export interface CreateTransactionDTO {
   date: string
   category: string
   note?: string
+  savings_account_id?: string | null
 }
 
 export interface UpdateTransactionDTO {
@@ -25,6 +31,7 @@ export interface UpdateTransactionDTO {
   date: string
   category: string
   note?: string
+  savings_account_id?: string | null
 }
 
 export interface Category {
@@ -38,6 +45,35 @@ export interface CreateCategoryDTO {
   type: 'income' | 'expense'
 }
 
+// ── Ahorros (apartados / sub-cuentas) ─────────────────────────────────────
+/** Nombre reservado de la categoría que se asigna automáticamente a las
+ *  transacciones que van/vienen de un apartado de ahorro. */
+export const SAVINGS_CATEGORY_NAME = 'Ahorro'
+
+export interface SavingsAccount {
+  id: string
+  name: string
+  /** Color HEX opcional para diferenciar visualmente el apartado */
+  color: string | null
+  /** Meta opcional en la misma moneda que el resto. null = sin meta */
+  target_amount: number | null
+  created_at: string
+  /** Saldo calculado en backend: SUM(expenses) - SUM(incomes) ligados a este apartado */
+  balance: number
+}
+
+export interface CreateSavingsAccountDTO {
+  name: string
+  color?: string | null
+  target_amount?: number | null
+}
+
+export interface UpdateSavingsAccountDTO {
+  name: string
+  color?: string | null
+  target_amount?: number | null
+}
+
 // ── Dashboard ─────────────────────────────────────────────────────────────
 export interface DashboardStats {
   balance: number
@@ -47,6 +83,10 @@ export interface DashboardStats {
   topCategory: { name: string; amount: number } | null
   upcomingRecurring: RecurringTemplate[]
   monthlyTrend: { month: string; income: number; expenses: number }[]
+  /** Suma de saldos de todos los apartados de ahorro */
+  totalSavings: number
+  /** Patrimonio total: balance líquido + totalSavings */
+  netWorth: number
 }
 
 // ── PDF Export ─────────────────────────────────────────────────────────────
@@ -74,6 +114,11 @@ export const IPC_CHANNELS = {
   CATEGORIES_CREATE: 'db:categories:create',
   CATEGORIES_DELETE: 'db:categories:delete',
   CATEGORIES_UPDATE: 'db:categories:update',
+  // Savings (apartados / sub-cuentas de ahorro)
+  SAVINGS_GET_ALL: 'db:savings:getAll',
+  SAVINGS_CREATE:  'db:savings:create',
+  SAVINGS_UPDATE:  'db:savings:update',
+  SAVINGS_DELETE:  'db:savings:delete',
   // File I/O
   DIALOG_OPEN_FILE:          'dialog:openFile',
   EXPORT_TRANSACTIONS_EXCEL: 'fs:export:transactionsExcel',

@@ -31,6 +31,11 @@
   --color-error: #B91C1C;
   --color-error-light: #FEE2E2;
 
+  /* Slots de color para apartados de ahorro — el form usa estos vars y la BD
+     guarda el slot ('savings-1'..'savings-8'); cada tema redefine la paleta. */
+  --savings-1: #7A1B2D; --savings-2: #C9A84C; --savings-3: #1B7A4E; --savings-4: #5B7A3A;
+  --savings-5: #1B5E8C; --savings-6: #B91D1D; --savings-7: #B85C2E; --savings-8: #5A6B7E;
+
   --radius-sm: 6px; --radius-md: 10px; --radius-lg: 14px; --radius-xl: 18px; --radius-2xl: 24px;
 
   --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.05);
@@ -135,6 +140,9 @@ h1, h2, h3, h4, h5, h6 {
   --color-expense: #7A1B2D; --color-expense-hover: #5C1422; --color-expense-light: #F3E5E8;
   --color-error: #B91C1C; --color-error-light: #FEE2E2;
 
+  --savings-1: #7A1B2D; --savings-2: #C9A84C; --savings-3: #1B7A4E; --savings-4: #5B7A3A;
+  --savings-5: #1B5E8C; --savings-6: #B91D1D; --savings-7: #B85C2E; --savings-8: #5A6B7E;
+
   --radius-sm: 6px; --radius-md: 10px; --radius-lg: 14px; --radius-xl: 18px; --radius-2xl: 24px;
   --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.05);
   --shadow-md: 0 4px 12px rgba(0, 0, 0, 0.08);
@@ -162,6 +170,9 @@ h1, h2, h3, h4, h5, h6 {
   --color-income: #4FC086; --color-income-hover: #66CC97; --color-income-light: rgba(79, 192, 134, 0.16);
   --color-expense: #C24B5E; --color-expense-hover: #D86477; --color-expense-light: rgba(194, 75, 94, 0.16);
   --color-error: #E25C5C; --color-error-light: rgba(226, 92, 92, 0.16);
+
+  --savings-1: #C24B5E; --savings-2: #E0BD66; --savings-3: #4FC086; --savings-4: #98B864;
+  --savings-5: #5BA0CB; --savings-6: #E63838; --savings-7: #D8896A; --savings-8: #8995A6;
 
   --radius-sm: 6px; --radius-md: 10px; --radius-lg: 14px; --radius-xl: 18px; --radius-2xl: 24px;
   --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.3);
@@ -197,6 +208,9 @@ h1, h2, h3, h4, h5, h6 {
   --color-expense: #FF7A59; --color-expense-hover: #FF6541; --color-expense-light: #FFE4DC;
   --color-error: #E25C5C; --color-error-light: #F8DEDE;
 
+  --savings-1: #FF7A59; --savings-2: #F5B14D; --savings-3: #6FD3A8; --savings-4: #5DA9E9;
+  --savings-5: #6B5BFF; --savings-6: #F09EBB; --savings-7: #C97259; --savings-8: #7E8C99;
+
   --radius-sm: 12px; --radius-md: 18px; --radius-lg: 24px; --radius-xl: 32px; --radius-2xl: 40px;
   --shadow-sm: 0 2px 6px rgba(60, 40, 30, 0.06);
   --shadow-md: 0 8px 24px rgba(60, 40, 30, 0.08), 0 2px 6px rgba(60, 40, 30, 0.04);
@@ -226,6 +240,9 @@ h1, h2, h3, h4, h5, h6 {
   --color-income: #82DDB0; --color-income-hover: #98E5BD; --color-income-light: rgba(130, 221, 176, 0.14);
   --color-expense: #FF8C73; --color-expense-hover: #FFA08D; --color-expense-light: rgba(255, 140, 115, 0.14);
   --color-error: #FF7373; --color-error-light: rgba(255, 115, 115, 0.14);
+
+  --savings-1: #FF8E72; --savings-2: #FFC36B; --savings-3: #82DDB0; --savings-4: #74BCF0;
+  --savings-5: #8676FF; --savings-6: #F4B4C9; --savings-7: #D88670; --savings-8: #95A2AE;
 
   --radius-sm: 12px; --radius-md: 18px; --radius-lg: 24px; --radius-xl: 32px; --radius-2xl: 40px;
   --shadow-sm: 0 2px 6px rgba(0, 0, 0, 0.25);
@@ -264,6 +281,9 @@ h1, h2, h3, h4, h5, h6 {
   --color-expense: #B85C2E; --color-expense-hover: #9F4E25; --color-expense-light: #F5DCC9;
   --color-error: #A02828; --color-error-light: #F5D5D5;
 
+  --savings-1: #5B7A3A; --savings-2: #B85C2E; --savings-3: #8B6F3D; --savings-4: #7A8E4B;
+  --savings-5: #A02828; --savings-6: #9CB07F; --savings-7: #6B4F2E; --savings-8: #5C5546;
+
   --radius-sm: 12px; --radius-md: 18px; --radius-lg: 24px; --radius-xl: 32px; --radius-2xl: 40px;
   --shadow-sm: 0 2px 6px rgba(45, 56, 24, 0.08);
   --shadow-md: 0 8px 24px rgba(45, 56, 24, 0.10), 0 2px 6px rgba(45, 56, 24, 0.06);
@@ -293,6 +313,9 @@ h1, h2, h3, h4, h5, h6 {
   --color-income: #98B864; --color-income-hover: #B0CB7E; --color-income-light: rgba(152, 184, 100, 0.14);
   --color-expense: #D8896A; --color-expense-hover: #E59E80; --color-expense-light: rgba(216, 137, 106, 0.14);
   --color-error: #D87878; --color-error-light: rgba(216, 120, 120, 0.14);
+
+  --savings-1: #98B864; --savings-2: #D8896A; --savings-3: #C9A77E; --savings-4: #B5C588;
+  --savings-5: #D87878; --savings-6: #C4D5A8; --savings-7: #B59575; --savings-8: #9A9485;
 
   --radius-sm: 12px; --radius-md: 18px; --radius-lg: 24px; --radius-xl: 32px; --radius-2xl: 40px;
   --shadow-sm: 0 2px 6px rgba(0, 0, 0, 0.25);
@@ -325,6 +348,9 @@ h1, h2, h3, h4, h5, h6 {
   --color-expense: #B91D1D; --color-expense-hover: #9C1717; --color-expense-light: #F5DADA;
   --color-error: #B91D1D; --color-error-light: #F5DADA;
 
+  --savings-1: #B91D1D; --savings-2: #5C7A3C; --savings-3: #B89048; --savings-4: #C97259;
+  --savings-5: #2A2520; --savings-6: #8FA577; --savings-7: #A38F4D; --savings-8: #6B5E48;
+
   --radius-sm: 12px; --radius-md: 18px; --radius-lg: 24px; --radius-xl: 32px; --radius-2xl: 40px;
   --shadow-sm: 0 2px 6px rgba(31, 27, 22, 0.06);
   --shadow-md: 0 8px 24px rgba(31, 27, 22, 0.08), 0 2px 6px rgba(31, 27, 22, 0.04);
@@ -354,6 +380,9 @@ h1, h2, h3, h4, h5, h6 {
   --color-income: #95B069; --color-income-hover: #A8C17F; --color-income-light: rgba(149, 176, 105, 0.14);
   --color-expense: #E63838; --color-expense-hover: #ED5454; --color-expense-light: rgba(230, 56, 56, 0.14);
   --color-error: #E63838; --color-error-light: rgba(230, 56, 56, 0.14);
+
+  --savings-1: #E63838; --savings-2: #95B069; --savings-3: #D4B069; --savings-4: #D8896A;
+  --savings-5: #C4A878; --savings-6: #B0C490; --savings-7: #B59575; --savings-8: #B5A992;
 
   --radius-sm: 12px; --radius-md: 18px; --radius-lg: 24px; --radius-xl: 32px; --radius-2xl: 40px;
   --shadow-sm: 0 2px 6px rgba(0, 0, 0, 0.25);
@@ -386,6 +415,9 @@ h1, h2, h3, h4, h5, h6 {
   --color-expense: #C44536; --color-expense-hover: #A8392A; --color-expense-light: #F5DCD8;
   --color-error: #C44536; --color-error-light: #F5DCD8;
 
+  --savings-1: #1B5E8C; --savings-2: #C9A24E; --savings-3: #2A7A4E; --savings-4: #C44536;
+  --savings-5: #5BA0CB; --savings-6: #B89048; --savings-7: #4A8B6E; --savings-8: #2D4F7A;
+
   --radius-sm: 12px; --radius-md: 18px; --radius-lg: 24px; --radius-xl: 32px; --radius-2xl: 40px;
   --shadow-sm: 0 2px 6px rgba(27, 58, 92, 0.06);
   --shadow-md: 0 8px 24px rgba(27, 58, 92, 0.08), 0 2px 6px rgba(27, 58, 92, 0.04);
@@ -415,6 +447,9 @@ h1, h2, h3, h4, h5, h6 {
   --color-income: #6FCB95; --color-income-hover: #88D4A8; --color-income-light: rgba(111, 203, 149, 0.14);
   --color-expense: #E0826E; --color-expense-hover: #E69886; --color-expense-light: rgba(224, 130, 110, 0.14);
   --color-error: #E0826E; --color-error-light: rgba(224, 130, 110, 0.14);
+
+  --savings-1: #5BA0CB; --savings-2: #FFD580; --savings-3: #6FCB95; --savings-4: #E0826E;
+  --savings-5: #88BAD8; --savings-6: #DBA968; --savings-7: #88BFA5; --savings-8: #6B92BF;
 
   --radius-sm: 12px; --radius-md: 18px; --radius-lg: 24px; --radius-xl: 32px; --radius-2xl: 40px;
   --shadow-sm: 0 2px 6px rgba(0, 0, 0, 0.25);
@@ -966,6 +1001,16 @@ button.bg-error:not(:disabled):hover,
 @keyframes success-text-fade {
   from { opacity: 0; transform: translateY(6px); }
   to   { opacity: 1; transform: translateY(0); }
+}
+
+/* ─── Apartado de ahorro: meta alcanzada (entrada con pop suave del check) ─── */
+.savings-goal-check {
+  animation: savings-goal-pop 540ms cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+@keyframes savings-goal-pop {
+  0%   { transform: scale(0.4); opacity: 0; }
+  60%  { transform: scale(1.18); opacity: 1; }
+  100% { transform: scale(1); }
 }
 
 /* ─── Fade-out + collapse al eliminar fila ─── */

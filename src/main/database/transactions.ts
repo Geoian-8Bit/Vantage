@@ -2,23 +2,27 @@ import { randomUUID } from 'crypto'
 import { Transaction, CreateTransactionDTO, UpdateTransactionDTO } from '../../shared/types'
 import { getDatabase, saveDatabase } from './schema'
 
+function rowToTransaction(row: Record<string, unknown>): Transaction {
+  return {
+    id: String(row.id),
+    amount: Number(row.amount),
+    type: row.type as 'income' | 'expense',
+    description: String(row.description),
+    date: String(row.date),
+    category: String(row.category),
+    created_at: String(row.created_at),
+    note: row.note ? String(row.note) : '',
+    savings_account_id: row.savings_account_id != null ? String(row.savings_account_id) : null,
+  }
+}
+
 export function getAllTransactions(): Transaction[] {
   const db = getDatabase()
   const stmt = db.prepare('SELECT * FROM transactions ORDER BY date DESC, created_at DESC')
   const results: Transaction[] = []
 
   while (stmt.step()) {
-    const row = stmt.getAsObject() as unknown as Transaction
-    results.push({
-      id: String(row.id),
-      amount: Number(row.amount),
-      type: row.type as 'income' | 'expense',
-      description: String(row.description),
-      date: String(row.date),
-      category: String(row.category),
-      created_at: String(row.created_at),
-      note: row.note ? String(row.note) : '',
-    })
+    results.push(rowToTransaction(stmt.getAsObject() as Record<string, unknown>))
   }
   stmt.free()
 
@@ -30,10 +34,11 @@ export function createTransaction(data: CreateTransactionDTO): Transaction {
   const id = randomUUID()
   const created_at = new Date().toISOString()
   const note = data.note ?? ''
+  const savingsId = data.savings_account_id ?? null
 
   db.run(
-    'INSERT INTO transactions (id, amount, type, description, date, category, created_at, note) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
-    [id, data.amount, data.type, data.description, data.date, data.category, created_at, note]
+    'INSERT INTO transactions (id, amount, type, description, date, category, created_at, note, savings_account_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)',
+    [id, data.amount, data.type, data.description, data.date, data.category, created_at, note, savingsId]
   )
 
   saveDatabase()
@@ -47,6 +52,7 @@ export function createTransaction(data: CreateTransactionDTO): Transaction {
     category: data.category,
     created_at,
     note,
+    savings_account_id: savingsId,
   }
 }
 
@@ -71,22 +77,34 @@ export function createTransactionNoSave(data: CreateTransactionDTO): Transaction
   const id = randomUUID()
   const created_at = new Date().toISOString()
   const note = data.note ?? ''
+  const savingsId = data.savings_account_id ?? null
 
   db.run(
-    'INSERT INTO transactions (id, amount, type, description, date, category, created_at, note) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
-    [id, data.amount, data.type, data.description, data.date, data.category, created_at, note]
+    'INSERT INTO transactions (id, amount, type, description, date, category, created_at, note, savings_account_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)',
+    [id, data.amount, data.type, data.description, data.date, data.category, created_at, note, savingsId]
   )
 
-  return { id, amount: data.amount, type: data.type, description: data.description, date: data.date, category: data.category, created_at, note }
+  return {
+    id,
+    amount: data.amount,
+    type: data.type,
+    description: data.description,
+    date: data.date,
+    category: data.category,
+    created_at,
+    note,
+    savings_account_id: savingsId,
+  }
 }
 
 export function updateTransaction(id: string, data: UpdateTransactionDTO): Transaction {
   const db = getDatabase()
   const note = data.note ?? ''
+  const savingsId = data.savings_account_id ?? null
 
   db.run(
-    'UPDATE transactions SET amount=?, type=?, description=?, date=?, category=?, note=? WHERE id=?',
-    [data.amount, data.type, data.description, data.date, data.category, note, id]
+    'UPDATE transactions SET amount=?, type=?, description=?, date=?, category=?, note=?, savings_account_id=? WHERE id=?',
+    [data.amount, data.type, data.description, data.date, data.category, note, savingsId, id]
   )
 
   saveDatabase()
@@ -101,5 +119,5 @@ export function updateTransaction(id: string, data: UpdateTransactionDTO): Trans
 
   if (!found) throw new Error(`Transaction not found: ${id}`)
 
-  return { id, ...data, note, created_at }
+  return { id, ...data, note, savings_account_id: savingsId, created_at }
 }
