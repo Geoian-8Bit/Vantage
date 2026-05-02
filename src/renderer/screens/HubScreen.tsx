@@ -1,3 +1,15 @@
+/**
+ * @legacy — Pantalla de entrada "Hub" con tiles 3D, partículas y selector
+ * de módulos. Ya NO se enruta desde App.tsx (la app arranca directamente
+ * en el panel de Inicio) ni se accede desde la sidebar. El archivo se
+ * mantiene por si en el futuro se reabre el concepto.
+ *
+ * Para reactivarlo:
+ *   1. Devolver `useState('hub')` como default en App.tsx y restaurar el
+ *      branch que renderiza HubScreen.
+ *   2. Re-añadir el item "Hub" al navItems de Sidebar.tsx con su flecha y
+ *      la llamada a transitionView en handleClick.
+ */
 import { useEffect, useState } from 'react'
 import logoIcon from '../assets/logo-icon.png'
 import { TiltCard } from '../components/TiltCard'

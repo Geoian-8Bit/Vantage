@@ -1,6 +1,5 @@
 import { useLayoutEffect, useRef, useState, type ReactNode } from 'react'
 import logoIcon from '../../assets/logo-icon.png'
-import { transitionView } from '../../lib/transition'
 import { useDesignTheme } from '../../hooks/useDesignTheme'
 
 interface NavItem {
@@ -17,16 +16,6 @@ interface SidebarProps {
 }
 
 const navItems: NavItem[] = [
-  {
-    id: 'hub',
-    label: 'Hub',
-    icon: (
-      <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-        <line x1="19" y1="12" x2="5" y2="12" />
-        <polyline points="12 19 5 12 12 5" />
-      </svg>
-    )
-  },
   {
     id: 'dashboard',
     label: 'Inicio',
@@ -218,16 +207,10 @@ export function Sidebar({ activeModule, onNavigate }: SidebarProps) {
 
         {navItems.map(item => {
           const isActive = activeModule === item.id
-          const isHub = item.id === 'hub'
 
           const handleClick = () => {
             if (item.disabled) return
-            // Solo usamos View Transitions al volver al Hub.
-            if (item.id === 'hub') {
-              transitionView(() => onNavigate(item.id))
-            } else {
-              onNavigate(item.id)
-            }
+            onNavigate(item.id)
           }
 
           return (
@@ -267,17 +250,6 @@ export function Sidebar({ activeModule, onNavigate }: SidebarProps) {
               {item.disabled && (
                 <span className="hidden lg:inline ml-auto text-[10px] text-sidebar-muted/50 bg-sidebar-hover px-1.5 py-0.5 rounded">
                   Pronto
-                </span>
-              )}
-              {isHub && !isActive && (
-                <span
-                  className="sidebar-hub-arrow hidden lg:inline ml-auto text-sidebar-muted/60"
-                  aria-hidden="true"
-                  style={{
-                    transition: 'transform var(--duration-base) var(--ease-spring), opacity var(--duration-base) var(--ease-default)',
-                  }}
-                >
-                  ←
                 </span>
               )}
             </button>

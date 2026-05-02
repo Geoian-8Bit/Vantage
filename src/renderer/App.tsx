@@ -5,18 +5,15 @@ import { HomeScreen } from './screens/HomeScreen'
 import { StatsScreen } from './screens/StatsScreen'
 import { CalendarScreen } from './screens/CalendarScreen'
 import { SettingsScreen } from './screens/SettingsScreen'
-import { HubScreen } from './screens/HubScreen'
+
+// HubScreen y HubParticles quedan como código legacy: no se enrutan desde
+// aquí pero los archivos se mantienen por si en el futuro se reabre el
+// concepto de "selector de módulos" en la entrada.
 
 export default function App() {
-  const [activeModule, setActiveModule] = useState('hub')
-
-  if (activeModule === 'hub') {
-    return (
-      <AppLayout activeModule={activeModule} onNavigate={setActiveModule}>
-        <HubScreen onEnter={setActiveModule} />
-      </AppLayout>
-    )
-  }
+  // Antes la entrada por defecto era 'hub'. Ahora arrancamos directamente
+  // en el panel de Inicio del módulo Gastos.
+  const [activeModule, setActiveModule] = useState('dashboard')
 
   return (
     <AppLayout activeModule={activeModule} onNavigate={setActiveModule}>
