@@ -441,33 +441,62 @@ h1, h2, h3, h4, h5, h6 {
 }
 .theme-fx > * { position: absolute; will-change: transform, opacity; }
 
+/* @property registra custom properties tipados que SÍ se pueden interpolar
+   con keyframes (CSS no puede animar gradientes nativamente, pero sí estas
+   variables tipo <percentage>). Esto permite mover los focos del mesh
+   sin JS. */
+@property --blob1-x { syntax: '<percentage>'; inherits: false; initial-value: 10%; }
+@property --blob1-y { syntax: '<percentage>'; inherits: false; initial-value: 10%; }
+@property --blob2-x { syntax: '<percentage>'; inherits: false; initial-value: 90%; }
+@property --blob2-y { syntax: '<percentage>'; inherits: false; initial-value: 90%; }
+@property --blob3-x { syntax: '<percentage>'; inherits: false; initial-value: 90%; }
+@property --blob3-y { syntax: '<percentage>'; inherits: false; initial-value: 10%; }
+
 .clay-warmth {
   inset: 0;
   background:
-    radial-gradient(ellipse 50% 40% at 10% 10%, rgba(255, 122, 89, 0.10) 0%, transparent 60%),
-    radial-gradient(ellipse 60% 50% at 90% 90%, rgba(107, 91, 255, 0.08) 0%, transparent 60%),
-    radial-gradient(ellipse 40% 30% at 90% 10%, rgba(255, 213, 107, 0.10) 0%, transparent 60%);
+    radial-gradient(ellipse 50% 40% at var(--blob1-x) var(--blob1-y),
+      color-mix(in srgb, var(--color-brand) 12%, transparent) 0%, transparent 60%),
+    radial-gradient(ellipse 60% 50% at var(--blob2-x) var(--blob2-y),
+      color-mix(in srgb, var(--color-accent) 10%, transparent) 0%, transparent 60%),
+    radial-gradient(ellipse 40% 30% at var(--blob3-x) var(--blob3-y),
+      color-mix(in srgb, var(--color-accent) 12%, transparent) 0%, transparent 60%);
+  animation: clay-mesh-drift 90s ease-in-out infinite alternate;
 }
+
+/* Trayectorias suaves y poco predecibles. 90s ida + 90s vuelta = 3 minutos
+   de loop completo. Apenas se percibe el movimiento, pero la sensación de
+   "vivo" persiste. */
+@keyframes clay-mesh-drift {
+  0% {
+    --blob1-x: 10%;  --blob1-y: 10%;
+    --blob2-x: 90%;  --blob2-y: 90%;
+    --blob3-x: 90%;  --blob3-y: 10%;
+  }
+  33% {
+    --blob1-x: 28%;  --blob1-y: 32%;
+    --blob2-x: 72%;  --blob2-y: 68%;
+    --blob3-x: 68%;  --blob3-y: 22%;
+  }
+  66% {
+    --blob1-x: 18%;  --blob1-y: 22%;
+    --blob2-x: 82%;  --blob2-y: 78%;
+    --blob3-x: 78%;  --blob3-y: 12%;
+  }
+  100% {
+    --blob1-x: 32%;  --blob1-y: 14%;
+    --blob2-x: 65%;  --blob2-y: 92%;
+    --blob3-x: 88%;  --blob3-y: 28%;
+  }
+}
+
+/* Modo oscuro: el mesh respira más tenue para no competir con el contenido
+   sobre fondo oscuro (Corporativo no tiene mesh por diseño). */
 [data-theme="clay-dark"] .clay-warmth,
 [data-theme="clay-botanical-dark"] .clay-warmth,
 [data-theme="clay-tea-dark"] .clay-warmth,
 [data-theme="clay-mediterranean-dark"] .clay-warmth {
-  opacity: 0.7;
-}
-[data-theme="clay-botanical-light"] .clay-warmth {
-  background:
-    radial-gradient(ellipse 50% 40% at 10% 10%, rgba(91, 122, 58, 0.10) 0%, transparent 60%),
-    radial-gradient(ellipse 60% 50% at 90% 90%, rgba(184, 92, 46, 0.08) 0%, transparent 60%);
-}
-[data-theme="clay-tea-light"] .clay-warmth {
-  background:
-    radial-gradient(ellipse 50% 40% at 10% 10%, rgba(185, 29, 29, 0.08) 0%, transparent 60%),
-    radial-gradient(ellipse 60% 50% at 90% 90%, rgba(92, 122, 60, 0.08) 0%, transparent 60%);
-}
-[data-theme="clay-mediterranean-light"] .clay-warmth {
-  background:
-    radial-gradient(ellipse 50% 40% at 10% 10%, rgba(27, 94, 140, 0.08) 0%, transparent 60%),
-    radial-gradient(ellipse 60% 50% at 90% 90%, rgba(201, 162, 78, 0.10) 0%, transparent 60%);
+  opacity: 0.6;
 }
 
 /* ═══════════════════════════════════════════════════════════════════════════

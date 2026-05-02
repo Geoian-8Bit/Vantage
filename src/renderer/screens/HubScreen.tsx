@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import logoIcon from '../assets/logo-icon.png'
 import { TiltCard } from '../components/TiltCard'
+import { HubParticles } from '../components/HubParticles'
 import { transitionView } from '../lib/transition'
 
 interface HubScreenProps {
@@ -116,8 +117,9 @@ export function HubScreen({ onEnter }: HubScreenProps) {
   const greeting = useGreeting()
 
   return (
-    <div className="hub-screen min-h-full flex flex-col items-center justify-center px-6 py-12">
-      <div className="hub-fade-in w-full max-w-5xl">
+    <div className="hub-screen relative min-h-full flex flex-col items-center justify-center px-6 py-12">
+      <HubParticles />
+      <div className="hub-fade-in relative z-10 w-full max-w-5xl">
         {/* Header */}
         <header className="flex items-center gap-4 mb-12">
           <img src={logoIcon} alt="" className="w-12 h-12 rounded-2xl shadow-md" />
