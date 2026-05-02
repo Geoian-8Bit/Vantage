@@ -7,4 +7,5 @@ out/
 dist-electron/
 *.db
 .claude/settings.local.json
+.claude/scheduled_tasks.lock
 Vantage_Proyecto.docx.pdf
