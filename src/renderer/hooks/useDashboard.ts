@@ -13,7 +13,7 @@ export function useDashboard() {
       const data = await window.api.dashboard.getStats()
       setStats(data)
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Error al cargar el panel')
+      setError(err instanceof Error ? err.message : 'No se pudo cargar el panel')
     } finally {
       setLoading(false)
     }

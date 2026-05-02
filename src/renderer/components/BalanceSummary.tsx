@@ -1,4 +1,6 @@
 import { formatCurrency } from '../lib/utils'
+import { TiltCard } from './TiltCard'
+import { useAnimatedNumber } from '../hooks/useAnimatedNumber'
 
 interface BalanceSummaryProps {
   totalIncome: number
@@ -7,10 +9,14 @@ interface BalanceSummaryProps {
 }
 
 export function BalanceSummary({ totalIncome, totalExpenses, balance }: BalanceSummaryProps) {
+  const animIncome = useAnimatedNumber(totalIncome)
+  const animExpenses = useAnimatedNumber(totalExpenses)
+  const animBalance = useAnimatedNumber(balance)
+
   return (
     <div className="grid grid-cols-3 gap-3 lg:gap-4">
       {/* Income */}
-      <div className="rounded-xl bg-card p-5 shadow-sm border border-border">
+      <TiltCard intensity={3} className="card-anim rounded-xl bg-card p-5 shadow-sm border border-border" style={{ animationDelay: '0ms' }}>
         <div className="flex items-center gap-2 mb-2">
           <div className="w-7 h-7 rounded-lg bg-income-light flex items-center justify-center">
             <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="text-income">
@@ -19,13 +25,17 @@ export function BalanceSummary({ totalIncome, totalExpenses, balance }: BalanceS
           </div>
           <p className="text-sm font-medium text-subtext">Ingresos</p>
         </div>
-        <p className="text-xl lg:text-2xl font-bold text-income tabular-nums">
-          {formatCurrency(totalIncome)}
+        <p
+          className="font-bold text-income tabular-nums truncate"
+          style={{ fontSize: 'clamp(1.125rem, 2vw, 1.5rem)', lineHeight: 1.2 }}
+          title={formatCurrency(totalIncome)}
+        >
+          {formatCurrency(animIncome)}
         </p>
-      </div>
+      </TiltCard>
 
       {/* Expenses */}
-      <div className="rounded-xl bg-card p-5 shadow-sm border border-border">
+      <TiltCard intensity={3} className="card-anim rounded-xl bg-card p-5 shadow-sm border border-border" style={{ animationDelay: '60ms' }}>
         <div className="flex items-center gap-2 mb-2">
           <div className="w-7 h-7 rounded-lg bg-expense-light flex items-center justify-center">
             <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="text-expense">
@@ -34,13 +44,21 @@ export function BalanceSummary({ totalIncome, totalExpenses, balance }: BalanceS
           </div>
           <p className="text-sm font-medium text-subtext">Gastos</p>
         </div>
-        <p className="text-xl lg:text-2xl font-bold text-expense tabular-nums">
-          {formatCurrency(totalExpenses)}
+        <p
+          className="font-bold text-expense tabular-nums truncate"
+          style={{ fontSize: 'clamp(1.125rem, 2vw, 1.5rem)', lineHeight: 1.2 }}
+          title={formatCurrency(totalExpenses)}
+        >
+          {formatCurrency(animExpenses)}
         </p>
-      </div>
+      </TiltCard>
 
       {/* Balance */}
-      <div className={`rounded-xl p-5 shadow-sm border ${balance >= 0 ? 'bg-income-light border-income/20' : 'bg-expense-light border-expense/20'}`}>
+      <TiltCard
+        intensity={3}
+        className={`card-anim rounded-xl p-5 shadow-sm border ${balance >= 0 ? 'bg-income-light border-income/20' : 'bg-expense-light border-expense/20'}`}
+        style={{ animationDelay: '120ms' }}
+      >
         <div className="flex items-center gap-2 mb-2">
           <div className={`w-7 h-7 rounded-lg flex items-center justify-center ${balance >= 0 ? 'bg-income/15' : 'bg-expense/15'}`}>
             <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={balance >= 0 ? 'text-income' : 'text-expense'}>
@@ -50,10 +68,14 @@ export function BalanceSummary({ totalIncome, totalExpenses, balance }: BalanceS
           </div>
           <p className="text-sm font-medium text-subtext">Balance</p>
         </div>
-        <p className={`text-xl lg:text-2xl font-bold tabular-nums ${balance >= 0 ? 'text-income' : 'text-expense'}`}>
-          {balance >= 0 ? '+' : ''}{formatCurrency(balance)}
+        <p
+          className={`font-bold tabular-nums truncate ${balance >= 0 ? 'text-income' : 'text-expense'}`}
+          style={{ fontSize: 'clamp(1.125rem, 2vw, 1.5rem)', lineHeight: 1.2 }}
+          title={`${balance >= 0 ? '+' : ''}${formatCurrency(balance)}`}
+        >
+          {balance >= 0 ? '+' : ''}{formatCurrency(animBalance)}
         </p>
-      </div>
+      </TiltCard>
     </div>
   )
 }

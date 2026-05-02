@@ -1,17 +1,19 @@
 import { useState, useEffect, useCallback } from 'react'
 import type { RecurringTemplate } from '../../shared/types'
 import { PageHeader } from '../components/layout/PageHeader'
+import { EmptyState } from '../components/EmptyState'
 import { formatCurrency, FREQ_LABELS, FREQ_COLORS } from '../lib/utils'
 
 interface TemplateRowProps {
   tpl: RecurringTemplate
   onToggle: (id: string) => void
   onDelete: (id: string) => void
+  staggerIndex?: number
 }
 
-function TemplateRow({ tpl, onToggle, onDelete }: TemplateRowProps) {
+function TemplateRow({ tpl, onToggle, onDelete, staggerIndex = 0 }: TemplateRowProps) {
   return (
-    <div className="group flex items-center gap-3 px-5 py-3.5 hover:bg-surface/60 transition-colors">
+    <div data-stagger={staggerIndex % 8} className="tx-row group flex items-center gap-3 px-5 py-3.5 hover:bg-surface/60 transition-colors">
       <div className={`w-7 h-7 rounded-lg flex items-center justify-center shrink-0 ${tpl.type === 'income' ? 'bg-income-light' : 'bg-expense-light'}`}>
         <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className={tpl.type === 'income' ? 'text-income' : 'text-expense'}>
           {tpl.type === 'income'
@@ -39,8 +41,8 @@ function TemplateRow({ tpl, onToggle, onDelete }: TemplateRowProps) {
         aria-label={tpl.active ? `Pausar ${tpl.description}` : `Activar ${tpl.description}`}
         className="cursor-pointer"
       >
-        <div className={`relative w-9 h-5 rounded-full transition-colors ${tpl.active ? 'bg-brand' : 'bg-border'}`}>
-          <span className={`absolute top-0.5 left-0.5 w-4 h-4 rounded-full bg-white shadow transition-transform ${tpl.active ? 'translate-x-4' : ''}`} />
+        <div className={`toggle-switch relative w-9 h-5 rounded-full ${tpl.active ? 'bg-brand toggle-on' : 'bg-border'}`}>
+          <span className={`toggle-thumb absolute top-0.5 left-0.5 w-4 h-4 rounded-full bg-white shadow ${tpl.active ? 'toggle-thumb-on-sm' : ''}`} />
         </div>
       </button>
       <button
@@ -111,14 +113,16 @@ export function RecurringScreen({ onBack }: RecurringScreenProps) {
       {loading ? (
         <p className="text-subtext text-sm">Cargando…</p>
       ) : templates.length === 0 ? (
-        <div className="rounded-xl bg-card p-12 shadow-sm border border-border text-center">
-          <div className="w-14 h-14 rounded-2xl bg-surface border border-border mx-auto mb-4 flex items-center justify-center">
-            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-subtext">
-              <path d="M17 2.1l4 4-4 4"/><path d="M3 12.2v-2a4 4 0 0 1 4-4h12.8M7 21.9l-4-4 4-4"/><path d="M21 11.8v2a4 4 0 0 1-4 4H4.2"/>
-            </svg>
-          </div>
-          <p className="text-base font-medium text-text">No hay transacciones recurrentes</p>
-          <p className="text-sm text-subtext mt-1">Activa «Repetir automáticamente» al crear un nuevo movimiento</p>
+        <div className="rounded-xl bg-card shadow-sm border border-border">
+          <EmptyState
+            icon={
+              <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M17 2.1l4 4-4 4"/><path d="M3 12.2v-2a4 4 0 0 1 4-4h12.8M7 21.9l-4-4 4-4"/><path d="M21 11.8v2a4 4 0 0 1-4 4H4.2"/>
+              </svg>
+            }
+            title="No hay transacciones recurrentes"
+            description="Activa «Repetir automáticamente» al crear un nuevo movimiento"
+          />
         </div>
       ) : (
         <div className="flex flex-col lg:flex-row gap-4">
@@ -132,7 +136,7 @@ export function RecurringScreen({ onBack }: RecurringScreenProps) {
             <div className="divide-y divide-border/40">
               {expense.length === 0
                 ? <p className="px-5 py-4 text-sm text-subtext italic">Sin gastos recurrentes</p>
-                : expense.map(t => <TemplateRow key={t.id} tpl={t} onToggle={handleToggle} onDelete={handleDelete} />)
+                : expense.map((t, i) => <TemplateRow key={t.id} tpl={t} onToggle={handleToggle} onDelete={handleDelete} staggerIndex={i} />)
               }
             </div>
           </div>
@@ -147,7 +151,7 @@ export function RecurringScreen({ onBack }: RecurringScreenProps) {
             <div className="divide-y divide-border/40">
               {income.length === 0
                 ? <p className="px-5 py-4 text-sm text-subtext italic">Sin ingresos recurrentes</p>
-                : income.map(t => <TemplateRow key={t.id} tpl={t} onToggle={handleToggle} onDelete={handleDelete} />)
+                : income.map((t, i) => <TemplateRow key={t.id} tpl={t} onToggle={handleToggle} onDelete={handleDelete} staggerIndex={i} />)
               }
             </div>
           </div>

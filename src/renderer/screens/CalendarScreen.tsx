@@ -1,13 +1,36 @@
-import { useState, useMemo } from 'react'
+import { useState, useMemo, useCallback } from 'react'
 import { useTransactions } from '../hooks/useTransactions'
 import { PageHeader } from '../components/layout/PageHeader'
+import { Modal } from '../components/Modal'
+import { TransactionForm } from '../components/TransactionForm'
+import { useToast } from '../components/Toast'
+import { CalendarSkeleton } from '../components/skeletons/CalendarSkeleton'
+import { EmptyState } from '../components/EmptyState'
 import { formatCurrency, pad, MONTH_NAMES_FULL } from '../lib/utils'
+import type { CreateTransactionDTO } from '../../shared/types'
 
 const WEEKDAYS = ['Lun','Mar','Mié','Jue','Vie','Sáb','Dom']
 
+type SlideDirection = 'left' | 'right' | null
+
 export function CalendarScreen() {
-  const { transactions, loading } = useTransactions()
+  const { transactions, loading, addTransaction } = useTransactions()
   const [refDate, setRefDate] = useState(() => new Date())
+  const [slideDir, setSlideDir] = useState<SlideDirection>(null)
+  const [quickCreate, setQuickCreate] = useState<{ date: string; type: 'expense' | 'income' } | null>(null)
+  const [createDirty, setCreateDirty] = useState(false)
+  const toast = useToast()
+
+  const handleQuickSubmit = useCallback(async (data: CreateTransactionDTO) => {
+    try {
+      await addTransaction(data)
+      setQuickCreate(null)
+      setCreateDirty(false)
+      toast.success(data.type === 'income' ? 'Ingreso registrado' : 'Gasto registrado')
+    } catch (err) {
+      toast.error('No se pudo guardar', err instanceof Error ? err.message : undefined)
+    }
+  }, [addTransaction, toast])
 
   const year = refDate.getFullYear()
   const month = refDate.getMonth()
@@ -76,21 +99,17 @@ export function CalendarScreen() {
   }, [transactions, selectedDate])
 
   function navigatePrev() {
+    setSlideDir('right')
     setRefDate(d => new Date(d.getFullYear(), d.getMonth() - 1, 1))
     setSelectedDate(null)
   }
   function navigateNext() {
+    setSlideDir('left')
     setRefDate(d => new Date(d.getFullYear(), d.getMonth() + 1, 1))
     setSelectedDate(null)
   }
 
-  if (loading) {
-    return (
-      <div className="flex items-center justify-center h-full">
-        <p className="text-subtext text-lg">Cargando…</p>
-      </div>
-    )
-  }
+  if (loading) return <CalendarSkeleton />
 
   return (
     <div className="space-y-4 lg:space-y-5 w-full">
@@ -130,8 +149,11 @@ export function CalendarScreen() {
           ))}
         </div>
 
-        {/* Days */}
-        <div className="grid grid-cols-7">
+        {/* Days — wrapper con key derivado del mes para re-animar slide al cambiar */}
+        <div
+          key={`${year}-${month}`}
+          className={`grid grid-cols-7 ${slideDir === 'left' ? 'cal-slide-left' : slideDir === 'right' ? 'cal-slide-right' : 'cal-slide-in'}`}
+        >
           {calendarDays.map((cell, i) => {
             const data = txByDate[cell.date]
             const isToday = cell.date === today
@@ -141,6 +163,8 @@ export function CalendarScreen() {
               <button
                 key={i}
                 onClick={() => setSelectedDate(cell.date === selectedDate ? null : cell.date)}
+                onDoubleClick={() => setQuickCreate({ date: cell.date, type: 'expense' })}
+                title="Doble click para añadir gasto en esta fecha"
                 className={`relative min-h-[70px] lg:min-h-[85px] p-1.5 lg:p-2 border-b border-r border-border/40 text-left transition-colors cursor-pointer ${
                   !cell.inMonth ? 'bg-surface/50' : isSelected ? 'bg-brand-light' : 'hover:bg-surface/60'
                 }`}
@@ -188,7 +212,19 @@ export function CalendarScreen() {
             </p>
           </div>
           {selectedTransactions.length === 0 ? (
-            <p className="px-5 py-4 text-sm text-subtext italic">Sin movimientos este día</p>
+            <EmptyState
+              className="!py-8"
+              icon={
+                <svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+                  <rect x="3" y="4" width="18" height="18" rx="2" ry="2" />
+                  <line x1="16" y1="2" x2="16" y2="6" />
+                  <line x1="8" y1="2" x2="8" y2="6" />
+                  <line x1="3" y1="10" x2="21" y2="10" />
+                </svg>
+              }
+              title="Sin movimientos este día"
+              description="Doble click en una celda del calendario para añadir un gasto rápido."
+            />
           ) : (
             <div className="divide-y divide-border/40">
               {selectedTransactions.map(t => (
@@ -214,6 +250,30 @@ export function CalendarScreen() {
           )}
         </div>
       )}
+
+      {/* Quick-create modal: doble click en una celda */}
+      <Modal
+        isOpen={quickCreate !== null}
+        onClose={() => { setQuickCreate(null); setCreateDirty(false) }}
+        title={quickCreate?.type === 'income' ? 'Nuevo ingreso' : 'Nuevo gasto'}
+        dirty={createDirty}
+      >
+        {quickCreate && (
+          <TransactionForm
+            type={quickCreate.type}
+            onSubmit={handleQuickSubmit}
+            onCancel={() => { setQuickCreate(null); setCreateDirty(false) }}
+            onDirtyChange={setCreateDirty}
+            initialValues={{
+              amount: '',
+              description: '',
+              date: quickCreate.date,
+              category: '',
+              note: '',
+            }}
+          />
+        )}
+      </Modal>
     </div>
   )
 }

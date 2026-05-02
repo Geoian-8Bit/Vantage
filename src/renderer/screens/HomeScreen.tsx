@@ -6,6 +6,12 @@ import { BalanceSummary } from '../components/BalanceSummary'
 import { TransactionForm } from '../components/TransactionForm'
 import { TransactionList } from '../components/TransactionList'
 import { Modal } from '../components/Modal'
+import { Tabs } from '../components/Tabs'
+import { HomeSkeleton } from '../components/skeletons/HomeSkeleton'
+import { useModalOrigin, type ModalOrigin } from '../hooks/useModalOrigin'
+import { useToast } from '../components/Toast'
+import { DateInput } from '../components/DateInput'
+import { Select } from '../components/Select'
 import type { CreateTransactionDTO, CreateRecurringTemplateDTO, Transaction, UpdateTransactionDTO } from '../../shared/types'
 import { useCategories } from '../hooks/useCategories'
 import { pad, MONTH_NAMES_FULL } from '../lib/utils'
@@ -79,7 +85,24 @@ export function HomeScreen() {
   const [refDate, setRefDate] = useState(() => new Date())
   const [customFrom, setCustomFrom] = useState('')
   const [customTo, setCustomTo] = useState('')
-  const [recurringBanner, setRecurringBanner] = useState(0)
+
+  // Origin del último botón que disparó un modal — para scale-in desde ese punto
+  const { origin: modalOrigin, captureFromEvent, setOrigin } = useModalOrigin()
+  const toast = useToast()
+  const [createDirty, setCreateDirty] = useState(false)
+  const [editDirty, setEditDirty] = useState(false)
+  const [removingIds, setRemovingIds] = useState<Set<string>>(new Set())
+  const [editedIds, setEditedIds] = useState<Set<string>>(new Set())
+  const [exporting, setExporting] = useState(false)
+
+  const handleDeleteRequest = (id: string, originFromList?: ModalOrigin) => {
+    if (originFromList) setOrigin(originFromList)
+    setConfirmDeleteId(id)
+  }
+  const handleEditRequest = (transaction: Transaction, originFromList?: ModalOrigin) => {
+    if (originFromList) setOrigin(originFromList)
+    setEditingTransaction(transaction)
+  }
 
   // Stable ref for loadTransactions to avoid re-running the effect
   const loadRef = useRef(loadTransactions)
@@ -87,16 +110,16 @@ export function HomeScreen() {
 
   // Auto-process recurring transactions on mount
   useEffect(() => {
-    let timer: ReturnType<typeof setTimeout> | null = null
     window.api.recurring.process().then(({ count }) => {
       if (count > 0) {
         loadRef.current()
-        setRecurringBanner(count)
-        timer = setTimeout(() => setRecurringBanner(0), 4000)
+        toast.success(
+          count === 1 ? '1 transacción recurrente registrada' : `${count} transacciones recurrentes registradas`,
+          'Procesado automáticamente al abrir'
+        )
       }
     }).catch(console.error)
-    return () => { if (timer) clearTimeout(timer) }
-  }, [])
+  }, [toast])
 
   const { fromDate, toDate, periodLabel } = useMemo(() => {
     const y = refDate.getFullYear()
@@ -174,15 +197,6 @@ export function HomeScreen() {
     )
   }, [transactions, fromDate, toDate])
 
-  const periodTotals = useMemo(() => {
-    let income = 0, expenses = 0
-    for (const t of dateFilteredTransactions) {
-      if (t.type === 'income') income += t.amount
-      else expenses += t.amount
-    }
-    return { totalIncome: income, totalExpenses: expenses, balance: income - expenses }
-  }, [dateFilteredTransactions])
-
   const filteredTransactions = useMemo(() => {
     let result = filter === 'all' ? dateFilteredTransactions : dateFilteredTransactions.filter(t => t.type === filter)
     if (categoryFilter !== 'all') result = result.filter(t => t.category === categoryFilter)
@@ -192,6 +206,15 @@ export function HomeScreen() {
     }
     return result
   }, [dateFilteredTransactions, filter, categoryFilter, searchText])
+
+  const periodTotals = useMemo(() => {
+    let income = 0, expenses = 0
+    for (const t of filteredTransactions) {
+      if (t.type === 'income') income += t.amount
+      else expenses += t.amount
+    }
+    return { totalIncome: income, totalExpenses: expenses, balance: income - expenses }
+  }, [filteredTransactions])
 
   const totalPages = Math.max(1, Math.ceil(filteredTransactions.length / PAGE_SIZE))
   const pagedTransactions = showAll
@@ -205,45 +228,96 @@ export function HomeScreen() {
   }
 
   const handleSubmit = useCallback(async (data: CreateTransactionDTO): Promise<void> => {
-    await addTransaction(data)
-    setModalType(null)
-  }, [addTransaction])
+    try {
+      await addTransaction(data)
+      setModalType(null)
+      toast.success(data.type === 'income' ? 'Ingreso registrado' : 'Gasto registrado')
+    } catch (err) {
+      toast.error('No se pudo guardar', err instanceof Error ? err.message : undefined)
+    }
+  }, [addTransaction, toast])
 
   const handleSubmitRecurring = useCallback(async (dto: CreateRecurringTemplateDTO): Promise<void> => {
-    await window.api.recurring.create(dto)
-    setModalType(null)
-  }, [])
+    try {
+      await window.api.recurring.create(dto)
+      setModalType(null)
+      toast.success('Plantilla recurrente creada')
+    } catch (err) {
+      toast.error('No se pudo crear', err instanceof Error ? err.message : undefined)
+    }
+  }, [toast])
 
   const handleDeleteConfirm = useCallback(async (): Promise<void> => {
     if (!confirmDeleteId) return
-    await removeTransaction(confirmDeleteId)
+    const idToDelete = confirmDeleteId
     setConfirmDeleteId(null)
-  }, [confirmDeleteId, removeTransaction])
+    // Marcar para animación de salida
+    setRemovingIds(prev => {
+      const next = new Set(prev); next.add(idToDelete); return next
+    })
+    // Esperar la animación (320ms) antes de eliminar realmente
+    await new Promise(r => setTimeout(r, 320))
+    try {
+      await removeTransaction(idToDelete)
+      toast.success('Transacción eliminada')
+    } catch (err) {
+      toast.error('No se pudo eliminar', err instanceof Error ? err.message : undefined)
+    } finally {
+      setRemovingIds(prev => {
+        const next = new Set(prev); next.delete(idToDelete); return next
+      })
+    }
+  }, [confirmDeleteId, removeTransaction, toast])
 
   const handleBulkDeleteConfirm = useCallback(async (): Promise<void> => {
     const ids = filteredTransactions.map(t => t.id)
     if (ids.length === 0) return
     setBulkDeleting(true)
+    setConfirmBulkDelete(false)
+    // Marcar todos para animación, con un stagger sutil (cada uno 30ms más tarde)
+    setRemovingIds(new Set(ids))
+    await new Promise(r => setTimeout(r, 320 + Math.min(ids.length, 8) * 30))
     try {
       await bulkRemoveTransactions(ids)
-      setConfirmBulkDelete(false)
       setPage(0)
+      toast.success(`${ids.length} ${ids.length === 1 ? 'transacción eliminada' : 'transacciones eliminadas'}`)
     } catch (err) {
       console.error('[BulkDelete]', err)
+      toast.error('No se pudieron eliminar', err instanceof Error ? err.message : undefined)
     } finally {
+      setRemovingIds(new Set())
       setBulkDeleting(false)
     }
-  }, [filteredTransactions, bulkRemoveTransactions])
+  }, [filteredTransactions, bulkRemoveTransactions, toast])
 
   const handleEditSubmit = useCallback(async (data: UpdateTransactionDTO): Promise<void> => {
     if (!editingTransaction) return
-    await updateTransaction(editingTransaction.id, data)
-    setEditingTransaction(null)
-  }, [editingTransaction, updateTransaction])
+    const editedId = editingTransaction.id
+    try {
+      await updateTransaction(editedId, data)
+      setEditingTransaction(null)
+      toast.success('Cambios guardados')
+      // Marca la fila editada para tx-flash, igual que las nuevas
+      setEditedIds(prev => {
+        const next = new Set(prev); next.add(editedId); return next
+      })
+      window.setTimeout(() => {
+        setEditedIds(prev => {
+          const next = new Set(prev); next.delete(editedId); return next
+        })
+      }, 1600)
+    } catch (err) {
+      toast.error('No se pudo actualizar', err instanceof Error ? err.message : undefined)
+    }
+  }, [editingTransaction, updateTransaction, toast])
 
   async function handleExport(): Promise<void> {
-    if (filteredTransactions.length === 0) return
+    if (filteredTransactions.length === 0 || exporting) return
+    setExporting(true)
     try {
+      // Cedemos un frame para que React pinte el spinner antes de bloquear el
+      // thread con XLSX.write (puede tardar 1-2s con varios miles de filas).
+      await new Promise(r => requestAnimationFrame(() => r(null)))
       const rows = filteredTransactions.map(t => ({
         'Fecha':       t.date,
         'Tipo':        t.type === 'income' ? 'Ingreso' : 'Gasto',
@@ -260,32 +334,21 @@ export function HomeScreen() {
         buffer: base64,
         defaultPath: `vantage-${new Date().toISOString().slice(0, 10)}.xlsx`,
       })
+      toast.success(`${filteredTransactions.length} movimientos exportados`)
     } catch (err) {
       console.error('[Export]', err)
-      alert(`Error al exportar: ${err instanceof Error ? err.message : String(err)}`)
+      toast.error('No se pudo exportar', err instanceof Error ? err.message : String(err))
+    } finally {
+      setExporting(false)
     }
   }
 
   if (loading) {
-    return (
-      <div className="flex items-center justify-center h-full">
-        <p className="text-subtext text-lg">Cargando...</p>
-      </div>
-    )
+    return <HomeSkeleton />
   }
 
   return (
     <div className="space-y-4 lg:space-y-5 w-full">
-
-      {/* Recurring banner */}
-      {recurringBanner > 0 && (
-        <div className="flex items-center gap-2.5 rounded-xl bg-income-light border border-income/20 px-4 py-3 text-sm font-medium text-income">
-          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-            <path d="M20 6 9 17l-5-5"/>
-          </svg>
-          Se {recurringBanner === 1 ? 'ha registrado 1 transacción recurrente' : `han registrado ${recurringBanner} transacciones recurrentes`} automáticamente
-        </div>
-      )}
 
       {/* Page header */}
       <PageHeader
@@ -294,7 +357,7 @@ export function HomeScreen() {
         actions={
           <>
             <button
-              onClick={() => setConfirmBulkDelete(true)}
+              onClick={(e) => { captureFromEvent(e); setConfirmBulkDelete(true) }}
               disabled={filteredTransactions.length === 0}
               className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium text-expense bg-expense-light hover:bg-expense/20 border border-expense/20 transition-colors cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed"
             >
@@ -307,18 +370,27 @@ export function HomeScreen() {
             </button>
             <button
               onClick={handleExport}
-              disabled={filteredTransactions.length === 0}
+              disabled={filteredTransactions.length === 0 || exporting}
               className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium text-subtext bg-surface hover:bg-border border border-border transition-colors cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed"
             >
-              <svg aria-hidden="true" xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
-                <polyline points="7 10 12 15 17 10"/>
-                <line x1="12" y1="15" x2="12" y2="3"/>
-              </svg>
-              Exportar
+              {exporting ? (
+                <>
+                  <span className="w-3 h-3 rounded-full border-2 border-subtext/30 border-t-subtext animate-spin" />
+                  Exportando…
+                </>
+              ) : (
+                <>
+                  <svg aria-hidden="true" xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+                    <polyline points="7 10 12 15 17 10"/>
+                    <line x1="12" y1="15" x2="12" y2="3"/>
+                  </svg>
+                  Exportar
+                </>
+              )}
             </button>
             <button
-              onClick={() => setModalType('expense')}
+              onClick={(e) => { captureFromEvent(e); setModalType('expense') }}
               className="flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-semibold text-white bg-expense hover:bg-expense-hover transition-colors cursor-pointer"
             >
               <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
@@ -327,7 +399,7 @@ export function HomeScreen() {
               Gasto
             </button>
             <button
-              onClick={() => setModalType('income')}
+              onClick={(e) => { captureFromEvent(e); setModalType('income') }}
               className="flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-semibold text-white bg-income hover:bg-income-hover transition-colors cursor-pointer"
             >
               <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
@@ -385,20 +457,18 @@ export function HomeScreen() {
 
           {dateMode === 'custom' && (
             <div className="flex items-center gap-2 ml-1">
-              <input
-                type="date"
+              <DateInput
                 value={customFrom}
-                onChange={e => { setCustomFrom(e.target.value); setPage(0) }}
-                aria-label="Fecha de inicio"
-                className="rounded-lg border border-border bg-surface px-3 py-1.5 text-sm text-text focus:outline-none focus:ring-2 focus:ring-brand"
+                onChange={v => { setCustomFrom(v); setPage(0) }}
+                ariaLabel="Fecha de inicio"
+                placeholder="Desde"
               />
               <span className="text-subtext text-sm" aria-hidden="true">—</span>
-              <input
-                type="date"
+              <DateInput
                 value={customTo}
-                onChange={e => { setCustomTo(e.target.value); setPage(0) }}
-                aria-label="Fecha de fin"
-                className="rounded-lg border border-border bg-surface px-3 py-1.5 text-sm text-text focus:outline-none focus:ring-2 focus:ring-brand"
+                onChange={v => { setCustomTo(v); setPage(0) }}
+                ariaLabel="Fecha de fin"
+                placeholder="Hasta"
               />
             </div>
           )}
@@ -407,51 +477,35 @@ export function HomeScreen() {
         {/* Divider */}
         <div className="w-px h-5 bg-border shrink-0" aria-hidden="true" />
 
-        {/* Date mode pills */}
-        <div className="flex gap-1 bg-surface rounded-lg p-1 border border-border">
-          {DATE_MODES.map(m => (
-            <button
-              key={m.id}
-              onClick={() => handleDateModeChange(m.id)}
-              className={`px-3 py-1.5 rounded-md text-xs font-semibold transition-colors cursor-pointer ${
-                dateMode === m.id ? 'bg-card text-text shadow-sm' : 'text-subtext hover:text-text'
-              }`}
-            >
-              {m.label}
-            </button>
-          ))}
-        </div>
+        {/* Date mode pills con underline deslizante */}
+        <Tabs
+          items={DATE_MODES}
+          activeId={dateMode}
+          onChange={handleDateModeChange}
+          ariaLabel="Periodo"
+        />
 
         {/* Spacer */}
         <div className="flex-1" />
 
-        {/* Type filter pills */}
-        <div className="flex gap-1 bg-surface rounded-lg p-1 border border-border">
-          {TABS.map(tab => (
-            <button
-              key={tab.id}
-              onClick={() => handleFilterChange(tab.id)}
-              className={`px-3 py-1.5 rounded-md text-xs font-semibold transition-colors cursor-pointer ${
-                filter === tab.id ? 'bg-card text-text shadow-sm' : 'text-subtext hover:text-text'
-              }`}
-            >
-              {tab.label}
-            </button>
-          ))}
-        </div>
+        {/* Type filter pills con underline deslizante */}
+        <Tabs
+          items={TABS}
+          activeId={filter}
+          onChange={handleFilterChange}
+          ariaLabel="Tipo de movimiento"
+        />
 
         {/* Category dropdown */}
-        <select
+        <Select
           value={categoryFilter}
-          onChange={e => { setCategoryFilter(e.target.value); setPage(0) }}
-          aria-label="Filtrar por categoría"
-          className="rounded-lg border border-border bg-surface px-3 py-1.5 text-xs font-medium text-subtext focus:outline-none focus:ring-2 focus:ring-brand cursor-pointer"
-        >
-          <option value="all">Todas las categorías</option>
-          {categoryOptions.map(cat => (
-            <option key={cat} value={cat}>{cat}</option>
-          ))}
-        </select>
+          onChange={v => { setCategoryFilter(v); setPage(0) }}
+          ariaLabel="Filtrar por categoría"
+          options={[
+            { value: 'all', label: 'Todas las categorías' },
+            ...categoryOptions.map(cat => ({ value: cat, label: cat })),
+          ]}
+        />
 
         {/* Search */}
         <div className="relative">
@@ -474,17 +528,42 @@ export function HomeScreen() {
         </span>
       </div>
 
-      {/* Transaction list */}
+      {/* Transaction list — el wrapper con key fuerza crossfade del bloque
+          completo cuando cambia el conjunto (filtro, búsqueda, periodo, página). */}
+      <div
+        key={`${filter}|${categoryFilter}|${dateMode}|${page}|${searchText.trim()}`}
+        className="tx-list-swap"
+      >
       <TransactionList
         transactions={pagedTransactions}
-        onDelete={setConfirmDeleteId}
-        onEdit={setEditingTransaction}
+        onDelete={handleDeleteRequest}
+        onEdit={handleEditRequest}
+        listKey={`${filter}|${categoryFilter}|${dateMode}|${page}|${searchText}`}
+        removingIds={removingIds}
+        flashIds={editedIds}
+        hasActiveFilter={
+          // El usuario está restringiendo el conjunto si: hay search, hay
+          // categoría específica, o el filtro de tipo no es "todo". Con un
+          // filtro activo, "0 resultados" significa "no coincide", no "vacío".
+          searchText.trim().length > 0 ||
+          categoryFilter !== 'all' ||
+          filter !== 'all' ||
+          (transactions.length > 0 && filteredTransactions.length === 0)
+        }
+        onClearFilters={() => {
+          setSearchText('')
+          setCategoryFilter('all')
+          setFilter('all')
+          setDateMode('all')
+          setPage(0)
+        }}
         emptyMessage={
           filter === 'income'  ? 'No hay ingresos en este periodo' :
           filter === 'expense' ? 'No hay gastos en este periodo'   :
           'No hay movimientos en este periodo'
         }
       />
+      </div>
 
       {/* Pagination */}
       {filteredTransactions.length > PAGE_SIZE && (
@@ -574,15 +653,18 @@ export function HomeScreen() {
       {/* Modal: new transaction */}
       <Modal
         isOpen={modalType !== null}
-        onClose={() => setModalType(null)}
+        onClose={() => { setModalType(null); setCreateDirty(false) }}
         title={modalType === 'expense' ? 'Nuevo gasto' : 'Nuevo ingreso'}
+        origin={modalOrigin}
+        dirty={createDirty}
       >
         {modalType && (
           <TransactionForm
             type={modalType}
             onSubmit={handleSubmit}
-            onCancel={() => setModalType(null)}
+            onCancel={() => { setModalType(null); setCreateDirty(false) }}
             onSubmitRecurring={handleSubmitRecurring}
+            onDirtyChange={setCreateDirty}
           />
         )}
       </Modal>
@@ -590,14 +672,17 @@ export function HomeScreen() {
       {/* Modal: edit transaction */}
       <Modal
         isOpen={editingTransaction !== null}
-        onClose={() => setEditingTransaction(null)}
+        onClose={() => { setEditingTransaction(null); setEditDirty(false) }}
         title={editingTransaction?.type === 'expense' ? 'Editar gasto' : 'Editar ingreso'}
+        origin={modalOrigin}
+        dirty={editDirty}
       >
         {editingTransaction && (
           <TransactionForm
             type={editingTransaction.type}
             onSubmit={handleEditSubmit}
-            onCancel={() => setEditingTransaction(null)}
+            onCancel={() => { setEditingTransaction(null); setEditDirty(false) }}
+            onDirtyChange={setEditDirty}
             initialValues={{
               amount: String(editingTransaction.amount),
               description: editingTransaction.description,
@@ -614,6 +699,7 @@ export function HomeScreen() {
         isOpen={confirmDeleteId !== null}
         onClose={() => setConfirmDeleteId(null)}
         title="Eliminar transacción"
+        origin={modalOrigin}
       >
         <p className="text-sm text-subtext">¿Seguro que quieres eliminar esta transacción? Esta acción no se puede deshacer.</p>
         <div className="flex gap-3 pt-4">
@@ -636,24 +722,66 @@ export function HomeScreen() {
       <Modal
         isOpen={confirmBulkDelete}
         onClose={() => setConfirmBulkDelete(false)}
-        title="Eliminar transacciones"
+        title="Eliminar movimientos"
+        origin={modalOrigin}
       >
-        <p className="text-sm text-subtext">
-          ¿Eliminar <strong>{filteredTransactions.length}</strong> {filteredTransactions.length === 1 ? 'transacción' : 'transacciones'}? Esta acción no se puede deshacer.
+        {/* Conteo prominente: que el usuario VEA cuántos elimina, no solo lea */}
+        <div className="rounded-2xl bg-expense-light border border-expense/20 px-5 py-4 mb-4">
+          <p className="text-xs font-semibold text-expense uppercase tracking-wider mb-1">Vas a eliminar</p>
+          <p className="text-3xl font-bold text-expense tabular-nums" style={{ fontFamily: 'var(--font-display)' }}>
+            {filteredTransactions.length} {filteredTransactions.length === 1 ? 'movimiento' : 'movimientos'}
+          </p>
+        </div>
+
+        {/* Resumen de los filtros activos para que sepa QUÉ está borrando */}
+        <div className="space-y-2 mb-5">
+          <p className="text-xs font-semibold text-subtext uppercase tracking-wider">Filtros aplicados</p>
+          <ul className="space-y-1.5 text-sm text-text">
+            <li className="flex items-baseline gap-2">
+              <span className="text-subtext">Periodo:</span>
+              <span className="font-semibold">{periodLabel}</span>
+            </li>
+            {filter !== 'all' && (
+              <li className="flex items-baseline gap-2">
+                <span className="text-subtext">Tipo:</span>
+                <span className="font-semibold">{filter === 'income' ? 'Solo ingresos' : 'Solo gastos'}</span>
+              </li>
+            )}
+            {categoryFilter !== 'all' && (
+              <li className="flex items-baseline gap-2">
+                <span className="text-subtext">Categoría:</span>
+                <span className="font-semibold">{categoryFilter}</span>
+              </li>
+            )}
+            {searchText.trim() && (
+              <li className="flex items-baseline gap-2">
+                <span className="text-subtext">Búsqueda:</span>
+                <span className="font-semibold">«{searchText.trim()}»</span>
+              </li>
+            )}
+          </ul>
+        </div>
+
+        <p className="text-xs text-subtext leading-relaxed mb-5">
+          La acción no se puede deshacer.
         </p>
-        <div className="flex gap-3 pt-4">
+
+        <div className="flex gap-3">
           <button
             onClick={() => setConfirmBulkDelete(false)}
-            className="flex-1 py-2.5 rounded-lg text-sm font-medium text-subtext bg-surface hover:bg-border transition-colors cursor-pointer"
+            className="flex-1 py-2.5 rounded-xl text-sm font-semibold text-subtext bg-surface border border-border hover:bg-border hover:text-text transition-colors cursor-pointer"
           >
             Cancelar
           </button>
           <button
             onClick={handleBulkDeleteConfirm}
             disabled={bulkDeleting}
-            className="flex-1 py-2.5 rounded-lg text-sm font-medium text-white bg-expense hover:bg-expense-hover transition-colors cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+            className="flex-1 py-2.5 rounded-xl text-sm font-semibold text-white bg-expense hover:bg-expense-hover transition-colors cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
           >
-            {bulkDeleting ? 'Eliminando…' : 'Eliminar todo'}
+            {bulkDeleting && (
+              <span className="w-4 h-4 rounded-full border-2 border-white/40 border-t-white animate-spin" />
+            )}
+            {bulkDeleting ? 'Eliminando…' : `Eliminar ${filteredTransactions.length}`}
           </button>
         </div>
       </Modal>

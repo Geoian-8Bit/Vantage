@@ -28,7 +28,7 @@ export function useTransactions(): UseTransactionsReturn {
       const data = await transactionRepository.getAll()
       setTransactions(data)
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Error al cargar transacciones')
+      setError(err instanceof Error ? err.message : 'No se pudieron cargar las transacciones')
     } finally {
       setLoading(false)
     }
@@ -44,7 +44,7 @@ export function useTransactions(): UseTransactionsReturn {
       const newTransaction = await transactionRepository.create(data)
       setTransactions(prev => [newTransaction, ...prev])
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Error al crear transacción')
+      setError(err instanceof Error ? err.message : 'No se pudo crear la transacción')
       throw err
     }
   }, [])
@@ -55,7 +55,7 @@ export function useTransactions(): UseTransactionsReturn {
       await transactionRepository.delete(id)
       setTransactions(prev => prev.filter(t => t.id !== id))
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Error al eliminar transacción')
+      setError(err instanceof Error ? err.message : 'No se pudo eliminar la transacción')
       throw err
     }
   }, [])
@@ -67,7 +67,7 @@ export function useTransactions(): UseTransactionsReturn {
       const idSet = new Set(ids)
       setTransactions(prev => prev.filter(t => !idSet.has(t.id)))
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Error al eliminar transacciones')
+      setError(err instanceof Error ? err.message : 'No se pudieron eliminar las transacciones')
       throw err
     }
   }, [])
@@ -78,7 +78,7 @@ export function useTransactions(): UseTransactionsReturn {
       const updated = await transactionRepository.update(id, data)
       setTransactions(prev => prev.map(t => t.id === id ? updated : t))
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Error al actualizar transacción')
+      setError(err instanceof Error ? err.message : 'No se pudo actualizar la transacción')
       throw err
     }
   }, [])
