@@ -14,9 +14,28 @@ interface TransactionListProps {
   listKey?: string
   /** Ids en proceso de eliminación: animan colapso antes de desaparecer del array */
   removingIds?: Set<string>
+  /** True si hay filtros activos (search, category, type) que están reduciendo
+   * el conjunto. Cambia el empty state a "tu filtro no encontró nada" y ofrece
+   * una acción para limpiar. */
+  hasActiveFilter?: boolean
+  /** Callback opcional para limpiar todos los filtros activos. */
+  onClearFilters?: () => void
+  /** Ids recién editados externamente (desde el padre). Se les aplica el mismo
+   * tx-flash que a los nuevos durante 1.6s para señalar "esta cambió". */
+  flashIds?: Set<string>
 }
 
-export function TransactionList({ transactions, onDelete, onEdit, emptyMessage = 'No hay transacciones', listKey, removingIds }: TransactionListProps) {
+export function TransactionList({
+  transactions,
+  onDelete,
+  onEdit,
+  emptyMessage = 'No hay transacciones',
+  listKey,
+  removingIds,
+  hasActiveFilter,
+  onClearFilters,
+  flashIds,
+}: TransactionListProps) {
   const [highlightedIds, setHighlightedIds] = useState<Set<string>>(new Set())
   const knownIdsRef = useRef<Set<string>>(new Set())
 
@@ -50,6 +69,33 @@ export function TransactionList({ transactions, onDelete, onEdit, emptyMessage =
   }, [transactions])
 
   if (transactions.length === 0) {
+    // Diferenciamos: filtro activo sin resultados ≠ no hay datos en absoluto.
+    // El primer caso es transitorio (acción del usuario), el segundo invita a crear.
+    if (hasActiveFilter) {
+      return (
+        <div className="rounded-xl bg-card shadow-sm border border-border">
+          <EmptyState
+            icon={
+              <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
+                <circle cx="11" cy="11" r="8" />
+                <path d="m21 21-4.35-4.35" />
+                <line x1="8" y1="11" x2="14" y2="11" />
+              </svg>
+            }
+            title="Ningún movimiento coincide"
+            description="Prueba a cambiar el periodo, la categoría o el texto de búsqueda."
+            action={onClearFilters && (
+              <button
+                onClick={onClearFilters}
+                className="px-4 py-2 rounded-xl text-sm font-semibold text-brand bg-brand-light hover:bg-brand hover:text-white transition-colors cursor-pointer"
+              >
+                Limpiar filtros
+              </button>
+            )}
+          />
+        </div>
+      )
+    }
     return (
       <div className="rounded-xl bg-card shadow-sm border border-border">
         <EmptyState
@@ -70,7 +116,7 @@ export function TransactionList({ transactions, onDelete, onEdit, emptyMessage =
   return (
     <div className="rounded-2xl bg-card shadow-sm border border-border overflow-hidden">
       {/* Header */}
-      <div className="grid grid-cols-[1fr_140px_110px_120px_88px] px-5 py-3 border-b border-border bg-surface text-[11px] font-semibold text-subtext uppercase tracking-wider">
+      <div className="grid grid-cols-[minmax(0,1fr)_140px_110px_140px_88px] px-5 py-3 border-b border-border bg-surface text-[11px] font-semibold text-subtext uppercase tracking-wider">
         <span>Descripción · Nota</span>
         <span>Categoría</span>
         <span className="text-right">Fecha</span>
@@ -89,14 +135,14 @@ export function TransactionList({ transactions, onDelete, onEdit, emptyMessage =
           const method = pmMatch?.[1]
           const noteRest = pmMatch ? pmMatch[2] : transaction.note ?? ''
 
-          const isHighlighted = highlightedIds.has(transaction.id)
+          const isHighlighted = highlightedIds.has(transaction.id) || flashIds?.has(transaction.id)
           const isRemoving = removingIds?.has(transaction.id)
 
           return (
             <div
               key={listKey ? `${listKey}-${transaction.id}` : transaction.id}
               data-stagger={idx % 8}
-              className={`tx-row group relative grid grid-cols-[1fr_140px_110px_120px_88px] items-center px-5 py-3.5 transition-colors hover:bg-surface/50 ${
+              className={`tx-row group relative grid grid-cols-[minmax(0,1fr)_140px_110px_140px_88px] items-center px-5 py-3.5 transition-colors hover:bg-surface/50 ${
                 isHighlighted ? 'tx-row-flash' : ''
               } ${isRemoving ? 'tx-row-removing' : ''}`}
             >

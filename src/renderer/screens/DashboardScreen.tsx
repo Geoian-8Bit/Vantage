@@ -38,9 +38,13 @@ export function DashboardScreen() {
       <PageHeader section="Inicio" page="Panel" />
 
       {/* Balance card */}
-      <TiltCard intensity={1.2} className="card-anim rounded-xl bg-card border border-border shadow-sm p-6" style={{ animationDelay: '0ms' }}>
+      <TiltCard intensity={1.2} className="card-anim rounded-xl bg-card border border-border shadow-sm p-6 min-w-0" style={{ animationDelay: '0ms' }}>
         <p className="text-xs font-semibold text-subtext uppercase tracking-wider mb-1">Balance total</p>
-        <p className={`text-3xl font-bold tabular-nums ${stats.balance >= 0 ? 'text-income' : 'text-expense'}`}>
+        <p
+          className={`font-bold tabular-nums truncate ${stats.balance >= 0 ? 'text-income' : 'text-expense'}`}
+          style={{ fontSize: 'clamp(1.5rem, 3vw, 2rem)', lineHeight: 1.15 }}
+          title={`${stats.balance >= 0 ? '+' : '−'}${formatCurrency(Math.abs(stats.balance))}`}
+        >
           {stats.balance >= 0 ? '+' : '−'}{formatCurrency(Math.abs(animBalance))}
         </p>
       </TiltCard>
@@ -48,32 +52,44 @@ export function DashboardScreen() {
       {/* Stat cards row */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
         {/* Monthly expenses */}
-        <TiltCard intensity={3} className="card-anim rounded-xl bg-card border border-border shadow-sm p-5" style={{ animationDelay: '60ms' }}>
+        <TiltCard intensity={3} className="card-anim rounded-xl bg-card border border-border shadow-sm p-5 min-w-0" style={{ animationDelay: '60ms' }}>
           <p className="text-xs font-semibold text-subtext uppercase tracking-wider mb-1">Gastos del mes</p>
-          <div className="flex items-baseline gap-3">
-            <span className="text-2xl font-bold text-expense tabular-nums">
+          <div className="flex items-baseline gap-3 min-w-0">
+            <span
+              className="font-bold text-expense tabular-nums truncate"
+              style={{ fontSize: 'clamp(1.125rem, 2vw, 1.5rem)', lineHeight: 1.2 }}
+              title={formatCurrency(stats.monthExpenses)}
+            >
               {formatCurrency(animMonthExpenses)}
             </span>
             {stats.prevMonthExpenses > 0 && (
-              <span className={`text-sm font-semibold ${changeColor}`}>
+              <span className={`text-sm font-semibold whitespace-nowrap shrink-0 ${changeColor}`}>
                 {changeArrow} {Math.abs(stats.monthExpenseChange).toFixed(1)}%
               </span>
             )}
           </div>
           {stats.prevMonthExpenses > 0 && (
-            <p className="text-xs text-subtext mt-1">
+            <p className="text-xs text-subtext mt-1 truncate" title={`Mes anterior: ${formatCurrency(stats.prevMonthExpenses)}`}>
               Mes anterior: {formatCurrency(stats.prevMonthExpenses)}
             </p>
           )}
         </TiltCard>
 
         {/* Top category */}
-        <TiltCard intensity={3} className="card-anim rounded-xl bg-card border border-border shadow-sm p-5" style={{ animationDelay: '120ms' }}>
+        <TiltCard intensity={3} className="card-anim rounded-xl bg-card border border-border shadow-sm p-5 min-w-0" style={{ animationDelay: '120ms' }}>
           <p className="text-xs font-semibold text-subtext uppercase tracking-wider mb-1">Categoría principal</p>
           {stats.topCategory ? (
             <>
-              <span className="text-2xl font-bold text-text">{stats.topCategory.name}</span>
-              <p className="text-sm text-subtext mt-1">{formatCurrency(animTopCategoryAmount)} este mes</p>
+              <span
+                className="block font-bold text-text truncate"
+                style={{ fontSize: 'clamp(1.125rem, 2vw, 1.5rem)', lineHeight: 1.2 }}
+                title={stats.topCategory.name}
+              >
+                {stats.topCategory.name}
+              </span>
+              <p className="text-sm text-subtext mt-1 tabular-nums truncate" title={`${formatCurrency(stats.topCategory.amount)} este mes`}>
+                {formatCurrency(animTopCategoryAmount)} este mes
+              </p>
             </>
           ) : (
             <p className="text-sm text-subtext italic">Sin gastos este mes</p>

@@ -674,6 +674,12 @@ a:focus-visible,
   100% { opacity: 1; transform: scale(1) translateY(0); }
 }
 
+/* ─── Barra de progreso indeterminada (banner "Procesando…") ─── */
+@keyframes progress-indeterminate {
+  0%   { transform: translateX(-100%); }
+  100% { transform: translateX(350%); }
+}
+
 /* ─── Skeleton con shimmer ─── */
 .skeleton {
   position: relative;
@@ -970,6 +976,17 @@ button.bg-error:not(:disabled):hover,
 .heatmap-cell[data-stagger="4"] { animation-delay: 200ms; }
 .heatmap-cell[data-stagger="5"] { animation-delay: 250ms; }
 .heatmap-cell[data-stagger="6"] { animation-delay: 300ms; }
+
+/* ─── Crossfade del contenedor de la lista al cambiar filtro/búsqueda ───
+   Se dispara via key={listKey} en el wrapper. Da sensación de "intercambio"
+   en lugar de "reemplazo seco" cuando el conjunto cambia. */
+.tx-list-swap {
+  animation: tx-list-fade 200ms var(--ease-soft);
+}
+@keyframes tx-list-fade {
+  from { opacity: 0.55; }
+  to   { opacity: 1; }
+}
 
 /* ─── Filas de transacciones con stagger entry al filtrar/paginar ─── */
 .tx-row {

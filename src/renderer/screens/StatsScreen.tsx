@@ -67,6 +67,8 @@ export function StatsScreen() {
   const [rangeFrom, setRangeFrom] = useState('')
   const [rangeTo,   setRangeTo]   = useState('')
 
+  const [exportingPDF, setExportingPDF] = useState(false)
+
   // ── Period derivation ──────────────────────────────────────────────
   const { fromDate, toDate, periodLabel } = useMemo(() => {
     const y = refDate.getFullYear()
@@ -254,6 +256,8 @@ export function StatsScreen() {
 
   // ── PDF export ───────────────────────────────────────────────────
   async function handleExportPDF() {
+    if (exportingPDF) return
+    setExportingPDF(true)
     try {
       const cats = categoryData.map(c => ({
         name: c.name,
@@ -282,6 +286,8 @@ export function StatsScreen() {
     } catch (err) {
       console.error('[PDF Export]', err)
       toast.error('No se pudo exportar el PDF', err instanceof Error ? err.message : undefined)
+    } finally {
+      setExportingPDF(false)
     }
   }
 
@@ -299,16 +305,25 @@ export function StatsScreen() {
         actions={
           <button
             onClick={handleExportPDF}
-            disabled={periodTransactions.length === 0}
+            disabled={periodTransactions.length === 0 || exportingPDF}
             className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium text-subtext bg-surface hover:bg-border border border-border transition-colors cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed"
           >
-            <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-              <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
-              <polyline points="14 2 14 8 20 8"/>
-              <line x1="16" y1="13" x2="8" y2="13"/>
-              <line x1="16" y1="17" x2="8" y2="17"/>
-            </svg>
-            Exportar PDF
+            {exportingPDF ? (
+              <>
+                <span className="w-3 h-3 rounded-full border-2 border-subtext/30 border-t-subtext animate-spin" />
+                Generando PDF…
+              </>
+            ) : (
+              <>
+                <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+                  <polyline points="14 2 14 8 20 8"/>
+                  <line x1="16" y1="13" x2="8" y2="13"/>
+                  <line x1="16" y1="17" x2="8" y2="17"/>
+                </svg>
+                Exportar PDF
+              </>
+            )}
           </button>
         }
       />
@@ -400,8 +415,9 @@ export function StatsScreen() {
         )}
       </div>
 
-      {/* Summary cards */}
-      <div className="grid grid-cols-3 gap-3 lg:gap-4">
+      {/* Summary cards — key={dateMode} fuerza remount al cambiar de modo
+          para que las cards crossfaden suavemente con la nueva info. */}
+      <div key={dateMode} className="grid grid-cols-3 gap-3 lg:gap-4">
         <TiltCard intensity={3} className="card-anim rounded-xl bg-card p-4 lg:p-5 shadow-sm border border-border" style={{ animationDelay: '0ms' }}>
           <p className="text-xs font-medium text-subtext uppercase tracking-wider mb-1">Ingresos</p>
           <p className="text-xl lg:text-2xl font-bold text-income tabular-nums">{formatCurrency(periodStats.income)}</p>

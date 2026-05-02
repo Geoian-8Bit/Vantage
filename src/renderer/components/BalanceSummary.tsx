@@ -25,7 +25,11 @@ export function BalanceSummary({ totalIncome, totalExpenses, balance }: BalanceS
           </div>
           <p className="text-sm font-medium text-subtext">Ingresos</p>
         </div>
-        <p className="text-xl lg:text-2xl font-bold text-income tabular-nums">
+        <p
+          className="font-bold text-income tabular-nums truncate"
+          style={{ fontSize: 'clamp(1.125rem, 2vw, 1.5rem)', lineHeight: 1.2 }}
+          title={formatCurrency(totalIncome)}
+        >
           {formatCurrency(animIncome)}
         </p>
       </TiltCard>
@@ -40,7 +44,11 @@ export function BalanceSummary({ totalIncome, totalExpenses, balance }: BalanceS
           </div>
           <p className="text-sm font-medium text-subtext">Gastos</p>
         </div>
-        <p className="text-xl lg:text-2xl font-bold text-expense tabular-nums">
+        <p
+          className="font-bold text-expense tabular-nums truncate"
+          style={{ fontSize: 'clamp(1.125rem, 2vw, 1.5rem)', lineHeight: 1.2 }}
+          title={formatCurrency(totalExpenses)}
+        >
           {formatCurrency(animExpenses)}
         </p>
       </TiltCard>
@@ -60,7 +68,11 @@ export function BalanceSummary({ totalIncome, totalExpenses, balance }: BalanceS
           </div>
           <p className="text-sm font-medium text-subtext">Balance</p>
         </div>
-        <p className={`text-xl lg:text-2xl font-bold tabular-nums ${balance >= 0 ? 'text-income' : 'text-expense'}`}>
+        <p
+          className={`font-bold tabular-nums truncate ${balance >= 0 ? 'text-income' : 'text-expense'}`}
+          style={{ fontSize: 'clamp(1.125rem, 2vw, 1.5rem)', lineHeight: 1.2 }}
+          title={`${balance >= 0 ? '+' : ''}${formatCurrency(balance)}`}
+        >
           {balance >= 0 ? '+' : ''}{formatCurrency(animBalance)}
         </p>
       </TiltCard>

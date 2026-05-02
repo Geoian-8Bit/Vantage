@@ -577,6 +577,37 @@ export function ImportScreen({ onBack }: ImportScreenProps) {
 
       <StepIndicator step={step} fileType={fileType} />
 
+      {/* Banner de progreso visible mientras parseExcel/parseAccess procesan
+          un archivo grande. Muestra el nombre y una barra indeterminada para
+          que el usuario sepa que la app no está colgada. */}
+      {loading && filePath && (
+        <div
+          className="relative overflow-hidden rounded-2xl bg-card border border-border shadow-sm px-5 py-4 flex items-center gap-3"
+          role="status"
+          aria-live="polite"
+        >
+          {/* Barra indeterminada arriba */}
+          <span
+            aria-hidden="true"
+            className="absolute top-0 left-0 right-0 h-0.5 bg-border overflow-hidden"
+          >
+            <span
+              className="block h-full"
+              style={{
+                background: 'linear-gradient(90deg, transparent, var(--color-brand), transparent)',
+                width: '40%',
+                animation: 'progress-indeterminate 1.4s var(--ease-default) infinite',
+              }}
+            />
+          </span>
+          <span className="w-9 h-9 rounded-full border-[3px] border-brand-light border-t-brand animate-spin shrink-0" />
+          <div className="flex-1 min-w-0">
+            <p className="text-sm font-semibold text-text">Procesando archivo…</p>
+            <p className="text-xs text-subtext truncate" title={filePath}>{filePath.split(/[\\/]/).pop()}</p>
+          </div>
+        </div>
+      )}
+
       {error && (
         <div className="rounded-lg bg-expense-light border border-expense/20 px-4 py-3 flex items-start gap-2">
           <svg className="text-expense shrink-0 mt-0.5" xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">

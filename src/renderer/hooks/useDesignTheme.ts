@@ -86,10 +86,34 @@ function parseStoredTheme(value: string | null): { id: DesignThemeId; mode: Them
   return { id: match[1] as DesignThemeId, mode: match[2] as ThemeMode }
 }
 
+/* Toggle de la clase .theme-transition: se añade un instante antes de cambiar
+   los tokens y se quita 520ms después. Mientras está activa, todos los
+   elementos hacen crossfade de background/color/border/shadow vía la regla
+   global de globals.css. Sin esto el cambio de paleta es brusco. */
+let themeTransitionTimer: number | undefined
+
+function flagThemeTransition() {
+  const root = document.documentElement
+  root.classList.add('theme-transition')
+  if (themeTransitionTimer !== undefined) window.clearTimeout(themeTransitionTimer)
+  themeTransitionTimer = window.setTimeout(() => {
+    root.classList.remove('theme-transition')
+    themeTransitionTimer = undefined
+  }, 520)
+}
+
 function applyTheme(id: DesignThemeId, mode: ThemeMode) {
   const composed = `${id}-${mode}`
   document.documentElement.setAttribute('data-theme', composed)
   localStorage.setItem(STORAGE_KEY, composed)
+}
+
+/* Aplica el tema con crossfade visible: marca la transición y cede un frame
+   para que la clase entre en vigor antes de cambiar los tokens. Solo para
+   cambios disparados por el usuario, NO para el bootstrap inicial. */
+function applyThemeWithTransition(id: DesignThemeId, mode: ThemeMode) {
+  flagThemeTransition()
+  requestAnimationFrame(() => applyTheme(id, mode))
 }
 
 export function useDesignTheme() {
@@ -106,17 +130,17 @@ export function useDesignTheme() {
   function setTheme(id: DesignThemeId) {
     const meta = DESIGN_THEMES.find(t => t.id === id)!
     const mode = state?.id === id ? state.mode : (state?.mode ?? meta.defaultMode)
-    applyTheme(id, mode)
+    applyThemeWithTransition(id, mode)
     setState({ id, mode })
   }
 
   function setMode(mode: ThemeMode) {
     if (!state) {
-      applyTheme(DEFAULT_THEME, mode)
+      applyThemeWithTransition(DEFAULT_THEME, mode)
       setState({ id: DEFAULT_THEME, mode })
       return
     }
-    applyTheme(state.id, mode)
+    applyThemeWithTransition(state.id, mode)
     setState({ id: state.id, mode })
   }
 
