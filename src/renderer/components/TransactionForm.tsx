@@ -147,6 +147,8 @@ export function TransactionForm({
 
   const parsedAmount = parseFloat(amount)
   const amountValid = !isNaN(parsedAmount) && parsedAmount > 0
+  // Solo mostramos error inline si el usuario ya escribio algo invalido.
+  const showAmountError = amount.length > 0 && !amountValid
   const exceedsBalance =
     usingSavings && type === 'income' && selectedSavingsAccount &&
     amountValid && parsedAmount > selectedSavingsAccount.balance + 0.005
@@ -269,13 +271,13 @@ export function TransactionForm({
           className="relative rounded-2xl"
           style={{
             background: 'var(--color-card)',
-            border: '2px solid var(--color-border)',
-            boxShadow: 'var(--shadow-sm)',
+            border: `2px solid ${showAmountError ? 'var(--color-error)' : 'var(--color-border)'}`,
+            boxShadow: showAmountError ? '0 0 0 4px var(--color-error-light)' : 'var(--shadow-sm)',
             transition: 'border-color var(--duration-base) var(--ease-default), box-shadow var(--duration-base) var(--ease-default)',
           }}
         >
           <span
-            className={`absolute left-5 top-1/2 -translate-y-1/2 text-2xl pointer-events-none ${accentColor}`}
+            className={`absolute left-5 top-1/2 -translate-y-1/2 text-2xl pointer-events-none ${showAmountError ? 'text-error' : accentColor}`}
             style={{ fontFamily: 'var(--font-display)' }}
           >
             €
@@ -289,10 +291,16 @@ export function TransactionForm({
             placeholder="0,00"
             required
             autoFocus
+            aria-invalid={showAmountError || undefined}
             className="w-full rounded-2xl bg-transparent pl-11 pr-5 py-4 text-3xl text-text text-right focus:outline-none border-none tabular-nums"
             style={{ fontFamily: 'var(--font-display)', letterSpacing: 'var(--letter-spacing-display)' }}
           />
         </div>
+        {showAmountError && (
+          <p className="text-xs text-error mt-1.5" role="alert">
+            Indica una cantidad mayor de 0.
+          </p>
+        )}
       </div>
 
       {/* Description — campo primario */}

@@ -196,7 +196,7 @@ export function DebtSimulator({ activeDebts }: DebtSimulatorProps) {
                 Capital de la deuda
               </label>
               <div
-                className="relative rounded-xl"
+                className="input-wrap relative rounded-xl"
                 style={{ background: 'var(--color-surface)', border: '1px solid var(--color-border)' }}
               >
                 <span className="absolute left-4 top-1/2 -translate-y-1/2 text-lg text-brand pointer-events-none" style={{ fontFamily: 'var(--font-display)' }}>€</span>
@@ -318,7 +318,7 @@ export function DebtSimulator({ activeDebts }: DebtSimulatorProps) {
 
                   {fundsSource === 'free' && (
                     <div
-                      className="relative rounded-xl"
+                      className="input-wrap relative rounded-xl"
                       style={{ background: 'var(--color-card)', border: '1px solid var(--color-border)' }}
                     >
                       <span className="absolute left-4 top-1/2 -translate-y-1/2 text-base text-brand pointer-events-none" style={{ fontFamily: 'var(--font-display)' }}>€</span>
@@ -508,7 +508,7 @@ export function DebtSimulator({ activeDebts }: DebtSimulatorProps) {
                   ariaLabel="Deuda"
                 />
                 <div
-                  className="relative rounded-xl"
+                  className="input-wrap relative rounded-xl"
                   style={{ background: 'var(--color-surface)', border: '1px solid var(--color-border)' }}
                 >
                   <span className="absolute left-4 top-1/2 -translate-y-1/2 text-base text-brand pointer-events-none" style={{ fontFamily: 'var(--font-display)' }}>€</span>

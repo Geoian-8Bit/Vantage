@@ -18,23 +18,21 @@ export function EmptyState({ icon, title, description, action, className = '' }:
     <div className={`flex flex-col items-center justify-center text-center px-6 py-12 ${className}`}>
       {icon && (
         <div
-          className="empty-state-icon mb-5 flex items-center justify-center"
+          className="empty-state-icon mb-5 flex items-center justify-center bg-brand-light text-brand"
           style={{
             width: 72,
             height: 72,
             borderRadius: 'var(--radius-2xl)',
-            background: 'var(--color-brand-light)',
-            color: 'var(--color-brand)',
           }}
         >
           {icon}
         </div>
       )}
-      <h3 className="text-lg font-semibold mb-1.5" style={{ color: 'var(--color-text)' }}>
+      <h3 className="text-lg font-semibold mb-1.5 text-text">
         {title}
       </h3>
       {description && (
-        <p className="text-sm max-w-sm leading-relaxed" style={{ color: 'var(--color-subtext)' }}>
+        <p className="text-sm max-w-sm leading-relaxed text-subtext">
           {description}
         </p>
       )}

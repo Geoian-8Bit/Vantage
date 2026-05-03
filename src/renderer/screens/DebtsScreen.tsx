@@ -397,7 +397,7 @@ export function DebtsScreen() {
       <Modal
         isOpen={extraTarget !== null}
         onClose={() => { setExtraTarget(null); setExtraAmount(''); setExtraNote(''); setExtraError(null) }}
-        title={`Pago extra — ${extraTarget?.name ?? ''}`}
+        title={`Pago extra a ${extraTarget?.name ?? ''}`}
       >
         {extraTarget && (
           <div className="space-y-4">
@@ -413,7 +413,7 @@ export function DebtsScreen() {
                 Importe
               </label>
               <div
-                className="relative rounded-xl"
+                className="input-wrap relative rounded-xl"
                 style={{ background: 'var(--color-card)', border: '1px solid var(--color-border)' }}
               >
                 <span className="absolute left-4 top-1/2 -translate-y-1/2 text-base text-brand pointer-events-none" style={{ fontFamily: 'var(--font-display)' }}>€</span>

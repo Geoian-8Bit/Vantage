@@ -2,16 +2,21 @@ import { useState, useEffect, useCallback } from 'react'
 import type { RecurringTemplate } from '../../shared/types'
 import { PageHeader } from '../components/layout/PageHeader'
 import { EmptyState } from '../components/EmptyState'
+import { Modal } from '../components/Modal'
+import { useToast } from '../components/Toast'
+import { RecurringSkeleton } from '../components/skeletons/RecurringSkeleton'
 import { formatCurrency, FREQ_LABELS, FREQ_COLORS } from '../lib/utils'
 
 interface TemplateRowProps {
   tpl: RecurringTemplate
   onToggle: (id: string) => void
-  onDelete: (id: string) => void
+  onDelete: (tpl: RecurringTemplate) => void
+  toggling: boolean
   staggerIndex?: number
 }
 
-function TemplateRow({ tpl, onToggle, onDelete, staggerIndex = 0 }: TemplateRowProps) {
+function TemplateRow({ tpl, onToggle, onDelete, toggling, staggerIndex = 0 }: TemplateRowProps) {
+  const description = tpl.description || 'Sin descripción'
   return (
     <div data-stagger={staggerIndex % 8} className="tx-row group flex items-center gap-3 px-5 py-3.5 hover:bg-surface/60 transition-colors">
       <div className={`w-7 h-7 rounded-lg flex items-center justify-center shrink-0 ${tpl.type === 'income' ? 'bg-income-light' : 'bg-expense-light'}`}>
@@ -23,7 +28,7 @@ function TemplateRow({ tpl, onToggle, onDelete, staggerIndex = 0 }: TemplateRowP
         </svg>
       </div>
       <div className="flex-1 min-w-0">
-        <p className="text-sm font-semibold text-text truncate">{tpl.description || '—'}</p>
+        <p className="text-sm font-semibold text-text truncate">{description}</p>
         <p className="text-xs text-subtext">{tpl.category}</p>
       </div>
       <span className={`px-2.5 py-1 rounded-full text-xs font-semibold whitespace-nowrap ${FREQ_COLORS[tpl.frequency] ?? FREQ_COLORS.annual}`}>
@@ -37,17 +42,18 @@ function TemplateRow({ tpl, onToggle, onDelete, staggerIndex = 0 }: TemplateRowP
       </span>
       <button
         onClick={() => onToggle(tpl.id)}
+        disabled={toggling}
         title={tpl.active ? 'Pausar' : 'Activar'}
-        aria-label={tpl.active ? `Pausar ${tpl.description}` : `Activar ${tpl.description}`}
-        className="cursor-pointer"
+        aria-label={tpl.active ? `Pausar ${description}` : `Activar ${description}`}
+        className="cursor-pointer disabled:cursor-wait disabled:opacity-60"
       >
         <div className={`toggle-switch relative w-9 h-5 rounded-full ${tpl.active ? 'bg-brand toggle-on' : 'bg-border'}`}>
           <span className={`toggle-thumb absolute top-0.5 left-0.5 w-4 h-4 rounded-full bg-white shadow ${tpl.active ? 'toggle-thumb-on-sm' : ''}`} />
         </div>
       </button>
       <button
-        onClick={() => onDelete(tpl.id)}
-        aria-label={`Eliminar ${tpl.description}`}
+        onClick={() => onDelete(tpl)}
+        aria-label={`Eliminar ${description}`}
         className="opacity-0 group-hover:opacity-100 rounded-lg p-1.5 text-subtext hover:bg-expense-light hover:text-expense transition-all cursor-pointer"
       >
         <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -65,7 +71,11 @@ interface RecurringScreenProps {
 
 export function RecurringScreen({ onBack }: RecurringScreenProps) {
   const [templates, setTemplates] = useState<RecurringTemplate[]>([])
-  const [loading,   setLoading]   = useState(true)
+  const [loading, setLoading] = useState(true)
+  const [togglingIds, setTogglingIds] = useState<Set<string>>(new Set())
+  const [deleting, setDeleting] = useState<RecurringTemplate | null>(null)
+  const [deleteSubmitting, setDeleteSubmitting] = useState(false)
+  const toast = useToast()
 
   const load = useCallback(async () => {
     setLoading(true)
@@ -79,14 +89,41 @@ export function RecurringScreen({ onBack }: RecurringScreenProps) {
 
   useEffect(() => { load() }, [load])
 
-  async function handleDelete(id: string) {
-    await window.api.recurring.delete(id)
-    setTemplates(prev => prev.filter(t => t.id !== id))
+  async function confirmDelete() {
+    if (!deleting) return
+    const id = deleting.id
+    const description = deleting.description || 'plantilla'
+    setDeleteSubmitting(true)
+    try {
+      await window.api.recurring.delete(id)
+      setTemplates(prev => prev.filter(t => t.id !== id))
+      toast.success('Plantilla eliminada', description)
+      setDeleting(null)
+    } catch (err) {
+      toast.error('No se pudo eliminar', err instanceof Error ? err.message : undefined)
+    } finally {
+      setDeleteSubmitting(false)
+    }
   }
 
   async function handleToggle(id: string) {
-    const updated = await window.api.recurring.toggle(id)
-    setTemplates(prev => prev.map(t => t.id === id ? updated : t))
+    setTogglingIds(prev => {
+      const next = new Set(prev)
+      next.add(id)
+      return next
+    })
+    try {
+      const updated = await window.api.recurring.toggle(id)
+      setTemplates(prev => prev.map(t => t.id === id ? updated : t))
+    } catch (err) {
+      toast.error('No se pudo cambiar el estado', err instanceof Error ? err.message : undefined)
+    } finally {
+      setTogglingIds(prev => {
+        const next = new Set(prev)
+        next.delete(id)
+        return next
+      })
+    }
   }
 
   const expense  = templates.filter(t => t.type === 'expense')
@@ -111,7 +148,7 @@ export function RecurringScreen({ onBack }: RecurringScreenProps) {
       />
 
       {loading ? (
-        <p className="text-subtext text-sm">Cargando…</p>
+        <RecurringSkeleton />
       ) : templates.length === 0 ? (
         <div className="rounded-xl bg-card shadow-sm border border-border">
           <EmptyState
@@ -120,8 +157,8 @@ export function RecurringScreen({ onBack }: RecurringScreenProps) {
                 <path d="M17 2.1l4 4-4 4"/><path d="M3 12.2v-2a4 4 0 0 1 4-4h12.8M7 21.9l-4-4 4-4"/><path d="M21 11.8v2a4 4 0 0 1-4 4H4.2"/>
               </svg>
             }
-            title="No hay transacciones recurrentes"
-            description="Activa «Repetir automáticamente» al crear un nuevo movimiento"
+            title="Sin transacciones recurrentes"
+            description="Crea una desde Movimientos: añade un gasto o ingreso y marca «Repetir automáticamente»."
           />
         </div>
       ) : (
@@ -136,7 +173,7 @@ export function RecurringScreen({ onBack }: RecurringScreenProps) {
             <div className="divide-y divide-border/40">
               {expense.length === 0
                 ? <p className="px-5 py-4 text-sm text-subtext italic">Sin gastos recurrentes</p>
-                : expense.map((t, i) => <TemplateRow key={t.id} tpl={t} onToggle={handleToggle} onDelete={handleDelete} staggerIndex={i} />)
+                : expense.map((t, i) => <TemplateRow key={t.id} tpl={t} onToggle={handleToggle} onDelete={setDeleting} toggling={togglingIds.has(t.id)} staggerIndex={i} />)
               }
             </div>
           </div>
@@ -151,12 +188,49 @@ export function RecurringScreen({ onBack }: RecurringScreenProps) {
             <div className="divide-y divide-border/40">
               {income.length === 0
                 ? <p className="px-5 py-4 text-sm text-subtext italic">Sin ingresos recurrentes</p>
-                : income.map((t, i) => <TemplateRow key={t.id} tpl={t} onToggle={handleToggle} onDelete={handleDelete} staggerIndex={i} />)
+                : income.map((t, i) => <TemplateRow key={t.id} tpl={t} onToggle={handleToggle} onDelete={setDeleting} toggling={togglingIds.has(t.id)} staggerIndex={i} />)
               }
             </div>
           </div>
         </div>
       )}
+
+      {/* Modal: confirmar eliminación */}
+      <Modal
+        isOpen={deleting !== null}
+        onClose={() => { if (!deleteSubmitting) setDeleting(null) }}
+        title="Eliminar recurrente"
+      >
+        {deleting && (
+          <div className="space-y-4">
+            <p className="text-sm text-text">
+              ¿Eliminar la plantilla <span className="font-semibold">«{deleting.description || 'Sin descripción'}»</span>?
+            </p>
+            <p className="text-xs text-subtext leading-relaxed">
+              Las transacciones ya generadas se mantienen, pero no se crearán nuevas.
+            </p>
+            <div className="flex gap-2 pt-2">
+              <button
+                onClick={() => setDeleting(null)}
+                disabled={deleteSubmitting}
+                className="flex-1 py-2.5 rounded-xl text-sm font-semibold text-subtext bg-surface border border-border hover:bg-border hover:text-text transition-colors cursor-pointer disabled:opacity-60"
+              >
+                Cancelar
+              </button>
+              <button
+                onClick={confirmDelete}
+                disabled={deleteSubmitting}
+                className="flex-1 py-2.5 rounded-xl text-sm font-semibold text-white bg-expense hover:bg-expense-hover cursor-pointer disabled:opacity-60 disabled:cursor-wait flex items-center justify-center gap-2"
+              >
+                {deleteSubmitting && (
+                  <span className="w-4 h-4 rounded-full border-2 border-white/40 border-t-white animate-spin" />
+                )}
+                {deleteSubmitting ? 'Eliminando…' : 'Eliminar'}
+              </button>
+            </div>
+          </div>
+        )}
+      </Modal>
     </div>
   )
 }

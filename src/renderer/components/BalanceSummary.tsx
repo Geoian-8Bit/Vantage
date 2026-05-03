@@ -74,16 +74,17 @@ export function BalanceSummary({
         </p>
       </TiltCard>
 
-      {/* Carryover (rollover de meses anteriores) */}
+      {/* Carryover (rollover de meses anteriores). Fondo tintado segun signo
+          para coherencia con las cards de income/expense. */}
       {showCarryover && (
         <TiltCard
           intensity={3}
-          className="card-anim rounded-xl bg-surface p-5 shadow-sm border border-border"
+          className={`card-anim rounded-xl p-5 shadow-sm border ${carryoverPositive ? 'bg-surface border-border' : 'bg-expense-light/60 border-expense/20'}`}
           style={{ animationDelay: '90ms' }}
         >
           <div className="flex items-center gap-2 mb-2">
-            <div className="w-7 h-7 rounded-lg bg-card border border-border flex items-center justify-center">
-              <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-subtext">
+            <div className={`w-7 h-7 rounded-lg flex items-center justify-center ${carryoverPositive ? 'bg-card border border-border' : 'bg-expense/15'}`}>
+              <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={carryoverPositive ? 'text-subtext' : 'text-expense'}>
                 <path d="M17 2.1l4 4-4 4" />
                 <path d="M3 12.2v-2a4 4 0 0 1 4-4h12.8M7 21.9l-4-4 4-4" />
                 <path d="M21 11.8v2a4 4 0 0 1-4 4H4.2" />

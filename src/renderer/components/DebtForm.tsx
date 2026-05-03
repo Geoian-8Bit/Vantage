@@ -413,7 +413,7 @@ export function DebtForm({ initial, onSubmit, onCancel, onDirtyChange }: DebtFor
                 ? mode === 'quota'
                   ? `${computed.months} ${computed.months === 1 ? 'mes' : 'meses'}`
                   : formatCurrency(computed.quota)
-                : '—'}
+                : '·'}
             </p>
           </div>
         </div>

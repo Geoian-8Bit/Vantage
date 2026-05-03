@@ -71,8 +71,15 @@ export const TiltCard = forwardRef<HTMLElement, TiltCardProps>(function TiltCard
     }
   }
 
+  // Si el usuario prefiere movimiento reducido, no rastreamos cursor: ahorra
+  // CPU y respeta la preferencia mas alla de lo que ya hace el CSS global.
+  const prefersReducedMotion =
+    typeof window !== 'undefined' &&
+    typeof window.matchMedia === 'function' &&
+    window.matchMedia('(prefers-reduced-motion: reduce)').matches
+
   const handleMove = (e: MouseEvent<HTMLElement>) => {
-    if (disabled) return
+    if (disabled || prefersReducedMotion) return
     const el = innerRef.current
     if (!el) return
     const rect = el.getBoundingClientRect()
@@ -84,6 +91,7 @@ export const TiltCard = forwardRef<HTMLElement, TiltCardProps>(function TiltCard
   }
 
   const handleLeave = () => {
+    if (prefersReducedMotion) return
     targetRef.current.x = 0
     targetRef.current.y = 0
     ensureRaf()

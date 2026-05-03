@@ -100,7 +100,7 @@ export function StatsScreen() {
     return {
       fromDate: `${rangeFrom}-01`,
       toDate:   `${rangeTo}-31`,
-      periodLabel: `${MONTH_NAMES_SHORT[sm - 1]} ${sy} — ${MONTH_NAMES_SHORT[em - 1]} ${ey}`
+      periodLabel: `${MONTH_NAMES_SHORT[sm - 1]} ${sy} a ${MONTH_NAMES_SHORT[em - 1]} ${ey}`
     }
   }, [dateMode, refDate, rangeFrom, rangeTo])
 
@@ -364,8 +364,8 @@ export function StatsScreen() {
   }
 
   const barChartTitle = dateMode === 'compare'
-    ? `Comparativa — ${compareMonths.length} meses seleccionados`
-    : `Ingresos vs Gastos — ${periodLabel}`
+    ? `Comparativa: ${compareMonths.length} meses seleccionados`
+    : `Ingresos vs Gastos · ${periodLabel}`
 
   if (loading) return <StatsSkeleton />
 
@@ -469,7 +469,6 @@ export function StatsScreen() {
                 className="rounded-lg border border-border bg-surface px-3 py-1.5 text-sm text-text focus:outline-none focus:ring-2 focus:ring-brand"
               />
             </div>
-            <span className="text-subtext text-sm">—</span>
             <div className="flex items-center gap-2">
               <label className="text-xs font-medium text-subtext">Hasta</label>
               <input
@@ -668,7 +667,7 @@ export function StatsScreen() {
                       <span className="text-subtext">{entry.name}</span>
                     </div>
                     <span className="font-medium text-text">
-                      {periodStats.expenses > 0 ? `${Math.round(entry.value / periodStats.expenses * 100)}%` : '—'}
+                      {periodStats.expenses > 0 ? `${Math.round(entry.value / periodStats.expenses * 100)}%` : '·'}
                     </span>
                   </div>
                 ))}
@@ -831,7 +830,7 @@ export function StatsScreen() {
                         <td className="px-5 py-2.5 text-right text-income tabular-nums">{formatCurrency(row.income)}</td>
                         <td className="px-5 py-2.5 text-right text-expense tabular-nums">{formatCurrency(row.expenses)}</td>
                         <td className={`px-5 py-2.5 text-right tabular-nums ${row.saved > 0.005 ? 'text-brand font-semibold' : 'text-subtext'}`}>
-                          {row.saved > 0.005 ? `+${formatCurrency(row.saved)}` : '—'}
+                          {row.saved > 0.005 ? `+${formatCurrency(row.saved)}` : '·'}
                         </td>
                         <td className={`px-5 py-2.5 text-right font-semibold tabular-nums ${row.balance >= 0 ? 'text-income' : 'text-expense'}`}>
                           {row.balance >= 0 ? '+' : ''}{formatCurrency(row.balance)}
@@ -842,7 +841,7 @@ export function StatsScreen() {
                               {row.change > 0 ? '↑' : '↓'} {Math.abs(row.change).toFixed(1)}%
                             </span>
                           ) : (
-                            <span className="text-subtext">—</span>
+                            <span className="text-subtext">·</span>
                           )}
                         </td>
                       </tr>
@@ -870,7 +869,7 @@ export function StatsScreen() {
                       }}
                     >
                       <span className={`text-xs lg:text-sm font-bold tabular-nums ${d.intensity > 0.3 ? 'text-white' : 'text-subtext'}`}>
-                        {d.avg > 0 ? formatCurrency(d.avg) : '—'}
+                        {d.avg > 0 ? formatCurrency(d.avg) : '·'}
                       </span>
                     </div>
                     <p className="text-[10px] text-subtext">

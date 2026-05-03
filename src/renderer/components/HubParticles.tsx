@@ -73,7 +73,9 @@ export function HubParticles() {
     // Lee el color accent del tema activo. Un re-read por frame es barato
     // y permite que el cambio de paleta se refleje sin reinit.
     const rootStyle = getComputedStyle(document.documentElement)
-    const readAccent = () => rootStyle.getPropertyValue('--color-accent').trim() || '#C9A84C'
+    // Sin fallback hex: si el var no esta definido devuelve 'transparent' (las
+    // particulas no se ven en lugar de mostrarse en un color de otra paleta).
+    const readAccent = () => rootStyle.getPropertyValue('--color-accent').trim() || 'transparent'
 
     // Listeners en window porque el canvas es pointer-events:none (los tiles
     // del Hub deben seguir siendo clicables). Calculamos la posición relativa

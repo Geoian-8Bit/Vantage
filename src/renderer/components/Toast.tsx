@@ -89,7 +89,7 @@ function ToastItem({ toast, onDismiss }: ToastItemProps) {
   return (
     <div
       role="status"
-      className="toast-item pointer-events-auto rounded-xl border shadow-lg p-3.5 flex items-start gap-3"
+      className="toast-item relative pointer-events-auto rounded-xl border shadow-lg p-3.5 flex items-start gap-3 overflow-hidden"
       style={{
         background: 'var(--color-card)',
         borderColor: 'var(--color-border)',
@@ -128,6 +128,13 @@ function ToastItem({ toast, onDismiss }: ToastItemProps) {
           <path d="M18 6 6 18" /><path d="m6 6 12 12" />
         </svg>
       </button>
+
+      {/* Barra de progreso hacia el auto-dismiss (4s) */}
+      <span
+        aria-hidden="true"
+        className="toast-progress-bar absolute bottom-0 left-0 right-0 h-0.5"
+        style={{ background: colors.iconColor, opacity: 0.6 }}
+      />
     </div>
   )
 }

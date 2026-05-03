@@ -154,7 +154,7 @@ export function HomeScreen() {
     return {
       fromDate: customFrom,
       toDate:   customTo,
-      periodLabel: customFrom && customTo ? `${customFrom} — ${customTo}` : 'Selecciona rango'
+      periodLabel: customFrom && customTo ? `${customFrom} a ${customTo}` : 'Selecciona rango'
     }
   }, [dateMode, refDate, customFrom, customTo])
 
@@ -390,7 +390,7 @@ export function HomeScreen() {
               onClick={toggleRollover}
               aria-pressed={rolloverEnabled}
               title="Suma como disponible el balance no ahorrado de periodos anteriores"
-              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium border transition-colors cursor-pointer ${
+              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium border cursor-pointer ${
                 rolloverEnabled
                   ? 'bg-brand/10 border-brand/30 text-brand'
                   : 'bg-surface border-border text-subtext hover:bg-border hover:text-text'
@@ -406,7 +406,7 @@ export function HomeScreen() {
             <button
               onClick={(e) => { captureFromEvent(e); setConfirmBulkDelete(true) }}
               disabled={filteredTransactions.length === 0}
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium text-expense bg-expense-light hover:bg-expense/20 border border-expense/20 transition-colors cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed"
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium text-expense bg-expense-light hover:bg-expense/20 border border-expense/20 cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed"
             >
               <svg aria-hidden="true" xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                 <path d="M3 6h18" />
@@ -418,7 +418,7 @@ export function HomeScreen() {
             <button
               onClick={handleExport}
               disabled={filteredTransactions.length === 0 || exporting}
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium text-subtext bg-surface hover:bg-border border border-border transition-colors cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed"
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium text-subtext bg-surface hover:bg-border border border-border cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed"
             >
               {exporting ? (
                 <>
@@ -438,7 +438,7 @@ export function HomeScreen() {
             </button>
             <button
               onClick={(e) => { captureFromEvent(e); setModalType('expense') }}
-              className="flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-semibold text-white bg-expense hover:bg-expense-hover transition-colors cursor-pointer"
+              className="btn-primary flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-semibold text-white bg-expense hover:bg-expense-hover cursor-pointer"
             >
               <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
                 <path d="M5 12h14" /><path d="M12 5v14" />
@@ -447,7 +447,7 @@ export function HomeScreen() {
             </button>
             <button
               onClick={(e) => { captureFromEvent(e); setModalType('income') }}
-              className="flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-semibold text-white bg-income hover:bg-income-hover transition-colors cursor-pointer"
+              className="btn-primary flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-semibold text-white bg-income hover:bg-income-hover cursor-pointer"
             >
               <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
                 <path d="M5 12h14" /><path d="M12 5v14" />
@@ -505,14 +505,13 @@ export function HomeScreen() {
           )}
 
           {dateMode === 'custom' && (
-            <div className="flex items-center gap-2 ml-1">
+            <div className="flex items-center gap-3 ml-1">
               <DateInput
                 value={customFrom}
                 onChange={v => { setCustomFrom(v); setPage(0) }}
                 ariaLabel="Fecha de inicio"
                 placeholder="Desde"
               />
-              <span className="text-subtext text-sm" aria-hidden="true">—</span>
               <DateInput
                 value={customTo}
                 onChange={v => { setCustomTo(v); setPage(0) }}
@@ -628,7 +627,8 @@ export function HomeScreen() {
             <button
               onClick={() => { setShowAll(s => !s); setPage(0) }}
               title={showAll ? 'Ver paginado' : 'Ver todo'}
-              className="rounded-lg p-1.5 text-subtext bg-card border border-border hover:bg-surface transition-colors cursor-pointer"
+              aria-label={showAll ? 'Cambiar a vista paginada' : 'Mostrar todos los movimientos'}
+              className="rounded-lg p-1.5 text-subtext bg-card border border-border hover:bg-surface cursor-pointer"
             >
               {showAll ? (
                 <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -827,7 +827,7 @@ export function HomeScreen() {
           <button
             onClick={handleBulkDeleteConfirm}
             disabled={bulkDeleting}
-            className="flex-1 py-2.5 rounded-xl text-sm font-semibold text-white bg-expense hover:bg-expense-hover transition-colors cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+            className="flex-1 py-2.5 rounded-xl text-sm font-semibold text-white bg-expense hover:bg-expense-hover cursor-pointer disabled:opacity-60 disabled:cursor-wait flex items-center justify-center gap-2"
           >
             {bulkDeleting && (
               <span className="w-4 h-4 rounded-full border-2 border-white/40 border-t-white animate-spin" />

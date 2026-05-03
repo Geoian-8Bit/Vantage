@@ -74,7 +74,7 @@ function StepIndicator({ step, fileType }: { step: ImportStep; fileType: 'excel'
   const currentIdx = steps.findIndex(s => s.key === step)
   return (
     <div
-      className="flex items-center gap-3 lg:gap-5 px-4 lg:px-6 py-3.5 rounded-2xl border flex-wrap"
+      className="flex items-center gap-2 sm:gap-3 lg:gap-5 px-3 sm:px-4 lg:px-6 py-3.5 rounded-2xl border flex-wrap"
       style={{
         background: 'var(--color-card)',
         borderColor: 'var(--color-border)',
@@ -85,11 +85,11 @@ function StepIndicator({ step, fileType }: { step: ImportStep; fileType: 'excel'
         const state: StepBadgeProps['state'] = i < currentIdx ? 'done' : i === currentIdx ? 'active' : 'pending'
         const connectorDone = i < currentIdx
         return (
-          <div key={s.key} className="flex items-center gap-3 lg:gap-5">
+          <div key={s.key} className="flex items-center gap-2 sm:gap-3 lg:gap-5">
             <StepBadge n={i + 1} label={s.label} state={state} />
             {i < steps.length - 1 && (
               <div
-                className="h-0.5 w-6 lg:w-12 rounded-full transition-colors"
+                className="h-0.5 w-3 sm:w-6 lg:w-12 rounded-full transition-colors"
                 style={{
                   background: connectorDone
                     ? 'var(--color-income)'
@@ -295,9 +295,13 @@ function ColumnMappingStep({ preview, mapping, onMappingChange, onNext, onBack }
           {MAPPING_FIELDS.map(field => (
             <div key={field.key} className="flex items-center gap-4 px-5 py-3">
               <div className="w-32 shrink-0">
-                <p className="text-sm font-semibold text-text flex items-center gap-1">
+                <p className="text-sm font-semibold text-text flex items-center gap-1.5">
                   {field.label}
-                  {field.required && <span className="text-expense text-xs">*</span>}
+                  {field.required ? (
+                    <span className="text-error text-sm font-bold leading-none" aria-label="campo obligatorio" title="Obligatorio">*</span>
+                  ) : (
+                    <span className="text-[10px] font-medium text-subtext bg-surface border border-border px-1.5 py-0.5 rounded uppercase tracking-wider">opcional</span>
+                  )}
                 </p>
                 <p className="text-xs text-subtext mt-0.5">{field.hint}</p>
               </div>
@@ -516,7 +520,13 @@ export function ImportScreen({ onBack }: ImportScreenProps) {
         setStep('column-mapping')
       }
     } catch (e) {
-      setError(e instanceof Error ? `No se pudo leer el archivo: ${e.message}` : 'No se pudo leer el archivo. Comprueba que no esté dañado ni abierto en otro programa.')
+      const msg = e instanceof Error ? e.message : ''
+      let hint = 'Comprueba que no esté dañado ni abierto en otro programa.'
+      if (/permission|EACCES|EPERM/i.test(msg)) hint = 'Otro programa lo tiene abierto o no tienes permisos sobre el archivo.'
+      else if (/ENOENT|not found/i.test(msg)) hint = 'No se encuentra el archivo en esa ruta. ¿Lo moviste o renombraste?'
+      else if (type === 'excel' && /encoding|format/i.test(msg)) hint = 'El formato del Excel no es estándar. Guárdalo de nuevo como .xlsx desde Excel y vuelve a intentarlo.'
+      else if (type === 'access' && /password/i.test(msg)) hint = 'El archivo Access está protegido con contraseña. Quítala desde Access antes de importar.'
+      setError(`No se pudo leer el archivo. ${hint}${msg ? ` (${msg})` : ''}`)
     } finally {
       setLoading(false)
     }
@@ -532,7 +542,11 @@ export function ImportScreen({ onBack }: ImportScreenProps) {
       setMapping({ amount: null, type: null, date: null, description: null, category: null })
       setStep('column-mapping')
     } catch (e) {
-      setError(e instanceof Error ? `No se pudo leer la tabla: ${e.message}` : 'No se pudo leer la tabla. Comprueba que el archivo no esté dañado.')
+      const msg = e instanceof Error ? e.message : ''
+      const hint = /password/i.test(msg)
+        ? 'La tabla está protegida o cifrada.'
+        : 'Prueba con otra tabla del archivo o vuelve a abrir el .mdb desde Access.'
+      setError(`No se pudo leer la tabla. ${hint}${msg ? ` (${msg})` : ''}`)
     } finally {
       setLoading(false)
     }
@@ -546,7 +560,7 @@ export function ImportScreen({ onBack }: ImportScreenProps) {
       setResult(r)
       toast.success(
         `${r.inserted ?? validation.validRows.length} movimientos importados`,
-        r.skipped ? `${r.skipped} duplicados omitidos` : undefined
+        r.errors.length > 0 ? `${r.errors.length} filas omitidas por errores` : undefined
       )
     } catch (e) {
       const msg = e instanceof Error ? `No se pudo importar: ${e.message}` : 'No se pudo importar. Vuelve a intentarlo.'

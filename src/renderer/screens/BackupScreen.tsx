@@ -80,6 +80,12 @@ export function BackupScreen({ onBack }: BackupScreenProps) {
             <p className="text-xs text-subtext mt-1.5 leading-relaxed">
               Guarda una copia completa de todos tus datos (transacciones, categorías, recurrentes) en un archivo .db.
             </p>
+            <p className="text-[11px] text-subtext mt-2 flex items-start gap-1.5 leading-snug">
+              <svg aria-hidden="true" xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="mt-0.5 shrink-0 text-income">
+                <circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/>
+              </svg>
+              <span>Se abrirá un diálogo para que elijas dónde guardar el archivo. Tus datos no salen de tu equipo.</span>
+            </p>
           </div>
           <button
             onClick={handleBackup}
@@ -97,7 +103,7 @@ export function BackupScreen({ onBack }: BackupScreenProps) {
 
         {/* Restore */}
         <TiltCard intensity={3} className="card-anim rounded-2xl bg-card border border-border shadow-sm p-6 space-y-4">
-          <div className="w-12 h-12 rounded-2xl bg-expense-light flex items-center justify-center text-expense">
+          <div className="w-12 h-12 rounded-2xl bg-error-light flex items-center justify-center text-error">
             <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
               <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
               <polyline points="7 10 12 15 17 10"/>
@@ -113,7 +119,7 @@ export function BackupScreen({ onBack }: BackupScreenProps) {
           <button
             onClick={() => setShowRestoreConfirm(true)}
             disabled={working}
-            className="w-full py-2.5 rounded-xl text-sm font-semibold text-white bg-expense hover:bg-expense-hover disabled:opacity-50 disabled:cursor-not-allowed transition-colors cursor-pointer flex items-center justify-center gap-2"
+            className="w-full py-2.5 rounded-xl text-sm font-semibold text-white bg-error hover:bg-error/90 disabled:opacity-50 disabled:cursor-not-allowed transition-colors cursor-pointer flex items-center justify-center gap-2"
           >
             {working ? (
               <>
@@ -139,7 +145,7 @@ export function BackupScreen({ onBack }: BackupScreenProps) {
           </button>
           <button
             onClick={handleRestore}
-            className="flex-1 py-2.5 rounded-xl text-sm font-semibold text-white bg-expense hover:bg-expense-hover transition-colors cursor-pointer"
+            className="flex-1 py-2.5 rounded-xl text-sm font-semibold text-white bg-error hover:bg-error/90 transition-colors cursor-pointer"
           >
             Restaurar
           </button>

@@ -57,6 +57,11 @@
   --letter-spacing-display: -0.01em;
 
   --border-width: 1px;
+
+  /* Sombras especificas de la sidebar (indicador activo + halo de icono).
+     Usan color-mix con --color-brand, que se evalua al aplicar el var. */
+  --sidebar-indicator-shadow: 0 6px 18px color-mix(in srgb, var(--color-brand) 35%, transparent), 0 2px 6px rgba(0, 0, 0, 0.18);
+  --sidebar-icon-shadow-active: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.25));
 }
 
 /* ═══════════════════════════════════════════════════════════════════════════
@@ -584,6 +589,17 @@ textarea:focus-visible {
   box-shadow: 0 0 0 4px var(--color-brand-light);
 }
 
+/* Wrapper para inputs decorados (con prefijo €, etc.) cuyo input interno es
+   transparente. Lleva el ring al wrapper, no al input. */
+.input-wrap {
+  transition: border-color var(--duration-base) var(--ease-default),
+              box-shadow var(--duration-base) var(--ease-default);
+}
+.input-wrap:focus-within {
+  border-color: var(--color-brand) !important;
+  box-shadow: 0 0 0 4px var(--color-brand-light);
+}
+
 /* Focus ring universal para botones y elementos interactivos. Usamos `outline`
    (no `box-shadow`) para no entrar en conflicto con las sombras de cards y tiles.
    `outline-offset` separa el ring del propio botón; `border-radius: inherit`
@@ -605,11 +621,11 @@ a:focus-visible,
   outline-width: 3px;
 }
 
-/* Items de la sidebar: el indicator activo ya marca la posición; cuando el
-   foco visible cae sobre el item activo, el outline doble se ve excesivo.
-   Reducimos el offset para mantenerlo dentro del rounded-xl del item. */
+/* Items de la sidebar: el indicator activo ya marca la posición; el ring
+   sale por fuera con un offset positivo y respeta el rounded-xl del item
+   (border-radius: inherit lo redondea). */
 .sidebar-nav-item:focus-visible {
-  outline-offset: -2px;
+  outline-offset: 2px;
   outline-color: color-mix(in srgb, var(--color-accent) 80%, transparent);
 }
 
@@ -900,6 +916,32 @@ button.bg-error:not(:disabled):hover,
 .cal-slide-right {
   /* Navegación a mes anterior: el nuevo mes entra desde la izquierda */
   animation: cal-slide-from-left 380ms var(--ease-default) both;
+}
+
+/* Pulso muy sutil para el dia "hoy" en el calendario al renderizar el mes.
+   Una sola iteracion, ~700ms. Reduced-motion lo aplana via la regla global. */
+@keyframes today-pulse {
+  0%   { transform: scale(1);    box-shadow: 0 0 0 0 color-mix(in srgb, var(--color-brand) 50%, transparent); }
+  60%  { transform: scale(1.08); box-shadow: 0 0 0 6px color-mix(in srgb, var(--color-brand) 0%, transparent); }
+  100% { transform: scale(1);    box-shadow: 0 0 0 0 transparent; }
+}
+.cal-today-pulse {
+  animation: today-pulse 700ms var(--ease-spring) 1;
+}
+
+/* Selected day detail aparece con fade-up al cambiar de dia */
+.cal-day-detail {
+  animation: fade-up var(--duration-base) var(--ease-spring) both;
+}
+
+/* Barra de progreso del Toast: se contrae linealmente hasta el dismiss. */
+@keyframes toast-progress {
+  from { transform: scaleX(1); }
+  to   { transform: scaleX(0); }
+}
+.toast-progress-bar {
+  transform-origin: left center;
+  animation: toast-progress 4000ms linear forwards;
 }
 
 /* ─── Pills con bounce al seleccionar (categorías, métodos pago, frecuencia) ─── */

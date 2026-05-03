@@ -171,7 +171,7 @@ export function CalendarScreen() {
               >
                 <span className={`text-xs lg:text-sm font-medium ${
                   !cell.inMonth ? 'text-subtext/40'
-                    : isToday ? 'inline-flex w-6 h-6 items-center justify-center rounded-full bg-brand text-white text-xs'
+                    : isToday ? 'cal-today-pulse inline-flex w-6 h-6 items-center justify-center rounded-full bg-brand text-white text-xs'
                     : 'text-text'
                 }`}>
                   {cell.day}
@@ -205,7 +205,7 @@ export function CalendarScreen() {
 
       {/* Selected day detail */}
       {selectedDate && (
-        <div className="rounded-xl bg-card border border-border shadow-sm overflow-hidden">
+        <div key={selectedDate} className="cal-day-detail rounded-xl bg-card border border-border shadow-sm overflow-hidden">
           <div className="px-5 py-3 border-b border-border bg-surface">
             <p className="text-sm font-semibold text-text">
               {new Date(selectedDate + 'T00:00:00').toLocaleDateString('es-ES', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })}

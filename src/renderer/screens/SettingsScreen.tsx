@@ -165,23 +165,26 @@ function fireThemeRipple(x: number, y: number, color: string) {
 
 function AppearanceView({ onBack }: { onBack: () => void }) {
   const { activeId, activeMode, setTheme, setMode, themes } = useDesignTheme()
+  const toast = useToast()
+  const activeMeta = themes.find(t => t.id === activeId) ?? themes[0]
+  const previewLight = activeMeta.preview
+  const previewDark = activeMeta.previewDark ?? activeMeta.preview
 
-  function handlePaletteClick(e: React.MouseEvent<HTMLButtonElement>, id: DesignThemeId, color: string) {
+  function handlePaletteClick(e: React.MouseEvent<HTMLButtonElement>, id: DesignThemeId, color: string, name: string) {
     if (id === activeId) return
     const rect = e.currentTarget.getBoundingClientRect()
     fireThemeRipple(rect.left + rect.width / 2, rect.top + rect.height / 2, color)
     setTheme(id)
+    toast.success('Paleta cambiada', name)
   }
 
   function handleModeClick(e: React.MouseEvent<HTMLButtonElement>, mode: ThemeMode) {
     if (mode === activeMode) return
     const rect = e.currentTarget.getBoundingClientRect()
-    const meta = themes.find(t => t.id === activeId) ?? themes[0]
-    const color = mode === 'dark'
-      ? (meta.previewDark?.brand ?? meta.preview.brand)
-      : meta.preview.brand
+    const color = mode === 'dark' ? previewDark.brand : previewLight.brand
     fireThemeRipple(rect.left + rect.width / 2, rect.top + rect.height / 2, color)
     setMode(mode)
+    toast.success(mode === 'dark' ? 'Modo oscuro activado' : 'Modo claro activado')
   }
 
   return (
@@ -221,9 +224,9 @@ function AppearanceView({ onBack }: { onBack: () => void }) {
                 <div
                   className="w-12 h-12 rounded-xl flex items-center justify-center shrink-0"
                   style={{
-                    background: mode === 'dark' ? '#1F1B1A' : '#FFFFFF',
+                    background: mode === 'dark' ? previewDark.bg : previewLight.card,
                     border: '1px solid var(--color-border)',
-                    color: mode === 'dark' ? '#FFD580' : '#FF7A59',
+                    color: mode === 'dark' ? previewDark.accent : previewLight.brand,
                   }}
                 >
                   {mode === 'dark' ? (
@@ -272,7 +275,7 @@ function AppearanceView({ onBack }: { onBack: () => void }) {
             return (
               <button
                 key={t.id}
-                onClick={(e) => handlePaletteClick(e, t.id, preview.brand)}
+                onClick={(e) => handlePaletteClick(e, t.id, preview.brand, t.name)}
                 className={`relative rounded-2xl border-2 p-4 text-left transition-all cursor-pointer ${
                   isActive
                     ? 'border-brand shadow-md'
