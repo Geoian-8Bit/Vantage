@@ -37,6 +37,28 @@ import {
 import { getDashboardStats } from './database/dashboard'
 import { handleBackup, handleRestore } from './database/backup'
 import { handleExportPDF } from './importExport'
+import {
+  getShoppingSettings,
+  saveShoppingSettings,
+  getAllShoppingItems,
+  getShoppingItem,
+  getItemHistory,
+  createShoppingItem,
+  addSnapshotsBulk,
+  getAllShoppingLists,
+  getShoppingList,
+  createShoppingList,
+  updateShoppingList,
+  deleteShoppingList,
+  addEntry,
+  updateEntry,
+  removeEntry,
+  clearEntries,
+  linkItemToSku,
+  setItemTracked,
+  clearShoppingCatalog,
+} from './database/shopping'
+import { ScraperService } from './services/shopping/scraperService'
 
 let mainWindow: BrowserWindow | null = null
 
@@ -266,6 +288,121 @@ function registerIpcHandlers(): void {
 
   ipcMain.handle(IPC_CHANNELS.APP_QUIT, () => {
     app.quit()
+  })
+
+  // ── Shopping (módulo Compras) ─────────────────────────────────────────
+  ipcMain.handle(IPC_CHANNELS.SHOPPING_SETTINGS_GET, async () => {
+    await dbReady
+    return getShoppingSettings()
+  })
+
+  ipcMain.handle(IPC_CHANNELS.SHOPPING_SETTINGS_SAVE, async (_event, payload) => {
+    await dbReady
+    return saveShoppingSettings(payload)
+  })
+
+  ipcMain.handle(IPC_CHANNELS.SHOPPING_ITEMS_GET_ALL, async (_event, payload) => {
+    await dbReady
+    return getAllShoppingItems(payload?.filter)
+  })
+
+  ipcMain.handle(IPC_CHANNELS.SHOPPING_ITEMS_GET, async (_event, { id }) => {
+    await dbReady
+    return getShoppingItem(id)
+  })
+
+  ipcMain.handle(IPC_CHANNELS.SHOPPING_ITEMS_HISTORY, async (_event, { id }) => {
+    await dbReady
+    return getItemHistory(id)
+  })
+
+  // Items create + snapshots bulk: usados por el seed inicial y por el sprint 3.B (scrapers)
+  ipcMain.handle('db:shopping:items:create', async (_event, payload) => {
+    await dbReady
+    return createShoppingItem(payload)
+  })
+
+  ipcMain.handle('db:shopping:snapshots:addBulk', async (_event, payload) => {
+    await dbReady
+    return addSnapshotsBulk(payload.snapshots ?? [])
+  })
+
+  ipcMain.handle(IPC_CHANNELS.SHOPPING_LISTS_GET_ALL, async () => {
+    await dbReady
+    return getAllShoppingLists()
+  })
+
+  ipcMain.handle(IPC_CHANNELS.SHOPPING_LISTS_GET, async (_event, { id }) => {
+    await dbReady
+    return getShoppingList(id)
+  })
+
+  ipcMain.handle(IPC_CHANNELS.SHOPPING_LISTS_CREATE, async (_event, payload) => {
+    await dbReady
+    return createShoppingList(payload)
+  })
+
+  ipcMain.handle(IPC_CHANNELS.SHOPPING_LISTS_UPDATE, async (_event, { id, data }) => {
+    await dbReady
+    return updateShoppingList(id, data)
+  })
+
+  ipcMain.handle(IPC_CHANNELS.SHOPPING_LISTS_DELETE, async (_event, { id }) => {
+    await dbReady
+    return deleteShoppingList(id)
+  })
+
+  ipcMain.handle(IPC_CHANNELS.SHOPPING_ENTRY_ADD, async (_event, payload) => {
+    await dbReady
+    return addEntry(payload)
+  })
+
+  ipcMain.handle(IPC_CHANNELS.SHOPPING_ENTRY_UPDATE, async (_event, { id, data }) => {
+    await dbReady
+    return updateEntry(id, data)
+  })
+
+  ipcMain.handle(IPC_CHANNELS.SHOPPING_ENTRY_REMOVE, async (_event, { id }) => {
+    await dbReady
+    return removeEntry(id)
+  })
+
+  ipcMain.handle(IPC_CHANNELS.SHOPPING_ENTRY_CLEAR, async (_event, { listId }) => {
+    await dbReady
+    return clearEntries(listId)
+  })
+
+  // ── Shopping scraper (sprint 3.B) ─────────────────────────────────────
+  ipcMain.handle('db:shopping:scrape:search', async (_event, payload) => {
+    const supers = payload?.supers ?? ['mercadona', 'carrefour', 'dia']
+    return ScraperService.getInstance().searchAcrossSupers(payload?.query ?? '', supers, {
+      limit: payload?.limit,
+      postalCode: payload?.postalCode ?? null,
+    })
+  })
+
+  ipcMain.handle('db:shopping:scrape:refreshTracked', async (_event, payload) => {
+    await dbReady
+    return ScraperService.getInstance().refreshTracked({ postalCode: payload?.postalCode ?? null })
+  })
+
+  ipcMain.handle('db:shopping:items:linkSku', async (_event, payload) => {
+    await dbReady
+    return linkItemToSku(payload.itemId, payload)
+  })
+
+  ipcMain.handle('db:shopping:scrape:validatePostalCode', async (_event, { postalCode }) => {
+    return ScraperService.getInstance().validatePostalCode(postalCode)
+  })
+
+  ipcMain.handle('db:shopping:items:setTracked', async (_event, { id, tracked }) => {
+    await dbReady
+    return setItemTracked(id, tracked)
+  })
+
+  ipcMain.handle('db:shopping:items:clearAll', async () => {
+    await dbReady
+    return clearShoppingCatalog()
   })
 }
 

@@ -194,6 +194,113 @@ export async function initializeDatabase(filePath: string): Promise<Database> {
   }
   db.run('CREATE INDEX IF NOT EXISTS idx_transactions_debt ON transactions(debt_id)')
 
+  // ── Shopping (módulo Compras) ───────────────────────────────────────────
+  // Configuración del módulo: singleton (id=1).
+  db.run(`
+    CREATE TABLE IF NOT EXISTS shopping_settings (
+      id                  INTEGER PRIMARY KEY CHECK (id = 1),
+      postal_code         TEXT,
+      active_supermarkets TEXT NOT NULL DEFAULT '["mercadona","carrefour","dia"]',
+      seeded_at           TEXT
+    )
+  `)
+  db.run(`
+    INSERT OR IGNORE INTO shopping_settings (id, postal_code, active_supermarkets)
+    VALUES (1, NULL, '["mercadona","carrefour","dia"]')
+  `)
+  // Migration: añadir last_refresh_at (sprint 3.C). Marca cuándo el scheduler
+  // realizó el último refresh exitoso, para evitar refrescos redundantes en cada
+  // arranque cuando ya hay datos frescos del día.
+  try {
+    db.run('ALTER TABLE shopping_settings ADD COLUMN last_refresh_at TEXT')
+  } catch {
+    // Column already exists — safe to ignore
+  }
+
+  // Items: catálogo unificado del usuario.
+  db.run(`
+    CREATE TABLE IF NOT EXISTS shopping_items (
+      id          TEXT PRIMARY KEY,
+      name        TEXT NOT NULL,
+      brand       TEXT,
+      category    TEXT NOT NULL DEFAULT 'Otros',
+      format      TEXT,
+      image_url   TEXT,
+      created_at  TEXT NOT NULL DEFAULT (datetime('now'))
+    )
+  `)
+  db.run('CREATE INDEX IF NOT EXISTS idx_shopping_items_category ON shopping_items(category)')
+  // Migration: watchlist (sprint 4). 1 = el usuario sigue este producto;
+  // se filtra en el catálogo y se destaca en stats.
+  try {
+    db.run('ALTER TABLE shopping_items ADD COLUMN tracked INTEGER NOT NULL DEFAULT 0')
+  } catch {
+    // Column already exists — safe to ignore
+  }
+
+  // SKUs: vínculo item → producto en un super concreto. Un item puede tener
+  // hasta N SKUs (uno por super donde está disponible).
+  db.run(`
+    CREATE TABLE IF NOT EXISTS shopping_item_skus (
+      id            TEXT PRIMARY KEY,
+      item_id       TEXT NOT NULL,
+      supermarket   TEXT NOT NULL CHECK(supermarket IN ('mercadona','carrefour','dia','lidl')),
+      sku           TEXT NOT NULL,
+      product_name  TEXT NOT NULL,
+      product_url   TEXT,
+      image_url     TEXT,
+      last_seen_at  TEXT NOT NULL DEFAULT (datetime('now')),
+      UNIQUE(item_id, supermarket)
+    )
+  `)
+  db.run('CREATE INDEX IF NOT EXISTS idx_shopping_skus_item ON shopping_item_skus(item_id)')
+  db.run('CREATE INDEX IF NOT EXISTS idx_shopping_skus_super ON shopping_item_skus(supermarket, sku)')
+
+  // Snapshots: precios capturados día a día por SKU/super/CP.
+  // Sin FK a item: identificamos por (supermarket, sku) que es estable.
+  db.run(`
+    CREATE TABLE IF NOT EXISTS shopping_price_snapshots (
+      id            INTEGER PRIMARY KEY AUTOINCREMENT,
+      supermarket   TEXT NOT NULL,
+      sku           TEXT NOT NULL,
+      postal_code   TEXT,
+      price         REAL NOT NULL,
+      unit_price    REAL,
+      in_stock      INTEGER NOT NULL DEFAULT 1,
+      captured_at   TEXT NOT NULL
+    )
+  `)
+  db.run('CREATE INDEX IF NOT EXISTS idx_shopping_snapshots_sku ON shopping_price_snapshots(supermarket, sku, captured_at DESC)')
+  db.run('CREATE INDEX IF NOT EXISTS idx_shopping_snapshots_date ON shopping_price_snapshots(captured_at DESC)')
+
+  // Listas de la compra del usuario.
+  db.run(`
+    CREATE TABLE IF NOT EXISTS shopping_lists (
+      id           TEXT PRIMARY KEY,
+      name         TEXT NOT NULL DEFAULT 'Lista',
+      status       TEXT NOT NULL DEFAULT 'draft' CHECK(status IN ('draft','completed','archived')),
+      created_at   TEXT NOT NULL DEFAULT (datetime('now')),
+      completed_at TEXT
+    )
+  `)
+  db.run('CREATE INDEX IF NOT EXISTS idx_shopping_lists_status ON shopping_lists(status)')
+
+  // Entradas (productos dentro de una lista).
+  db.run(`
+    CREATE TABLE IF NOT EXISTS shopping_list_entries (
+      id                  TEXT PRIMARY KEY,
+      list_id             TEXT NOT NULL,
+      item_id             TEXT NOT NULL,
+      qty                 INTEGER NOT NULL DEFAULT 1,
+      chosen_supermarket  TEXT,
+      chosen_price        REAL,
+      acquired            INTEGER NOT NULL DEFAULT 0,
+      added_at            TEXT NOT NULL DEFAULT (datetime('now')),
+      UNIQUE(list_id, item_id)
+    )
+  `)
+  db.run('CREATE INDEX IF NOT EXISTS idx_shopping_entries_list ON shopping_list_entries(list_id)')
+
   saveDatabase()
 
   // Migración idempotente: hex literales de apartados → slots semánticos.
@@ -273,6 +380,78 @@ export async function replaceDatabase(buffer: Buffer): Promise<void> {
         archived_at     TEXT,
         notes           TEXT,
         created_at      TEXT NOT NULL DEFAULT (datetime('now'))
+      )
+    `)
+  } catch { /* exists */ }
+  // Shopping schema (idempotente para backups antiguos)
+  try {
+    db.run(`
+      CREATE TABLE IF NOT EXISTS shopping_settings (
+        id                  INTEGER PRIMARY KEY CHECK (id = 1),
+        postal_code         TEXT,
+        active_supermarkets TEXT NOT NULL DEFAULT '["mercadona","carrefour","dia"]',
+        seeded_at           TEXT
+      )
+    `)
+    db.run(`INSERT OR IGNORE INTO shopping_settings (id) VALUES (1)`)
+    try { db.run('ALTER TABLE shopping_settings ADD COLUMN last_refresh_at TEXT') } catch { /* exists */ }
+    db.run(`
+      CREATE TABLE IF NOT EXISTS shopping_items (
+        id          TEXT PRIMARY KEY,
+        name        TEXT NOT NULL,
+        brand       TEXT,
+        category    TEXT NOT NULL DEFAULT 'Otros',
+        format      TEXT,
+        image_url   TEXT,
+        created_at  TEXT NOT NULL DEFAULT (datetime('now'))
+      )
+    `)
+    try { db.run('ALTER TABLE shopping_items ADD COLUMN tracked INTEGER NOT NULL DEFAULT 0') } catch { /* exists */ }
+    db.run(`
+      CREATE TABLE IF NOT EXISTS shopping_item_skus (
+        id            TEXT PRIMARY KEY,
+        item_id       TEXT NOT NULL,
+        supermarket   TEXT NOT NULL,
+        sku           TEXT NOT NULL,
+        product_name  TEXT NOT NULL,
+        product_url   TEXT,
+        image_url     TEXT,
+        last_seen_at  TEXT NOT NULL DEFAULT (datetime('now')),
+        UNIQUE(item_id, supermarket)
+      )
+    `)
+    db.run(`
+      CREATE TABLE IF NOT EXISTS shopping_price_snapshots (
+        id            INTEGER PRIMARY KEY AUTOINCREMENT,
+        supermarket   TEXT NOT NULL,
+        sku           TEXT NOT NULL,
+        postal_code   TEXT,
+        price         REAL NOT NULL,
+        unit_price    REAL,
+        in_stock      INTEGER NOT NULL DEFAULT 1,
+        captured_at   TEXT NOT NULL
+      )
+    `)
+    db.run(`
+      CREATE TABLE IF NOT EXISTS shopping_lists (
+        id           TEXT PRIMARY KEY,
+        name         TEXT NOT NULL DEFAULT 'Lista',
+        status       TEXT NOT NULL DEFAULT 'draft',
+        created_at   TEXT NOT NULL DEFAULT (datetime('now')),
+        completed_at TEXT
+      )
+    `)
+    db.run(`
+      CREATE TABLE IF NOT EXISTS shopping_list_entries (
+        id                  TEXT PRIMARY KEY,
+        list_id             TEXT NOT NULL,
+        item_id             TEXT NOT NULL,
+        qty                 INTEGER NOT NULL DEFAULT 1,
+        chosen_supermarket  TEXT,
+        chosen_price        REAL,
+        acquired            INTEGER NOT NULL DEFAULT 0,
+        added_at            TEXT NOT NULL DEFAULT (datetime('now')),
+        UNIQUE(list_id, item_id)
       )
     `)
   } catch { /* exists */ }

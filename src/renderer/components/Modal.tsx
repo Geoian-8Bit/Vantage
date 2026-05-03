@@ -8,13 +8,23 @@ interface ModalProps {
   children: React.ReactNode
   /** Si true, intercepta intentos de cerrar y muestra confirmación */
   dirty?: boolean
+  /** Anchura del panel. Default: md (448px). lg = 768px, xl = 1024px, 2xl = 1280px. */
+  size?: 'sm' | 'md' | 'lg' | 'xl' | '2xl'
   /** @deprecated kept for backward-compat — el modal se anima centrado sin origen */
   origin?: unknown
 }
 
+const SIZE_CLASS: Record<NonNullable<ModalProps['size']>, string> = {
+  sm:  'max-w-sm',
+  md:  'max-w-md',
+  lg:  'max-w-3xl',
+  xl:  'max-w-5xl',
+  '2xl': 'max-w-7xl',
+}
+
 const FOCUSABLE = 'button:not([disabled]), [href], input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])'
 
-export function Modal({ isOpen, onClose, title, children, dirty }: ModalProps) {
+export function Modal({ isOpen, onClose, title, children, dirty, size = 'md' }: ModalProps) {
   const panelRef = useRef<HTMLDivElement>(null)
   const confirmRef = useRef<HTMLDivElement>(null)
   const previousFocusRef = useRef<HTMLElement | null>(null)
@@ -128,7 +138,7 @@ export function Modal({ isOpen, onClose, title, children, dirty }: ModalProps) {
         // padre se vuelve inerte para lectores de pantalla.
         aria-hidden={confirmingClose || undefined}
         style={{ maxHeight: '90vh' }}
-        className="modal-panel relative bg-card rounded-2xl shadow-2xl w-full max-w-md flex flex-col border border-border overflow-hidden"
+        className={`modal-panel relative bg-card rounded-2xl shadow-2xl w-full ${SIZE_CLASS[size]} flex flex-col border border-border overflow-hidden`}
       >
         {/* Header */}
         <div className="shrink-0 flex items-center justify-between px-6 py-4 border-b border-border">

@@ -12,6 +12,12 @@ import {
   type CreateRecurringTemplateDTO,
   type ImportCommitPayload,
   type PDFExportPayload,
+  type SaveShoppingSettingsDTO,
+  type CreateShoppingListDTO,
+  type UpdateShoppingListDTO,
+  type AddShoppingEntryDTO,
+  type UpdateShoppingEntryDTO,
+  type SupermarketId,
 } from '../shared/types'
 
 const api = {
@@ -76,6 +82,67 @@ const api = {
   },
   app: {
     quit: () => ipcRenderer.invoke(IPC_CHANNELS.APP_QUIT),
+  },
+  shopping: {
+    settings: {
+      get:  () => ipcRenderer.invoke(IPC_CHANNELS.SHOPPING_SETTINGS_GET),
+      save: (data: SaveShoppingSettingsDTO & { seeded_at?: string | null }) =>
+        ipcRenderer.invoke(IPC_CHANNELS.SHOPPING_SETTINGS_SAVE, data),
+    },
+    items: {
+      getAll: (filter?: { category?: string; query?: string }) =>
+        ipcRenderer.invoke(IPC_CHANNELS.SHOPPING_ITEMS_GET_ALL, { filter }),
+      get:    (id: string) => ipcRenderer.invoke(IPC_CHANNELS.SHOPPING_ITEMS_GET, { id }),
+      history:(id: string) => ipcRenderer.invoke(IPC_CHANNELS.SHOPPING_ITEMS_HISTORY, { id }),
+      create: (payload: {
+        id?: string
+        name: string
+        brand?: string | null
+        category: string
+        format?: string | null
+        image_url?: string | null
+        skus?: Array<{ supermarket: SupermarketId; sku: string; product_name: string; product_url?: string | null; image_url?: string | null }>
+      }) => ipcRenderer.invoke('db:shopping:items:create', payload),
+      setTracked: (id: string, tracked: boolean) =>
+        ipcRenderer.invoke('db:shopping:items:setTracked', { id, tracked }),
+      clearAll: () => ipcRenderer.invoke('db:shopping:items:clearAll'),
+    },
+    snapshots: {
+      addBulk: (snapshots: Array<{
+        supermarket: SupermarketId
+        sku: string
+        postal_code?: string | null
+        price: number
+        unit_price?: number | null
+        in_stock?: boolean
+        captured_at: string
+      }>) => ipcRenderer.invoke('db:shopping:snapshots:addBulk', { snapshots }),
+    },
+    lists: {
+      getAll: () => ipcRenderer.invoke(IPC_CHANNELS.SHOPPING_LISTS_GET_ALL),
+      get:    (id: string) => ipcRenderer.invoke(IPC_CHANNELS.SHOPPING_LISTS_GET, { id }),
+      create: (data: CreateShoppingListDTO) => ipcRenderer.invoke(IPC_CHANNELS.SHOPPING_LISTS_CREATE, data),
+      update: (id: string, data: UpdateShoppingListDTO) =>
+        ipcRenderer.invoke(IPC_CHANNELS.SHOPPING_LISTS_UPDATE, { id, data }),
+      delete: (id: string) => ipcRenderer.invoke(IPC_CHANNELS.SHOPPING_LISTS_DELETE, { id }),
+    },
+    entries: {
+      add:    (data: AddShoppingEntryDTO) => ipcRenderer.invoke(IPC_CHANNELS.SHOPPING_ENTRY_ADD, data),
+      update: (id: string, data: UpdateShoppingEntryDTO) =>
+        ipcRenderer.invoke(IPC_CHANNELS.SHOPPING_ENTRY_UPDATE, { id, data }),
+      remove: (id: string) => ipcRenderer.invoke(IPC_CHANNELS.SHOPPING_ENTRY_REMOVE, { id }),
+      clear:  (listId: string) => ipcRenderer.invoke(IPC_CHANNELS.SHOPPING_ENTRY_CLEAR, { listId }),
+    },
+    scrape: {
+      search: (payload: { query: string; supers?: SupermarketId[]; limit?: number; postalCode?: string | null }) =>
+        ipcRenderer.invoke('db:shopping:scrape:search', payload),
+      refreshTracked: (payload?: { postalCode?: string | null }) =>
+        ipcRenderer.invoke('db:shopping:scrape:refreshTracked', payload ?? {}),
+      linkSku: (payload: { itemId: string; supermarket: SupermarketId; sku: string; product_name: string; product_url?: string | null; image_url?: string | null }) =>
+        ipcRenderer.invoke('db:shopping:items:linkSku', payload),
+      validatePostalCode: (postalCode: string) =>
+        ipcRenderer.invoke('db:shopping:scrape:validatePostalCode', { postalCode }),
+    },
   },
 }
 

@@ -1,14 +1,7 @@
 /**
- * @legacy — Pantalla de entrada "Hub" con tiles 3D, partículas y selector
- * de módulos. Ya NO se enruta desde App.tsx (la app arranca directamente
- * en el panel de Inicio) ni se accede desde la sidebar. El archivo se
- * mantiene por si en el futuro se reabre el concepto.
- *
- * Para reactivarlo:
- *   1. Devolver `useState('hub')` como default en App.tsx y restaurar el
- *      branch que renderiza HubScreen.
- *   2. Re-añadir el item "Hub" al navItems de Sidebar.tsx con su flecha y
- *      la llamada a transitionView en handleClick.
+ * Hub — pantalla de entrada de Vantage. Selector visual de módulos con tiles
+ * 3D, partículas y greeting según hora del día. Es la primera pantalla que
+ * ve el usuario al abrir la app (App.tsx arranca con activeModule='hub').
  */
 import { useEffect, useState } from 'react'
 import logoIcon from '../assets/logo-icon.png'
@@ -23,9 +16,12 @@ interface HubScreenProps {
 // Mapeo de tile id → view-transition-name (debe coincidir con el module group del AppLayout)
 function tileViewTransitionName(tileId: string): string | undefined {
   if (tileId === 'expenses') return 'module-expenses'
+  if (tileId === 'shopping') return 'module-shopping'
   if (tileId === 'settings') return 'module-settings'
   return undefined
 }
+
+const SHOPPING_NEW_KEY = 'vantage.hub.shopping.seen'
 
 interface Module {
   id: string
@@ -33,6 +29,7 @@ interface Module {
   description: string
   icon: React.ReactNode
   comingSoon?: boolean
+  isNew?: boolean
   accent?: 'brand' | 'accent' | 'income' | 'expense'
   /** Sub-página por defecto al entrar al módulo. Si no se especifica, usa el id. */
   entryPoint?: string
@@ -53,11 +50,25 @@ const MODULES: Module[] = [
     ),
   },
   {
+    id: 'shopping',
+    name: 'Compras',
+    description: 'Comparador de supermercados, listas y precios',
+    accent: 'income',
+    isNew: true,
+    icon: (
+      <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
+        <path d="M3 3h2l2.4 12.4a2 2 0 0 0 2 1.6h9.2a2 2 0 0 0 2-1.6L23 6H6" />
+        <circle cx="9" cy="20" r="1.6" />
+        <circle cx="18" cy="20" r="1.6" />
+      </svg>
+    ),
+  },
+  {
     id: 'investments',
     name: 'Inversiones',
     description: 'Cartera, rendimiento y posiciones',
     comingSoon: true,
-    accent: 'income',
+    accent: 'accent',
     icon: (
       <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
         <polyline points="22 7 13.5 15.5 8.5 10.5 2 17" />
@@ -127,6 +138,22 @@ function getDate() {
 
 export function HubScreen({ onEnter }: HubScreenProps) {
   const greeting = useGreeting()
+  // El badge "Nuevo" del módulo Compras se muestra hasta que el usuario entra
+  // al módulo por primera vez. Se persiste en localStorage para no volver a
+  // aparecer en futuras sesiones.
+  const [shoppingSeen, setShoppingSeen] = useState<boolean>(() => {
+    if (typeof window === 'undefined') return true
+    return window.localStorage.getItem(SHOPPING_NEW_KEY) === '1'
+  })
+
+  const handleEnter = (m: Module) => {
+    if (m.comingSoon) return
+    if (m.id === 'shopping' && !shoppingSeen) {
+      try { window.localStorage.setItem(SHOPPING_NEW_KEY, '1') } catch { /* ignore */ }
+      setShoppingSeen(true)
+    }
+    transitionView(() => onEnter(m.entryPoint ?? m.id))
+  }
 
   return (
     <div className="hub-screen relative min-h-full flex flex-col items-center justify-center px-6 py-12">
@@ -188,11 +215,13 @@ export function HubScreen({ onEnter }: HubScreenProps) {
               : 'var(--color-brand)'
             const isComing = !!m.comingSoon
 
+            const showNewBadge = m.id === 'shopping' && m.isNew && !shoppingSeen && !isComing
+
             return (
               <TiltCard
                 key={m.id}
                 as="button"
-                onClick={() => !isComing && transitionView(() => onEnter(m.entryPoint ?? m.id))}
+                onClick={() => handleEnter(m)}
                 disabled={isComing}
                 intensity={isComing ? 0 : 5}
                 className="hub-tile group relative text-left p-6 rounded-2xl border overflow-hidden"
@@ -261,6 +290,21 @@ export function HubScreen({ onEnter }: HubScreenProps) {
                             <polyline points="12 6 12 12 16 14" />
                           </svg>
                           Próximamente
+                        </span>
+                      )}
+                      {showNewBadge && (
+                        <span
+                          className="inline-flex items-center gap-1 text-[10px] uppercase tracking-wider font-semibold px-2 py-0.5 rounded-full"
+                          style={{
+                            background: accentVar,
+                            color: 'white',
+                            boxShadow: `0 0 0 0 color-mix(in srgb, ${accentVar} 60%, transparent)`,
+                            animation: 'pulse-vivo 1.6s ease-out infinite',
+                            // pulse-vivo lee --pulse-color
+                            ['--pulse-color' as string]: `color-mix(in srgb, ${accentVar} 55%, transparent)`,
+                          }}
+                        >
+                          ✦ Nuevo
                         </span>
                       )}
                     </div>

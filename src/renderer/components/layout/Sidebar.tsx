@@ -1,6 +1,7 @@
 import { useLayoutEffect, useRef, useState, type ReactNode } from 'react'
 import logoIcon from '../../assets/logo-icon.png'
 import { useDesignTheme } from '../../hooks/useDesignTheme'
+import { transitionView } from '../../lib/transition'
 
 interface NavItem {
   id: string
@@ -79,6 +80,24 @@ const navItems: NavItem[] = [
         <line x1="9" y1="9" x2="15" y2="9" stroke="var(--color-sidebar)" strokeWidth="2" />
         <line x1="9" y1="13" x2="15" y2="13" stroke="var(--color-sidebar)" strokeWidth="2" />
         <line x1="9" y1="17" x2="13" y2="17" stroke="var(--color-sidebar)" strokeWidth="2" />
+      </svg>
+    )
+  },
+  {
+    id: 'shopping',
+    label: 'Compras',
+    icon: (
+      <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+        <path d="M3 3h2l2.4 12.4a2 2 0 0 0 2 1.6h9.2a2 2 0 0 0 2-1.6L23 6H6" />
+        <circle cx="9" cy="20" r="1.6" />
+        <circle cx="18" cy="20" r="1.6" />
+      </svg>
+    ),
+    iconActive: (
+      <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="currentColor" stroke="currentColor" strokeWidth="1.5" strokeLinejoin="round">
+        <path d="M3 3h2l2.4 12.4a2 2 0 0 0 2 1.6h9.2a2 2 0 0 0 2-1.6L23 6H6" stroke="currentColor" strokeWidth="2" fill="currentColor" />
+        <circle cx="9" cy="20" r="1.8" />
+        <circle cx="18" cy="20" r="1.8" />
       </svg>
     )
   },
@@ -180,8 +199,17 @@ export function Sidebar({ activeModule, onNavigate }: SidebarProps) {
         }}
       />
 
-      {/* Logo */}
-      <div className="relative px-2 lg:px-6 py-4 lg:py-5 border-b border-sidebar-border flex items-center justify-center lg:justify-start">
+      {/* Logo — clickable, vuelve al Hub */}
+      <button
+        type="button"
+        onClick={() => transitionView(() => onNavigate('hub'))}
+        title="Volver al Hub"
+        aria-label="Volver al Hub"
+        className="relative px-2 lg:px-6 py-4 lg:py-5 border-b border-sidebar-border flex items-center justify-center lg:justify-start cursor-pointer text-left w-full hover:bg-sidebar-hover/40"
+        style={{
+          transition: 'background-color var(--duration-fast) var(--ease-default)',
+        }}
+      >
         <div className="relative shrink-0">
           {/* Halo cálido detrás del logo */}
           <span
@@ -197,9 +225,9 @@ export function Sidebar({ activeModule, onNavigate }: SidebarProps) {
         </div>
         <div className="hidden lg:block overflow-hidden ml-2.5">
           <h1 className="text-base font-bold tracking-tight whitespace-nowrap">Vantage</h1>
-          <p className="text-[10px] text-sidebar-muted leading-none">Control de gastos</p>
+          <p className="text-[10px] text-sidebar-muted leading-none">Volver al Hub</p>
         </div>
-      </div>
+      </button>
 
       {/* Navigation con indicador deslizante */}
       <nav ref={navRef} className="relative flex-1 px-1.5 lg:px-3 py-4 space-y-1">

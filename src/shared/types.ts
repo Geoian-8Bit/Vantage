@@ -214,6 +214,21 @@ export const IPC_CHANNELS = {
   DB_RESTORE: 'db:restore',
   // App
   APP_QUIT: 'app:quit',
+  // Shopping (módulo Compras)
+  SHOPPING_SETTINGS_GET:    'db:shopping:settings:get',
+  SHOPPING_SETTINGS_SAVE:   'db:shopping:settings:save',
+  SHOPPING_ITEMS_GET_ALL:   'db:shopping:items:getAll',
+  SHOPPING_ITEMS_GET:       'db:shopping:items:get',
+  SHOPPING_ITEMS_HISTORY:   'db:shopping:items:history',
+  SHOPPING_LISTS_GET_ALL:   'db:shopping:lists:getAll',
+  SHOPPING_LISTS_GET:       'db:shopping:lists:get',
+  SHOPPING_LISTS_CREATE:    'db:shopping:lists:create',
+  SHOPPING_LISTS_UPDATE:    'db:shopping:lists:update',
+  SHOPPING_LISTS_DELETE:    'db:shopping:lists:delete',
+  SHOPPING_ENTRY_ADD:       'db:shopping:entry:add',
+  SHOPPING_ENTRY_UPDATE:    'db:shopping:entry:update',
+  SHOPPING_ENTRY_REMOVE:    'db:shopping:entry:remove',
+  SHOPPING_ENTRY_CLEAR:     'db:shopping:entry:clear',
 } as const
 
 // ── Import / Export types ──────────────────────────────────────────────────
@@ -284,4 +299,138 @@ export interface CreateRecurringTemplateDTO {
   start_date: string  // YYYY-MM-DD — first registration date
   debt_id?: string | null
   savings_account_id?: string | null
+}
+
+// ── Shopping (módulo Compras) ──────────────────────────────────────────────
+
+export type SupermarketId = 'mercadona' | 'carrefour' | 'dia' | 'lidl'
+
+/** Configuración del módulo. Singleton persistido en shopping_settings (id=1). */
+export interface ShoppingSettings {
+  postal_code: string | null
+  /** JSON array de SupermarketId activos. Default: ['mercadona','carrefour','dia'] */
+  active_supermarkets: SupermarketId[]
+  /** Última siembra del catálogo seed (timestamp). Si null, hace falta seed. */
+  seeded_at: string | null
+  /** Última vez que el scheduler refrescó precios (ISO timestamp). Null = nunca. */
+  last_refresh_at: string | null
+}
+
+/** Item del catálogo unificado del usuario. Es el concepto abstracto
+ *  ("Leche semidesnatada 1L"), no un producto concreto de un super. */
+export interface ShoppingItem {
+  id: string
+  name: string
+  brand: string | null
+  category: string
+  format: string | null
+  image_url: string | null
+  /** Watchlist: el usuario sigue este producto (sprint 4). */
+  tracked: boolean
+  created_at: string
+}
+
+/** Vinculación item → producto concreto en un supermercado.
+ *  Permite que el usuario diga "para mí 'Leche 1L' en Mercadona es ESTE producto". */
+export interface ShoppingItemSku {
+  id: string
+  item_id: string
+  supermarket: SupermarketId
+  /** Identificador interno del producto en ese super (sku, ID de su API, etc.) */
+  sku: string
+  product_name: string
+  product_url: string | null
+  image_url: string | null
+  /** Última vez que el sku se vio activo en el super (ISO timestamp) */
+  last_seen_at: string
+}
+
+/** Snapshot puntual de precio (un día por sku/super/CP). */
+export interface ShoppingPriceSnapshot {
+  id: number
+  supermarket: SupermarketId
+  sku: string
+  postal_code: string | null
+  price: number
+  unit_price: number | null
+  in_stock: boolean
+  captured_at: string  // YYYY-MM-DD
+}
+
+export interface ShoppingList {
+  id: string
+  name: string
+  status: 'draft' | 'completed' | 'archived'
+  created_at: string
+  completed_at: string | null
+}
+
+export interface ShoppingListEntry {
+  id: string
+  list_id: string
+  item_id: string
+  qty: number
+  /** Super elegido por el usuario para esta línea. Null = "auto: el más barato". */
+  chosen_supermarket: SupermarketId | null
+  /** Precio acordado en el momento (snapshot del minimo o del super elegido). */
+  chosen_price: number | null
+  acquired: boolean
+  added_at: string
+}
+
+// ── DTOs y tipos de respuesta agregada ─────────────────────────────────────
+
+/** Item con su precio actual en cada super (último snapshot). Útil para Catálogo y Home. */
+export interface ShoppingItemWithPrices {
+  item: ShoppingItem
+  /** Precios por super basados en el último snapshot disponible. Si un super no tiene
+   *  sku vinculado o snapshot, no aparece en el array (no available). */
+  prices: Array<{
+    supermarket: SupermarketId
+    sku: string
+    price: number
+    captured_at: string
+    /** Cambio porcentual respecto al snapshot de hace 7 días (si existe). */
+    change_pct: number | null
+    available: boolean
+  }>
+  /** Mini-historia (precio mínimo entre supers por día) para sparkline. */
+  recent_min: Array<{ date: string; price: number }>
+}
+
+export interface ShoppingListWithEntries {
+  list: ShoppingList
+  entries: Array<{
+    entry: ShoppingListEntry
+    item: ShoppingItem
+    /** Precios actuales del item en cada super (lo necesita el editor de la lista) */
+    prices: ShoppingItemWithPrices['prices']
+  }>
+}
+
+export interface SaveShoppingSettingsDTO {
+  postal_code?: string | null
+  active_supermarkets?: SupermarketId[]
+}
+
+export interface CreateShoppingListDTO {
+  name?: string
+}
+
+export interface UpdateShoppingListDTO {
+  name?: string
+  status?: 'draft' | 'completed' | 'archived'
+}
+
+export interface AddShoppingEntryDTO {
+  list_id: string
+  item_id: string
+  qty?: number
+  chosen_supermarket?: SupermarketId | null
+}
+
+export interface UpdateShoppingEntryDTO {
+  qty?: number
+  chosen_supermarket?: SupermarketId | null
+  acquired?: boolean
 }

@@ -41,9 +41,10 @@ export function transitionView(update: () => void): void {
  * (dashboard ↔ movimientos ↔ stats ↔ calendario) compartan el mismo
  * elemento, y solo se anime como shared element entre hub y módulo.
  */
-export function getModuleGroup(activeModule: string): 'expenses' | 'settings' | null {
+export function getModuleGroup(activeModule: string): 'expenses' | 'settings' | 'shopping' | null {
   if (activeModule === 'hub') return null
   if (activeModule === 'settings') return 'settings'
+  if (activeModule === 'shopping') return 'shopping'
   // dashboard, expenses, analytics, calendar pertenecen al módulo Gastos
   return 'expenses'
 }
