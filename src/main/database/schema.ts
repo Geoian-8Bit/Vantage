@@ -1,6 +1,7 @@
 import initSqlJs, { Database } from 'sql.js'
 import { readFileSync, writeFileSync, existsSync } from 'fs'
 import { randomUUID } from 'crypto'
+import { migrateSavingsHexToSlots } from './savingsMigration'
 
 let db: Database | null = null
 let dbPath: string = ''
@@ -81,6 +82,19 @@ export async function initializeDatabase(filePath: string): Promise<Database> {
     }
   }
 
+  // Asegurar que existe la categoría reservada "Deuda" para gastos
+  // (se asigna automáticamente a las cuotas mensuales y pagos extra de deudas)
+  {
+    const check = db.prepare('SELECT COUNT(*) as cnt FROM categories WHERE name = ? AND type = ?')
+    check.bind(['Deuda', 'expense'])
+    check.step()
+    const exists = Number((check.getAsObject() as { cnt: number }).cnt) > 0
+    check.free()
+    if (!exists) {
+      db.run('INSERT INTO categories (id, name, type) VALUES (?, ?, ?)', [randomUUID(), 'Deuda', 'expense'])
+    }
+  }
+
   // Migration: add category column if it does not yet exist
   try {
     db.run("ALTER TABLE transactions ADD COLUMN category TEXT NOT NULL DEFAULT 'Otros'")
@@ -138,12 +152,52 @@ export async function initializeDatabase(filePath: string): Promise<Database> {
     )
   `)
 
+  // Migration: añadir debt_id a recurring_templates para que los templates que
+  // materializan cuotas de una deuda enlacen las transacciones generadas.
+  try {
+    db.run('ALTER TABLE recurring_templates ADD COLUMN debt_id TEXT')
+  } catch {
+    // Column already exists — safe to ignore
+  }
+  // Migration: savings_account_id en recurring_templates (preparado para futuras
+  // aportaciones recurrentes a apartados). Idempotente.
+  try {
+    db.run('ALTER TABLE recurring_templates ADD COLUMN savings_account_id TEXT')
+  } catch {
+    // Column already exists — safe to ignore
+  }
+  db.run('CREATE INDEX IF NOT EXISTS idx_recurring_debt ON recurring_templates(debt_id)')
+
+  // ── Deudas (debts) ──────────────────────────────────────────────────────
+  db.run(`
+    CREATE TABLE IF NOT EXISTS debts (
+      id              TEXT PRIMARY KEY,
+      name            TEXT NOT NULL,
+      creditor        TEXT,
+      color           TEXT,
+      initial_amount  REAL NOT NULL,
+      monthly_amount  REAL NOT NULL,
+      start_date      TEXT NOT NULL,
+      recurring_id    TEXT,
+      archived_at     TEXT,
+      notes           TEXT,
+      created_at      TEXT NOT NULL DEFAULT (datetime('now'))
+    )
+  `)
+  db.run('CREATE INDEX IF NOT EXISTS idx_debts_active ON debts(archived_at)')
+
+  // Migration: añadir debt_id a transactions (FK lógica, sin CASCADE)
+  try {
+    db.run('ALTER TABLE transactions ADD COLUMN debt_id TEXT')
+  } catch {
+    // Column already exists — safe to ignore
+  }
+  db.run('CREATE INDEX IF NOT EXISTS idx_transactions_debt ON transactions(debt_id)')
+
   saveDatabase()
 
   // Migración idempotente: hex literales de apartados → slots semánticos.
-  // Imports tardíos para evitar ciclos (savingsMigration usa getDatabase de aquí).
   try {
-    const { migrateSavingsHexToSlots } = require('./savingsMigration') as typeof import('./savingsMigration')
     migrateSavingsHexToSlots()
   } catch (err) {
     console.warn('[savings] migration to slots failed:', err)
@@ -191,6 +245,9 @@ export async function replaceDatabase(buffer: Buffer): Promise<void> {
   try { db.run("ALTER TABLE transactions ADD COLUMN category TEXT NOT NULL DEFAULT 'Otros'") } catch { /* exists */ }
   try { db.run("ALTER TABLE transactions ADD COLUMN note TEXT NOT NULL DEFAULT ''") } catch { /* exists */ }
   try { db.run('ALTER TABLE transactions ADD COLUMN savings_account_id TEXT') } catch { /* exists */ }
+  try { db.run('ALTER TABLE transactions ADD COLUMN debt_id TEXT') } catch { /* exists */ }
+  try { db.run('ALTER TABLE recurring_templates ADD COLUMN debt_id TEXT') } catch { /* exists */ }
+  try { db.run('ALTER TABLE recurring_templates ADD COLUMN savings_account_id TEXT') } catch { /* exists */ }
   try {
     db.run(`
       CREATE TABLE IF NOT EXISTS savings_accounts (
@@ -202,11 +259,27 @@ export async function replaceDatabase(buffer: Buffer): Promise<void> {
       )
     `)
   } catch { /* exists */ }
+  try {
+    db.run(`
+      CREATE TABLE IF NOT EXISTS debts (
+        id              TEXT PRIMARY KEY,
+        name            TEXT NOT NULL,
+        creditor        TEXT,
+        color           TEXT,
+        initial_amount  REAL NOT NULL,
+        monthly_amount  REAL NOT NULL,
+        start_date      TEXT NOT NULL,
+        recurring_id    TEXT,
+        archived_at     TEXT,
+        notes           TEXT,
+        created_at      TEXT NOT NULL DEFAULT (datetime('now'))
+      )
+    `)
+  } catch { /* exists */ }
   saveDatabase()
 
   // Migrar colores hex importados a slots para que se armonicen con el tema.
   try {
-    const { migrateSavingsHexToSlots } = require('./savingsMigration') as typeof import('./savingsMigration')
     migrateSavingsHexToSlots()
   } catch (err) {
     console.warn('[savings] migration to slots failed on replaceDatabase:', err)

@@ -12,6 +12,14 @@ import {
   deleteSavingsAccount,
 } from './database/savings'
 import {
+  getAllDebts,
+  createDebt,
+  updateDebt,
+  deleteDebt,
+  addExtraPayment,
+  archiveIfPaid,
+} from './database/debts'
+import {
   handleDialogOpenFile,
   handleExportTransactionsExcel,
   handleParseExcel,
@@ -159,6 +167,33 @@ function registerIpcHandlers(): void {
     deleteSavingsAccount(id)
   })
 
+  // ── Debts (deudas amortizables) ────────────────────────────────────────
+  ipcMain.handle(IPC_CHANNELS.DEBTS_GET_ALL, async (_event, payload) => {
+    await dbReady
+    const filter = payload?.filter ?? 'all'
+    return getAllDebts(filter)
+  })
+
+  ipcMain.handle(IPC_CHANNELS.DEBTS_CREATE, async (_event, data) => {
+    await dbReady
+    return createDebt(data)
+  })
+
+  ipcMain.handle(IPC_CHANNELS.DEBTS_UPDATE, async (_event, { id, data }) => {
+    await dbReady
+    return updateDebt(id, data)
+  })
+
+  ipcMain.handle(IPC_CHANNELS.DEBTS_DELETE, async (_event, { id }) => {
+    await dbReady
+    deleteDebt(id)
+  })
+
+  ipcMain.handle(IPC_CHANNELS.DEBTS_EXTRA_PAYMENT, async (_event, payload) => {
+    await dbReady
+    return addExtraPayment(payload)
+  })
+
   // ── File I/O ───────────────────────────────────────────────────────────
   ipcMain.handle(IPC_CHANNELS.DIALOG_OPEN_FILE,            handleDialogOpenFile)
   ipcMain.handle(IPC_CHANNELS.EXPORT_TRANSACTIONS_EXCEL,   handleExportTransactionsExcel)
@@ -199,7 +234,12 @@ function registerIpcHandlers(): void {
       pendingRecurringCount = null
       return { count }
     }
-    return { count: processDueRecurring() }
+    const result = processDueRecurring()
+    // Archivar deudas que se hayan saldado con las cuotas de este ciclo.
+    for (const debtId of result.debtIdsTouched) {
+      try { archiveIfPaid(debtId) } catch (err) { console.warn('[debts] archiveIfPaid failed for', debtId, err) }
+    }
+    return { count: result.count }
   })
 
   // ── Dashboard ───────────────────────────────────────────────────────
@@ -245,7 +285,12 @@ app.whenReady().then(async () => {
     // DB init and window creation run in parallel
     await Promise.all([
       initializeDatabase(dbPath).then(() => {
-        pendingRecurringCount = processDueRecurring()
+        const result = processDueRecurring()
+        // Cerrar deudas saldadas durante el proceso de cuotas atrasadas.
+        for (const debtId of result.debtIdsTouched) {
+          try { archiveIfPaid(debtId) } catch (err) { console.warn('[debts] archiveIfPaid failed for', debtId, err) }
+        }
+        pendingRecurringCount = result.count
         dbReadyResolve()
       }),
       createWindow()

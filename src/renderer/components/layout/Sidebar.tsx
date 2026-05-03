@@ -63,6 +63,26 @@ const navItems: NavItem[] = [
     )
   },
   {
+    id: 'debts',
+    label: 'Deudas',
+    icon: (
+      <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+        <path d="M14 2H6a2 2 0 0 0-2 2v16l3-2 2 2 2-2 2 2 2-2 3 2V8z" />
+        <line x1="9" y1="9" x2="15" y2="9" />
+        <line x1="9" y1="13" x2="15" y2="13" />
+        <line x1="9" y1="17" x2="13" y2="17" />
+      </svg>
+    ),
+    iconActive: (
+      <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="currentColor" stroke="currentColor" strokeWidth="1.5" strokeLinejoin="round">
+        <path d="M14 2H6a2 2 0 0 0-2 2v16l3-2 2 2 2-2 2 2 2-2 3 2V8z" />
+        <line x1="9" y1="9" x2="15" y2="9" stroke="var(--color-sidebar)" strokeWidth="2" />
+        <line x1="9" y1="13" x2="15" y2="13" stroke="var(--color-sidebar)" strokeWidth="2" />
+        <line x1="9" y1="17" x2="13" y2="17" stroke="var(--color-sidebar)" strokeWidth="2" />
+      </svg>
+    )
+  },
+  {
     id: 'analytics',
     label: 'Estadísticas',
     icon: (

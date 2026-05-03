@@ -15,6 +15,7 @@ import { Select } from '../components/Select'
 import type { CreateTransactionDTO, CreateRecurringTemplateDTO, Transaction, UpdateTransactionDTO } from '../../shared/types'
 import { useCategories } from '../hooks/useCategories'
 import { useSavings } from '../hooks/useSavings'
+import { useRolloverEnabled } from '../hooks/useRolloverEnabled'
 import { pad, MONTH_NAMES_FULL } from '../lib/utils'
 
 type ModalType = 'expense' | 'income' | null
@@ -71,6 +72,7 @@ export function HomeScreen() {
   } = useTransactions()
   const { categories } = useCategories()
   const { accounts: savingsAccounts, loadAccounts: reloadSavings } = useSavings()
+  const { enabled: rolloverEnabled, toggle: toggleRollover } = useRolloverEnabled()
 
   const [modalType, setModalType] = useState<ModalType>(null)
   const [filter, setFilter] = useState<Filter>('all')
@@ -217,6 +219,22 @@ export function HomeScreen() {
     }
     return { totalIncome: income, totalExpenses: expenses, balance: income - expenses }
   }, [filteredTransactions])
+
+  // Rollover acumulado: balance neto de TODAS las transacciones anteriores al
+  // periodo actual. Las aportaciones a apartados son `expense` con
+  // `savings_account_id`, así que ya quedan restadas — el carryover representa
+  // el "profit no ahorrado" arrastrado desde meses anteriores.
+  const carryover = useMemo(() => {
+    if (!rolloverEnabled || !fromDate) return 0
+    let bal = 0
+    for (const t of transactions) {
+      if (t.date >= fromDate) continue
+      bal += t.type === 'income' ? t.amount : -t.amount
+    }
+    return bal
+  }, [rolloverEnabled, fromDate, transactions])
+
+  const showCarryover = rolloverEnabled && !!fromDate
 
   const totalPages = Math.max(1, Math.ceil(filteredTransactions.length / PAGE_SIZE))
   const pagedTransactions = showAll
@@ -368,6 +386,24 @@ export function HomeScreen() {
         actions={
           <>
             <button
+              type="button"
+              onClick={toggleRollover}
+              aria-pressed={rolloverEnabled}
+              title="Suma como disponible el balance no ahorrado de periodos anteriores"
+              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium border transition-colors cursor-pointer ${
+                rolloverEnabled
+                  ? 'bg-brand/10 border-brand/30 text-brand'
+                  : 'bg-surface border-border text-subtext hover:bg-border hover:text-text'
+              }`}
+            >
+              <svg aria-hidden="true" xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M17 2.1l4 4-4 4" />
+                <path d="M3 12.2v-2a4 4 0 0 1 4-4h12.8M7 21.9l-4-4 4-4" />
+                <path d="M21 11.8v2a4 4 0 0 1-4 4H4.2" />
+              </svg>
+              Acumular meses
+            </button>
+            <button
               onClick={(e) => { captureFromEvent(e); setConfirmBulkDelete(true) }}
               disabled={filteredTransactions.length === 0}
               className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium text-expense bg-expense-light hover:bg-expense/20 border border-expense/20 transition-colors cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed"
@@ -433,6 +469,8 @@ export function HomeScreen() {
         totalIncome={periodTotals.totalIncome}
         totalExpenses={periodTotals.totalExpenses}
         balance={periodTotals.balance}
+        carryover={carryover}
+        showCarryover={showCarryover}
       />
 
       {/* ── Unified control bar ────────────────────────────────────────── */}

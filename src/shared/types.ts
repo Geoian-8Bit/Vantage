@@ -12,6 +12,8 @@ export interface Transaction {
    *  - type='income'  = retirada del apartado (entra al profit, resta del apartado)
    */
   savings_account_id?: string | null
+  /** ID de la deuda a la que se aplica esta transacción (cuota mensual o pago extra). */
+  debt_id?: string | null
 }
 
 export interface CreateTransactionDTO {
@@ -22,6 +24,7 @@ export interface CreateTransactionDTO {
   category: string
   note?: string
   savings_account_id?: string | null
+  debt_id?: string | null
 }
 
 export interface UpdateTransactionDTO {
@@ -32,6 +35,7 @@ export interface UpdateTransactionDTO {
   category: string
   note?: string
   savings_account_id?: string | null
+  debt_id?: string | null
 }
 
 export interface Category {
@@ -74,6 +78,67 @@ export interface UpdateSavingsAccountDTO {
   target_amount?: number | null
 }
 
+// ── Deudas ────────────────────────────────────────────────────────────────
+/** Nombre reservado de la categoría asignada automáticamente a las
+ *  transacciones que pagan una deuda (cuota recurrente o pago extra). */
+export const DEBT_CATEGORY_NAME = 'Deuda'
+
+export interface Debt {
+  id: string
+  name: string
+  /** A quién se debe — opcional (banco, persona, comercio...) */
+  creditor: string | null
+  /** Slot de color (savings-1..savings-8) */
+  color: string | null
+  /** Capital total de la deuda al momento de crearla */
+  initial_amount: number
+  /** Cuota mensual fija */
+  monthly_amount: number
+  /** Fecha YYYY-MM-DD de la primera cuota */
+  start_date: string
+  /** Id del recurring_template asociado (creado automáticamente) */
+  recurring_id: string | null
+  /** YYYY-MM-DD si la deuda está saldada/archivada; null = activa */
+  archived_at: string | null
+  notes: string | null
+  created_at: string
+  /** Total ya pagado (suma de transacciones con debt_id = id). Calculado en backend. */
+  paid: number
+  /** Capital pendiente: initial_amount - paid (no negativo). Calculado en backend. */
+  pending: number
+  /** Meses restantes estimados: ceil(pending / monthly_amount). Calculado en backend. */
+  months_remaining: number
+}
+
+export interface CreateDebtDTO {
+  name: string
+  creditor?: string | null
+  color?: string | null
+  initial_amount: number
+  monthly_amount: number
+  start_date: string
+  notes?: string | null
+}
+
+export interface UpdateDebtDTO {
+  name: string
+  creditor?: string | null
+  color?: string | null
+  initial_amount: number
+  monthly_amount: number
+  start_date: string
+  notes?: string | null
+}
+
+export interface ExtraPaymentDTO {
+  debt_id: string
+  amount: number
+  /** YYYY-MM-DD; por defecto hoy si no se proporciona */
+  date?: string
+  /** Texto opcional libre (queda en transactions.note) */
+  note?: string
+}
+
 // ── Dashboard ─────────────────────────────────────────────────────────────
 export interface DashboardStats {
   balance: number
@@ -85,7 +150,9 @@ export interface DashboardStats {
   monthlyTrend: { month: string; income: number; expenses: number }[]
   /** Suma de saldos de todos los apartados de ahorro */
   totalSavings: number
-  /** Patrimonio total: balance líquido + totalSavings */
+  /** Suma del capital pendiente de todas las deudas activas */
+  totalDebtPending: number
+  /** Patrimonio total: balance líquido + totalSavings - totalDebtPending */
   netWorth: number
 }
 
@@ -119,6 +186,12 @@ export const IPC_CHANNELS = {
   SAVINGS_CREATE:  'db:savings:create',
   SAVINGS_UPDATE:  'db:savings:update',
   SAVINGS_DELETE:  'db:savings:delete',
+  // Debts (deudas amortizables)
+  DEBTS_GET_ALL:        'db:debts:getAll',
+  DEBTS_CREATE:         'db:debts:create',
+  DEBTS_UPDATE:         'db:debts:update',
+  DEBTS_DELETE:         'db:debts:delete',
+  DEBTS_EXTRA_PAYMENT:  'db:debts:extraPayment',
   // File I/O
   DIALOG_OPEN_FILE:          'dialog:openFile',
   EXPORT_TRANSACTIONS_EXCEL: 'fs:export:transactionsExcel',
@@ -195,6 +268,11 @@ export interface RecurringTemplate {
   next_date: string   // YYYY-MM-DD — next due date
   active: boolean
   created_at: string
+  /** Si el template materializa cuotas de una deuda, las transacciones generadas
+   *  heredan este id en transactions.debt_id. */
+  debt_id?: string | null
+  /** Análogo para apartados de ahorro (preparado para el futuro). */
+  savings_account_id?: string | null
 }
 
 export interface CreateRecurringTemplateDTO {
@@ -204,4 +282,6 @@ export interface CreateRecurringTemplateDTO {
   category: string
   frequency: RecurringFrequency
   start_date: string  // YYYY-MM-DD — first registration date
+  debt_id?: string | null
+  savings_account_id?: string | null
 }

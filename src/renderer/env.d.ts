@@ -7,6 +7,7 @@ import type {
   Transaction, CreateTransactionDTO, UpdateTransactionDTO,
   Category, CreateCategoryDTO,
   SavingsAccount, CreateSavingsAccountDTO, UpdateSavingsAccountDTO,
+  Debt, CreateDebtDTO, UpdateDebtDTO, ExtraPaymentDTO,
   ImportFilePreview, ImportCommitPayload, ImportCommitResult,
   RecurringTemplate, CreateRecurringTemplateDTO,
   DashboardStats, BackupResult, RestoreResult,
@@ -34,6 +35,13 @@ declare global {
         create(data: CreateSavingsAccountDTO): Promise<SavingsAccount>
         update(id: string, data: UpdateSavingsAccountDTO): Promise<SavingsAccount>
         delete(id: string): Promise<void>
+      }
+      debts: {
+        getAll(filter?: 'active' | 'archived' | 'all'): Promise<Debt[]>
+        create(data: CreateDebtDTO): Promise<Debt>
+        update(id: string, data: UpdateDebtDTO): Promise<Debt>
+        delete(id: string): Promise<void>
+        extraPayment(payload: ExtraPaymentDTO): Promise<{ debt: Debt; transactionId: string }>
       }
       fileio: {
         openFileDialog(opts: { filters: { name: string; extensions: string[] }[]; title?: string }): Promise<string | null>

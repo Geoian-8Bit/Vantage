@@ -6,6 +6,9 @@ import {
   type CreateCategoryDTO,
   type CreateSavingsAccountDTO,
   type UpdateSavingsAccountDTO,
+  type CreateDebtDTO,
+  type UpdateDebtDTO,
+  type ExtraPaymentDTO,
   type CreateRecurringTemplateDTO,
   type ImportCommitPayload,
   type PDFExportPayload,
@@ -30,6 +33,16 @@ const api = {
     create: (data: CreateSavingsAccountDTO) => ipcRenderer.invoke(IPC_CHANNELS.SAVINGS_CREATE, data),
     update: (id: string, data: UpdateSavingsAccountDTO) => ipcRenderer.invoke(IPC_CHANNELS.SAVINGS_UPDATE, { id, data }),
     delete: (id: string) => ipcRenderer.invoke(IPC_CHANNELS.SAVINGS_DELETE, { id }),
+  },
+  debts: {
+    getAll: (filter: 'active' | 'archived' | 'all' = 'all') =>
+      ipcRenderer.invoke(IPC_CHANNELS.DEBTS_GET_ALL, { filter }),
+    create: (data: CreateDebtDTO) => ipcRenderer.invoke(IPC_CHANNELS.DEBTS_CREATE, data),
+    update: (id: string, data: UpdateDebtDTO) =>
+      ipcRenderer.invoke(IPC_CHANNELS.DEBTS_UPDATE, { id, data }),
+    delete: (id: string) => ipcRenderer.invoke(IPC_CHANNELS.DEBTS_DELETE, { id }),
+    extraPayment: (payload: ExtraPaymentDTO) =>
+      ipcRenderer.invoke(IPC_CHANNELS.DEBTS_EXTRA_PAYMENT, payload),
   },
   fileio: {
     openFileDialog: (opts: { filters: { name: string; extensions: string[] }[]; title?: string }) =>

@@ -1,6 +1,7 @@
 import type { DashboardStats } from '../../shared/types'
 import { getDatabase } from './schema'
 import { getTotalSavings } from './savings'
+import { getTotalDebtPending } from './debts'
 
 export function getDashboardStats(): DashboardStats {
   const db = getDatabase()
@@ -103,9 +104,10 @@ export function getDashboardStats(): DashboardStats {
     expenses: trendRows[m.label]?.expenses ?? 0,
   }))
 
-  // Savings: saldo total acumulado en apartados y patrimonio total
+  // Savings + deudas: patrimonio neto = balance líquido + apartados − deudas pendientes
   const totalSavings = getTotalSavings()
-  const netWorth = balance + totalSavings
+  const totalDebtPending = getTotalDebtPending()
+  const netWorth = balance + totalSavings - totalDebtPending
 
   return {
     balance,
@@ -116,6 +118,7 @@ export function getDashboardStats(): DashboardStats {
     upcomingRecurring,
     monthlyTrend,
     totalSavings,
+    totalDebtPending,
     netWorth,
   }
 }

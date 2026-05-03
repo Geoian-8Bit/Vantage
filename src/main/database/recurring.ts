@@ -29,6 +29,8 @@ function rowToTemplate(row: Record<string, unknown>): RecurringTemplate {
     next_date:   String(row.next_date),
     active:      Number(row.active) === 1,
     created_at:  String(row.created_at),
+    debt_id:           row.debt_id != null ? String(row.debt_id) : null,
+    savings_account_id: row.savings_account_id != null ? String(row.savings_account_id) : null,
   }
 }
 
@@ -51,12 +53,14 @@ export function createRecurring(data: CreateRecurringTemplateDTO): RecurringTemp
   const db = getDatabase()
   const id         = randomUUID()
   const created_at = new Date().toISOString()
+  const debtId      = data.debt_id ?? null
+  const savingsId   = data.savings_account_id ?? null
 
   db.run(
     `INSERT INTO recurring_templates
-       (id, amount, type, description, category, frequency, next_date, active, created_at)
-     VALUES (?, ?, ?, ?, ?, ?, ?, 1, ?)`,
-    [id, data.amount, data.type, data.description, data.category, data.frequency, data.start_date, created_at]
+       (id, amount, type, description, category, frequency, next_date, active, created_at, debt_id, savings_account_id)
+     VALUES (?, ?, ?, ?, ?, ?, ?, 1, ?, ?, ?)`,
+    [id, data.amount, data.type, data.description, data.category, data.frequency, data.start_date, created_at, debtId, savingsId]
   )
   saveDatabase()
 
@@ -70,6 +74,39 @@ export function createRecurring(data: CreateRecurringTemplateDTO): RecurringTemp
     next_date:   data.start_date,
     active:      true,
     created_at,
+    debt_id:           debtId,
+    savings_account_id: savingsId,
+  }
+}
+
+/** Crea un recurring sin persistir a disco — el caller debe llamar saveDatabase().
+ *  Útil cuando se crea como parte de una transacción SQL más grande (p.ej. createDebt). */
+export function createRecurringNoSave(data: CreateRecurringTemplateDTO): RecurringTemplate {
+  const db = getDatabase()
+  const id         = randomUUID()
+  const created_at = new Date().toISOString()
+  const debtId      = data.debt_id ?? null
+  const savingsId   = data.savings_account_id ?? null
+
+  db.run(
+    `INSERT INTO recurring_templates
+       (id, amount, type, description, category, frequency, next_date, active, created_at, debt_id, savings_account_id)
+     VALUES (?, ?, ?, ?, ?, ?, ?, 1, ?, ?, ?)`,
+    [id, data.amount, data.type, data.description, data.category, data.frequency, data.start_date, created_at, debtId, savingsId]
+  )
+
+  return {
+    id,
+    amount:      data.amount,
+    type:        data.type,
+    description: data.description,
+    category:    data.category,
+    frequency:   data.frequency,
+    next_date:   data.start_date,
+    active:      true,
+    created_at,
+    debt_id:           debtId,
+    savings_account_id: savingsId,
   }
 }
 
@@ -77,6 +114,11 @@ export function deleteRecurring(id: string): void {
   const db = getDatabase()
   db.run('DELETE FROM recurring_templates WHERE id = ?', [id])
   saveDatabase()
+}
+
+export function deleteRecurringNoSave(id: string): void {
+  const db = getDatabase()
+  db.run('DELETE FROM recurring_templates WHERE id = ?', [id])
 }
 
 export function toggleRecurring(id: string): RecurringTemplate {
@@ -92,15 +134,38 @@ export function toggleRecurring(id: string): RecurringTemplate {
   return row
 }
 
+/** Desactiva un recurring sin tocar disco. Idempotente — si ya está inactivo no hace nada. */
+export function deactivateRecurringNoSave(id: string): void {
+  const db = getDatabase()
+  db.run('UPDATE recurring_templates SET active = 0 WHERE id = ?', [id])
+}
+
+/** Cambia el importe de un recurring sin tocar disco. */
+export function updateRecurringAmountNoSave(id: string, amount: number): void {
+  const db = getDatabase()
+  db.run('UPDATE recurring_templates SET amount = ? WHERE id = ?', [amount, id])
+}
+
 // ── Auto-process ──────────────────────────────────────────────────────────────
 
-export function processDueRecurring(): number {
+export interface ProcessRecurringResult {
+  /** Número total de transacciones registradas */
+  count: number
+  /** IDs de deudas a las que se aplicó al menos una cuota — el caller debería
+   *  invocar `archiveIfPaid` con cada una para cerrar las que se hayan saldado.
+   *  Devolverlo aquí (en lugar de llamar archiveIfPaid directamente) evita la
+   *  dependencia circular `recurring.ts ↔ debts.ts`. */
+  debtIdsTouched: string[]
+}
+
+export function processDueRecurring(): ProcessRecurringResult {
   const today     = new Date().toISOString().slice(0, 10)
   const templates = getAllRecurring().filter(t => t.active && t.next_date <= today)
-  if (templates.length === 0) return 0
+  if (templates.length === 0) return { count: 0, debtIdsTouched: [] }
 
   const db = getDatabase()
   let count = 0
+  const debtIdsTouched = new Set<string>()
 
   // Wrap everything in a SQL transaction so a mid-process crash
   // doesn't create duplicate transactions on next run.
@@ -118,7 +183,10 @@ export function processDueRecurring(): number {
           category:    tpl.category,
           date,
           note:        '',
+          debt_id:           tpl.debt_id ?? null,
+          savings_account_id: tpl.savings_account_id ?? null,
         })
+        if (tpl.debt_id) debtIdsTouched.add(tpl.debt_id)
         date = advanceDate(date, tpl.frequency)
         count++
       }
@@ -134,5 +202,5 @@ export function processDueRecurring(): number {
     throw err
   }
 
-  return count
+  return { count, debtIdsTouched: Array.from(debtIdsTouched) }
 }

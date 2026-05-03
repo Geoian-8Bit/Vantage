@@ -13,6 +13,7 @@ function rowToTransaction(row: Record<string, unknown>): Transaction {
     created_at: String(row.created_at),
     note: row.note ? String(row.note) : '',
     savings_account_id: row.savings_account_id != null ? String(row.savings_account_id) : null,
+    debt_id: row.debt_id != null ? String(row.debt_id) : null,
   }
 }
 
@@ -35,10 +36,11 @@ export function createTransaction(data: CreateTransactionDTO): Transaction {
   const created_at = new Date().toISOString()
   const note = data.note ?? ''
   const savingsId = data.savings_account_id ?? null
+  const debtId = data.debt_id ?? null
 
   db.run(
-    'INSERT INTO transactions (id, amount, type, description, date, category, created_at, note, savings_account_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)',
-    [id, data.amount, data.type, data.description, data.date, data.category, created_at, note, savingsId]
+    'INSERT INTO transactions (id, amount, type, description, date, category, created_at, note, savings_account_id, debt_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
+    [id, data.amount, data.type, data.description, data.date, data.category, created_at, note, savingsId, debtId]
   )
 
   saveDatabase()
@@ -53,6 +55,7 @@ export function createTransaction(data: CreateTransactionDTO): Transaction {
     created_at,
     note,
     savings_account_id: savingsId,
+    debt_id: debtId,
   }
 }
 
@@ -78,10 +81,11 @@ export function createTransactionNoSave(data: CreateTransactionDTO): Transaction
   const created_at = new Date().toISOString()
   const note = data.note ?? ''
   const savingsId = data.savings_account_id ?? null
+  const debtId = data.debt_id ?? null
 
   db.run(
-    'INSERT INTO transactions (id, amount, type, description, date, category, created_at, note, savings_account_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)',
-    [id, data.amount, data.type, data.description, data.date, data.category, created_at, note, savingsId]
+    'INSERT INTO transactions (id, amount, type, description, date, category, created_at, note, savings_account_id, debt_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
+    [id, data.amount, data.type, data.description, data.date, data.category, created_at, note, savingsId, debtId]
   )
 
   return {
@@ -94,6 +98,7 @@ export function createTransactionNoSave(data: CreateTransactionDTO): Transaction
     created_at,
     note,
     savings_account_id: savingsId,
+    debt_id: debtId,
   }
 }
 
@@ -101,10 +106,11 @@ export function updateTransaction(id: string, data: UpdateTransactionDTO): Trans
   const db = getDatabase()
   const note = data.note ?? ''
   const savingsId = data.savings_account_id ?? null
+  const debtId = data.debt_id ?? null
 
   db.run(
-    'UPDATE transactions SET amount=?, type=?, description=?, date=?, category=?, note=?, savings_account_id=? WHERE id=?',
-    [data.amount, data.type, data.description, data.date, data.category, note, savingsId, id]
+    'UPDATE transactions SET amount=?, type=?, description=?, date=?, category=?, note=?, savings_account_id=?, debt_id=? WHERE id=?',
+    [data.amount, data.type, data.description, data.date, data.category, note, savingsId, debtId, id]
   )
 
   saveDatabase()
@@ -119,5 +125,5 @@ export function updateTransaction(id: string, data: UpdateTransactionDTO): Trans
 
   if (!found) throw new Error(`Transaction not found: ${id}`)
 
-  return { id, ...data, note, savings_account_id: savingsId, created_at }
+  return { id, ...data, note, savings_account_id: savingsId, debt_id: debtId, created_at }
 }
