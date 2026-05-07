@@ -55,6 +55,10 @@ const api = {
       ipcRenderer.invoke(IPC_CHANNELS.IMPORT_ACCESS_TABLES, filePath),
     parseAccess: (filePath: string, tableName: string) =>
       ipcRenderer.invoke(IPC_CHANNELS.IMPORT_PARSE_ACCESS, { filePath, tableName }),
+    detectAccessGeshogar: (filePath: string) =>
+      ipcRenderer.invoke(IPC_CHANNELS.IMPORT_ACCESS_GESHOGAR_DETECT, filePath),
+    runAccessGeshogar: (filePath: string) =>
+      ipcRenderer.invoke(IPC_CHANNELS.IMPORT_ACCESS_GESHOGAR_RUN, filePath),
     commitImport: (payload: ImportCommitPayload) =>
       ipcRenderer.invoke(IPC_CHANNELS.IMPORT_COMMIT, payload),
     exportPDF: (payload: PDFExportPayload) =>

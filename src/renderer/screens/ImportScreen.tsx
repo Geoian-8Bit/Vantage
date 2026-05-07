@@ -9,11 +9,13 @@ import type {
   ColumnMapping,
   ImportValidationResult,
   ImportCommitResult,
+  AccessGeshogarPreview,
+  AccessGeshogarRunResult,
 } from '../../shared/types'
 
 // ── Types ──────────────────────────────────────────────────────────────────
 
-type ImportStep = 'file-select' | 'table-select' | 'column-mapping' | 'confirm'
+type ImportStep = 'file-select' | 'geshogar-confirm' | 'table-select' | 'column-mapping' | 'confirm'
 
 interface ImportScreenProps {
   onBack: () => void
@@ -64,13 +66,18 @@ function StepBadge({ n, label, state }: StepBadgeProps) {
   )
 }
 
-function StepIndicator({ step, fileType }: { step: ImportStep; fileType: 'excel' | 'access' | null }) {
-  const steps: { key: ImportStep; label: string }[] = [
-    { key: 'file-select',    label: 'Archivo' },
-    ...(fileType === 'access' ? [{ key: 'table-select' as ImportStep, label: 'Tabla' }] : []),
-    { key: 'column-mapping', label: 'Columnas' },
-    { key: 'confirm',        label: 'Confirmar' },
-  ]
+function StepIndicator({ step, fileType, geshogarMode }: { step: ImportStep; fileType: 'excel' | 'access' | null; geshogarMode: boolean }) {
+  const steps: { key: ImportStep; label: string }[] = geshogarMode
+    ? [
+        { key: 'file-select',       label: 'Archivo' },
+        { key: 'geshogar-confirm',  label: 'Importar' },
+      ]
+    : [
+        { key: 'file-select',    label: 'Archivo' },
+        ...(fileType === 'access' ? [{ key: 'table-select' as ImportStep, label: 'Tabla' }] : []),
+        { key: 'column-mapping', label: 'Columnas' },
+        { key: 'confirm',        label: 'Confirmar' },
+      ]
   const currentIdx = steps.findIndex(s => s.key === step)
   return (
     <div
@@ -342,6 +349,164 @@ function ColumnMappingStep({ preview, mapping, onMappingChange, onNext, onBack }
   )
 }
 
+// ── Step Access auto: Confirmación import GesHogar ─────────────────────────
+
+interface GeshogarConfirmStepProps {
+  preview:    AccessGeshogarPreview
+  importing:  boolean
+  result:     AccessGeshogarRunResult | null
+  onConfirm:  () => Promise<void>
+  onManual:   () => void   // saltar al flujo manual de tabla
+  onBack:     () => void
+  onDone:     () => void
+}
+
+function GeshogarConfirmStep({
+  preview, importing, result, onConfirm, onManual, onBack, onDone,
+}: GeshogarConfirmStepProps) {
+  const [showErrors, setShowErrors] = useState(false)
+
+  if (result) {
+    return (
+      <div
+        className="rounded-2xl border p-10 text-center flex flex-col items-center"
+        style={{
+          background:  'var(--color-card)',
+          borderColor: 'var(--color-border)',
+          boxShadow:   'var(--shadow-md)',
+        }}
+      >
+        <div className="success-checkmark mb-5">
+          <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
+            <polyline points="20 6 9 17 4 12" />
+          </svg>
+        </div>
+        <p
+          className="success-text mb-1"
+          style={{ fontSize: 22, fontFamily: 'var(--font-display)', letterSpacing: 'var(--letter-spacing-display)' }}
+        >
+          Importación completada
+        </p>
+        <p className="text-sm text-subtext mt-2">
+          {result.expensesInserted} gasto{result.expensesInserted === 1 ? '' : 's'} ·{' '}
+          {result.incomesInserted} ingreso{result.incomesInserted === 1 ? '' : 's'} ·{' '}
+          {result.categoriesCreated} categoría{result.categoriesCreated === 1 ? '' : 's'} nueva{result.categoriesCreated === 1 ? '' : 's'}
+        </p>
+        {result.errors.length > 0 && (
+          <p className="text-sm text-expense mt-1">
+            {result.errors.length} fila{result.errors.length === 1 ? '' : 's'} con errores
+          </p>
+        )}
+        {result.errors.length > 0 && (
+          <button
+            onClick={() => setShowErrors(v => !v)}
+            className="mt-3 text-xs text-subtext underline cursor-pointer hover:text-text"
+          >
+            {showErrors ? 'Ocultar errores' : `Ver errores (${result.errors.length})`}
+          </button>
+        )}
+        {showErrors && result.errors.length > 0 && (
+          <div className="mt-3 w-full max-w-xl text-left rounded-lg bg-expense-light border border-expense/20 p-3 max-h-60 overflow-y-auto">
+            {result.errors.slice(0, 50).map((e, i) => (
+              <p key={i} className="text-xs text-expense">{e}</p>
+            ))}
+            {result.errors.length > 50 && (
+              <p className="text-xs text-subtext mt-2">…y {result.errors.length - 50} más</p>
+            )}
+          </div>
+        )}
+        <button
+          onClick={onDone}
+          className="mt-6 px-6 py-2.5 rounded-xl text-sm font-semibold text-white bg-brand hover:bg-brand-hover transition-colors cursor-pointer"
+        >
+          Volver a Ajustes
+        </button>
+      </div>
+    )
+  }
+
+  const total = preview.expenseCount + preview.incomeCount
+
+  return (
+    <div className="space-y-4">
+      {/* Banner de detección */}
+      <div
+        className="rounded-2xl border p-5 flex items-start gap-4"
+        style={{
+          background: 'linear-gradient(135deg, var(--color-brand-light) 0%, var(--color-card) 100%)',
+          borderColor: 'color-mix(in srgb, var(--color-brand) 25%, transparent)',
+          boxShadow:  'var(--shadow-sm)',
+        }}
+      >
+        <div className="w-11 h-11 rounded-xl bg-brand text-white flex items-center justify-center shrink-0">
+          <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M9 12l2 2 4-4"/>
+            <path d="M12 2a10 10 0 1 0 10 10A10 10 0 0 0 12 2z"/>
+          </svg>
+        </div>
+        <div className="flex-1">
+          <p className="text-sm font-bold text-text">Detectada base de datos GesHogar</p>
+          <p className="text-xs text-subtext mt-1 leading-relaxed">
+            Vantage reconoce la estructura de tu archivo y puede importarlo automáticamente: gastos, ingresos y categorías de una sola vez.
+          </p>
+        </div>
+      </div>
+
+      {/* Counts */}
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+        <div className="rounded-xl bg-expense-light border border-expense/20 p-4">
+          <p className="text-2xl font-bold text-expense">{preview.expenseCount}</p>
+          <p className="text-xs text-expense/80 mt-0.5">gasto{preview.expenseCount === 1 ? '' : 's'}</p>
+        </div>
+        <div className="rounded-xl bg-income-light border border-income/20 p-4">
+          <p className="text-2xl font-bold text-income">{preview.incomeCount}</p>
+          <p className="text-xs text-income/80 mt-0.5">ingreso{preview.incomeCount === 1 ? '' : 's'}</p>
+        </div>
+        <div className="rounded-xl bg-surface border border-border p-4">
+          <p className="text-2xl font-bold text-text">{preview.categoryCount}</p>
+          <p className="text-xs text-subtext mt-0.5">categoría{preview.categoryCount === 1 ? '' : 's'}</p>
+        </div>
+      </div>
+
+      {preview.otherTables.length > 0 && (
+        <div className="rounded-lg bg-surface border border-border px-4 py-3">
+          <p className="text-xs text-subtext">
+            Otras tablas en el archivo (no se importarán automáticamente):{' '}
+            <span className="text-text font-medium">{preview.otherTables.join(', ')}</span>
+          </p>
+        </div>
+      )}
+
+      <div className="flex gap-3">
+        <button
+          onClick={onBack}
+          disabled={importing}
+          className="px-4 py-2.5 rounded-xl text-sm font-semibold text-subtext bg-surface hover:bg-border transition-colors cursor-pointer disabled:opacity-50"
+        >
+          Volver
+        </button>
+        <button
+          onClick={onManual}
+          disabled={importing}
+          className="px-4 py-2.5 rounded-xl text-sm font-semibold text-subtext bg-surface hover:bg-border border border-border transition-colors cursor-pointer disabled:opacity-50"
+          title="Seleccionar manualmente una tabla y mapear sus columnas"
+        >
+          Modo manual
+        </button>
+        <button
+          onClick={onConfirm}
+          disabled={importing || total === 0}
+          className="flex-1 py-2.5 rounded-xl text-sm font-semibold text-white bg-brand hover:bg-brand-hover disabled:opacity-40 disabled:cursor-not-allowed transition-colors cursor-pointer"
+        >
+          {importing
+            ? 'Importando…'
+            : `Importar ${total} movimiento${total === 1 ? '' : 's'} automáticamente`}
+        </button>
+      </div>
+    </div>
+  )
+}
+
 // ── Step 4: Confirm ────────────────────────────────────────────────────────
 
 interface ConfirmStepProps {
@@ -468,19 +633,21 @@ function ConfirmStep({ validation, importing, result, onConfirm, onBack, onDone 
 // ── Main component ─────────────────────────────────────────────────────────
 
 export function ImportScreen({ onBack }: ImportScreenProps) {
-  const [step,         setStep]         = useState<ImportStep>('file-select')
-  const [fileType,     setFileType]     = useState<'excel' | 'access' | null>(null)
-  const [filePath,     setFilePath]     = useState<string | null>(null)
-  const [accessTables, setAccessTables] = useState<string[]>([])
-  const [preview,      setPreview]      = useState<ImportFilePreview | null>(null)
-  const [mapping,      setMapping]      = useState<ColumnMapping>({
+  const [step,            setStep]            = useState<ImportStep>('file-select')
+  const [fileType,        setFileType]        = useState<'excel' | 'access' | null>(null)
+  const [filePath,        setFilePath]        = useState<string | null>(null)
+  const [accessTables,    setAccessTables]    = useState<string[]>([])
+  const [geshogarPreview, setGeshogarPreview] = useState<AccessGeshogarPreview | null>(null)
+  const [geshogarResult,  setGeshogarResult]  = useState<AccessGeshogarRunResult | null>(null)
+  const [preview,         setPreview]         = useState<ImportFilePreview | null>(null)
+  const [mapping,         setMapping]         = useState<ColumnMapping>({
     amount: null, type: null, date: null, description: null, category: null,
   })
-  const [validation,   setValidation]   = useState<ImportValidationResult | null>(null)
-  const [loading,      setLoading]      = useState(false)
-  const [importing,    setImporting]    = useState(false)
-  const [result,       setResult]       = useState<ImportCommitResult | null>(null)
-  const [error,        setError]        = useState<string | null>(null)
+  const [validation,      setValidation]      = useState<ImportValidationResult | null>(null)
+  const [loading,         setLoading]         = useState(false)
+  const [importing,       setImporting]       = useState(false)
+  const [result,          setResult]          = useState<ImportCommitResult | null>(null)
+  const [error,           setError]           = useState<string | null>(null)
   const toast = useToast()
 
   function handleMappingChange(field: keyof ColumnMapping, value: string) {
@@ -505,9 +672,20 @@ export function ImportScreen({ onBack }: ImportScreenProps) {
 
     setFilePath(path)
     setFileType(type)
+    setGeshogarPreview(null)
+    setGeshogarResult(null)
     setLoading(true)
     try {
       if (type === 'access') {
+        // Primero detectar si es una BD GesHogar — si lo es, ofrecer
+        // import automático en un click. Si no, caer al flujo manual de
+        // selección de tabla.
+        const detected = await window.api.fileio.detectAccessGeshogar(path)
+        if (detected.isGeshogar) {
+          setGeshogarPreview(detected)
+          setStep('geshogar-confirm')
+          return
+        }
         const { tables } = await window.api.fileio.getAccessTables(path)
         if (tables.length === 0) { setError('El archivo Access no contiene tablas de usuario. Comprueba que el .mdb/.accdb tenga datos.'); return }
         setAccessTables(tables)
@@ -571,6 +749,46 @@ export function ImportScreen({ onBack }: ImportScreenProps) {
     }
   }
 
+  // ── Flujo GesHogar (importación automática) ────────────────────────────
+  async function handleGeshogarConfirm() {
+    if (!filePath) return
+    setError(null)
+    setImporting(true)
+    try {
+      const r = await window.api.fileio.runAccessGeshogar(filePath)
+      setGeshogarResult(r)
+      toast.success(
+        `${r.inserted} movimientos importados`,
+        r.categoriesCreated > 0
+          ? `${r.categoriesCreated} categorías creadas${r.errors.length > 0 ? ` · ${r.errors.length} con errores` : ''}`
+          : (r.errors.length > 0 ? `${r.errors.length} filas omitidas por errores` : undefined),
+      )
+    } catch (e) {
+      const msg = e instanceof Error ? `No se pudo importar: ${e.message}` : 'No se pudo importar. Vuelve a intentarlo.'
+      setError(msg)
+      toast.error('No se pudo importar', e instanceof Error ? e.message : undefined)
+    } finally {
+      setImporting(false)
+    }
+  }
+
+  async function handleGeshogarSwitchToManual() {
+    if (!filePath) return
+    setError(null)
+    setLoading(true)
+    try {
+      const { tables } = await window.api.fileio.getAccessTables(filePath)
+      if (tables.length === 0) { setError('El archivo Access no contiene tablas de usuario.'); return }
+      setAccessTables(tables)
+      setStep('table-select')
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : ''
+      setError(`No se pudo listar las tablas. ${msg}`)
+    } finally {
+      setLoading(false)
+    }
+  }
+
   return (
     <div className="space-y-4 lg:space-y-5 w-full">
       <PageHeader
@@ -589,7 +807,7 @@ export function ImportScreen({ onBack }: ImportScreenProps) {
         }
       />
 
-      <StepIndicator step={step} fileType={fileType} />
+      <StepIndicator step={step} fileType={fileType} geshogarMode={step === 'geshogar-confirm' || (geshogarPreview !== null && step === 'file-select')} />
 
       {/* Banner de progreso visible mientras parseExcel/parseAccess procesan
           un archivo grande. Muestra el nombre y una barra indeterminada para
@@ -633,6 +851,18 @@ export function ImportScreen({ onBack }: ImportScreenProps) {
 
       {step === 'file-select' && (
         <FileSelectStep onChoose={handleFileTypeChosen} loading={loading} />
+      )}
+
+      {step === 'geshogar-confirm' && geshogarPreview && (
+        <GeshogarConfirmStep
+          preview={geshogarPreview}
+          importing={importing}
+          result={geshogarResult}
+          onConfirm={handleGeshogarConfirm}
+          onManual={handleGeshogarSwitchToManual}
+          onBack={() => { setStep('file-select'); setGeshogarPreview(null); setGeshogarResult(null) }}
+          onDone={onBack}
+        />
       )}
 
       {step === 'table-select' && (

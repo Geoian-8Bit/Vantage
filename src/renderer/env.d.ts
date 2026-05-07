@@ -9,6 +9,7 @@ import type {
   SavingsAccount, CreateSavingsAccountDTO, UpdateSavingsAccountDTO,
   Debt, CreateDebtDTO, UpdateDebtDTO, ExtraPaymentDTO,
   ImportFilePreview, ImportCommitPayload, ImportCommitResult,
+  AccessGeshogarPreview, AccessGeshogarRunResult,
   RecurringTemplate, CreateRecurringTemplateDTO,
   DashboardStats, BackupResult, RestoreResult,
   PDFExportPayload,
@@ -49,6 +50,8 @@ declare global {
         parseExcel(filePath: string): Promise<ImportFilePreview>
         getAccessTables(filePath: string): Promise<{ tables: string[] }>
         parseAccess(filePath: string, tableName: string): Promise<ImportFilePreview>
+        detectAccessGeshogar(filePath: string): Promise<AccessGeshogarPreview>
+        runAccessGeshogar(filePath: string): Promise<AccessGeshogarRunResult>
         commitImport(payload: ImportCommitPayload): Promise<ImportCommitResult>
         exportPDF(payload: PDFExportPayload): Promise<void>
       }

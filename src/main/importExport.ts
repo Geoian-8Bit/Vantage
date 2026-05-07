@@ -6,6 +6,8 @@ import type {
   RawImportRow,
   ImportCommitPayload,
   ImportCommitResult,
+  AccessGeshogarPreview,
+  AccessGeshogarRunResult,
 } from '../shared/types'
 import { createTransactionNoSave } from './database/transactions'
 import { getAllCategories, createCategory } from './database/categories'
@@ -13,8 +15,12 @@ import { saveDatabase } from './database/schema'
 
 // ── Helpers ────────────────────────────────────────────────────────────────
 
+// `mdb-reader` se exporta como ESM default. Tras el bundle de electron-vite,
+// `require('mdb-reader')` devuelve `{ default: MDBReader }` en lugar de la
+// clase directamente — usar la clase produce "is not a constructor" en runtime.
 // eslint-disable-next-line @typescript-eslint/no-require-imports
-const MDBReader = require('mdb-reader')
+const MDBReaderModule = require('mdb-reader')
+const MDBReader = MDBReaderModule.default ?? MDBReaderModule
 
 function getFocusedWindow(): BrowserWindow {
   return BrowserWindow.getFocusedWindow() ?? BrowserWindow.getAllWindows()[0]
@@ -135,6 +141,187 @@ export function handleParseAccess(
     totalRows: data.length,
     tableName: args.tableName,
   }
+}
+
+// ── Import: Access — formato GesHogar (importación automática) ─────────────
+//
+// GesHogar (gestión de hogar) usa siempre el mismo esquema:
+//   · Apuntes_Gastos    — todos los movimientos de gasto (type implícito).
+//   · Apuntes_Ingresos  — todos los movimientos de ingreso (type implícito).
+//   · Cuentas           — catálogo de categorías con su tipo (booleano).
+// El flujo manual de mapear columnas no encaja porque el "type" no es una
+// columna sino que viene determinado por la tabla. Detectamos el formato y
+// ofrecemos una importación de un solo click.
+
+const GESHOGAR_TABLES = {
+  EXPENSES:  'Apuntes_Gastos',
+  INCOMES:   'Apuntes_Ingresos',
+  ACCOUNTS:  'Cuentas',
+} as const
+
+const GESHOGAR_KNOWN_TABLES = new Set<string>([
+  GESHOGAR_TABLES.EXPENSES,
+  GESHOGAR_TABLES.INCOMES,
+  GESHOGAR_TABLES.ACCOUNTS,
+])
+
+function ghParseAmount(v: unknown): number | null {
+  if (v == null) return null
+  if (typeof v === 'number') return Number.isFinite(v) && v !== 0 ? Math.abs(v) : null
+  const s = String(v).trim()
+    .replace(/[€$£\s]/g, '')
+    .replace(/\.(?=\d{3}(,|$))/g, '')
+    .replace(',', '.')
+  const n = parseFloat(s)
+  return isNaN(n) || n === 0 ? null : Math.abs(n)
+}
+
+function ghParseDate(v: unknown): string | null {
+  if (v instanceof Date) return v.toISOString().slice(0, 10)
+  if (typeof v === 'string' && v.trim()) {
+    const d = new Date(v)
+    if (!isNaN(d.getTime())) return d.toISOString().slice(0, 10)
+  }
+  return null
+}
+
+function ghStr(v: unknown): string {
+  if (v == null) return ''
+  return String(v).trim()
+}
+
+export function handleAccessGeshogarDetect(
+  _event: Electron.IpcMainInvokeEvent,
+  filePath: string
+): AccessGeshogarPreview {
+  const buf    = readFileSync(filePath)
+  const reader = new MDBReader(buf)
+  const tables = (reader.getTableNames() as string[]).filter(t => !t.startsWith('MSys'))
+
+  const hasExpenses = tables.includes(GESHOGAR_TABLES.EXPENSES)
+  const hasIncomes  = tables.includes(GESHOGAR_TABLES.INCOMES)
+  const hasAccounts = tables.includes(GESHOGAR_TABLES.ACCOUNTS)
+
+  if (!hasExpenses && !hasIncomes) {
+    return { isGeshogar: false, expenseCount: 0, incomeCount: 0, categoryCount: 0, otherTables: tables }
+  }
+
+  const expenseCount  = hasExpenses ? reader.getTable(GESHOGAR_TABLES.EXPENSES).getData().length : 0
+  const incomeCount   = hasIncomes  ? reader.getTable(GESHOGAR_TABLES.INCOMES).getData().length  : 0
+  const categoryCount = hasAccounts ? reader.getTable(GESHOGAR_TABLES.ACCOUNTS).getData().length : 0
+  const otherTables   = tables.filter(t => !GESHOGAR_KNOWN_TABLES.has(t))
+
+  return { isGeshogar: true, expenseCount, incomeCount, categoryCount, otherTables }
+}
+
+export function handleAccessGeshogarRun(
+  _event: Electron.IpcMainInvokeEvent,
+  filePath: string
+): AccessGeshogarRunResult {
+  const buf    = readFileSync(filePath)
+  const reader = new MDBReader(buf)
+  const tables = new Set((reader.getTableNames() as string[]).filter(t => !t.startsWith('MSys')))
+
+  if (!tables.has(GESHOGAR_TABLES.EXPENSES) && !tables.has(GESHOGAR_TABLES.INCOMES)) {
+    throw new Error('El archivo no tiene la estructura GesHogar esperada (faltan Apuntes_Gastos y Apuntes_Ingresos).')
+  }
+
+  const errors: string[] = []
+  let categoriesCreated = 0
+  let expensesInserted  = 0
+  let incomesInserted   = 0
+
+  // 1) Crear categorías a partir de la tabla "Cuentas". El campo
+  //    "Tipo (Ingreso/gasto)" es booleano: true=ingreso, false=gasto.
+  const existingByKey = new Set(
+    getAllCategories().map(c => `${c.type}:${c.name.toLowerCase()}`)
+  )
+
+  if (tables.has(GESHOGAR_TABLES.ACCOUNTS)) {
+    const cuentas = reader.getTable(GESHOGAR_TABLES.ACCOUNTS).getData() as Record<string, unknown>[]
+    for (const c of cuentas) {
+      const name = ghStr(c['IdCuenta'])
+      if (!name) continue
+      const type: 'income' | 'expense' = c['Tipo (Ingreso/gasto)'] === true ? 'income' : 'expense'
+      const key = `${type}:${name.toLowerCase()}`
+      if (existingByKey.has(key)) continue
+      try {
+        createCategory({ name, type })
+        existingByKey.add(key)
+        categoriesCreated++
+      } catch (err) {
+        errors.push(`Categoría "${name}": ${err instanceof Error ? err.message : String(err)}`)
+      }
+    }
+  }
+
+  // 2) Importar gastos
+  if (tables.has(GESHOGAR_TABLES.EXPENSES)) {
+    const data = reader.getTable(GESHOGAR_TABLES.EXPENSES).getData() as Record<string, unknown>[]
+    for (const row of data) {
+      const id = row['IdApunte']
+      try {
+        const amount = ghParseAmount(row['Importe'])
+        if (amount === null) { errors.push(`Gasto #${id}: importe inválido (${row['Importe']})`); continue }
+        const date = ghParseDate(row['Fecha'])
+        if (date === null) { errors.push(`Gasto #${id}: fecha inválida (${row['Fecha']})`); continue }
+
+        const category   = ghStr(row['Cuenta']) || 'Otros'
+        const description = ghStr(row['Descripción'])
+        const formaPago   = ghStr(row['Forma_pago'])
+        const note        = formaPago ? `Forma de pago: ${formaPago}` : ''
+
+        // Si la categoría no existe en Cuentas tampoco, asegurarla en Vantage
+        const catKey = `expense:${category.toLowerCase()}`
+        if (!existingByKey.has(catKey) && category.toLowerCase() !== 'otros') {
+          try { createCategory({ name: category, type: 'expense' }); existingByKey.add(catKey); categoriesCreated++ }
+          catch { /* ignore — la categoría puede existir en otro tipo */ }
+        }
+
+        createTransactionNoSave({
+          amount, type: 'expense', description, date, category, note,
+        })
+        expensesInserted++
+      } catch (err) {
+        errors.push(`Gasto #${id}: ${err instanceof Error ? err.message : String(err)}`)
+      }
+    }
+  }
+
+  // 3) Importar ingresos
+  if (tables.has(GESHOGAR_TABLES.INCOMES)) {
+    const data = reader.getTable(GESHOGAR_TABLES.INCOMES).getData() as Record<string, unknown>[]
+    for (const row of data) {
+      const id = row['IdApunte']
+      try {
+        const amount = ghParseAmount(row['Importe'])
+        if (amount === null) { errors.push(`Ingreso #${id}: importe inválido (${row['Importe']})`); continue }
+        const date = ghParseDate(row['Fecha'])
+        if (date === null) { errors.push(`Ingreso #${id}: fecha inválida (${row['Fecha']})`); continue }
+
+        const category    = ghStr(row['Ingreso']) || 'Sin categoría'
+        const description = ghStr(row['Descripción'])
+
+        const catKey = `income:${category.toLowerCase()}`
+        if (!existingByKey.has(catKey) && category.toLowerCase() !== 'sin categoría') {
+          try { createCategory({ name: category, type: 'income' }); existingByKey.add(catKey); categoriesCreated++ }
+          catch { /* ignore */ }
+        }
+
+        createTransactionNoSave({
+          amount, type: 'income', description, date, category,
+        })
+        incomesInserted++
+      } catch (err) {
+        errors.push(`Ingreso #${id}: ${err instanceof Error ? err.message : String(err)}`)
+      }
+    }
+  }
+
+  const inserted = expensesInserted + incomesInserted
+  if (inserted > 0 || categoriesCreated > 0) saveDatabase()
+
+  return { inserted, expensesInserted, incomesInserted, categoriesCreated, errors }
 }
 
 // ── Import: commit ─────────────────────────────────────────────────────────

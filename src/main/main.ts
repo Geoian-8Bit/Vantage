@@ -25,6 +25,8 @@ import {
   handleParseExcel,
   handleAccessTables,
   handleParseAccess,
+  handleAccessGeshogarDetect,
+  handleAccessGeshogarRun,
   handleImportCommit,
 } from './importExport'
 import {
@@ -200,6 +202,11 @@ function registerIpcHandlers(): void {
   ipcMain.handle(IPC_CHANNELS.IMPORT_PARSE_EXCEL,          handleParseExcel)
   ipcMain.handle(IPC_CHANNELS.IMPORT_ACCESS_TABLES,        handleAccessTables)
   ipcMain.handle(IPC_CHANNELS.IMPORT_PARSE_ACCESS,         handleParseAccess)
+  ipcMain.handle(IPC_CHANNELS.IMPORT_ACCESS_GESHOGAR_DETECT, handleAccessGeshogarDetect)
+  ipcMain.handle(IPC_CHANNELS.IMPORT_ACCESS_GESHOGAR_RUN, async (e, filePath) => {
+    await dbReady
+    return handleAccessGeshogarRun(e, filePath)
+  })
   ipcMain.handle(IPC_CHANNELS.IMPORT_COMMIT, async (e, payload) => {
     await dbReady
     return handleImportCommit(e, payload)

@@ -198,6 +198,8 @@ export const IPC_CHANNELS = {
   IMPORT_PARSE_EXCEL:        'fs:import:parseExcel',
   IMPORT_ACCESS_TABLES:      'fs:import:accessTables',
   IMPORT_PARSE_ACCESS:       'fs:import:parseAccess',
+  IMPORT_ACCESS_GESHOGAR_DETECT: 'fs:import:accessGeshogarDetect',
+  IMPORT_ACCESS_GESHOGAR_RUN:    'fs:import:accessGeshogarRun',
   IMPORT_COMMIT:             'db:import:commit',
   // Recurring
   RECURRING_GET_ALL: 'db:recurring:getAll',
@@ -253,6 +255,25 @@ export interface InvalidImportRow {
 
 export interface ImportCommitPayload { rows: CreateTransactionDTO[] }
 export interface ImportCommitResult  { inserted: number; errors: string[] }
+
+/** Resultado de detectar si un .accdb tiene la estructura conocida de
+ *  GesHogar (tablas Apuntes_Gastos / Apuntes_Ingresos / Cuentas). */
+export interface AccessGeshogarPreview {
+  isGeshogar:    boolean
+  expenseCount:  number
+  incomeCount:   number
+  categoryCount: number
+  /** Tablas distintas a las 3 conocidas (informativo, no se importan auto). */
+  otherTables:   string[]
+}
+
+export interface AccessGeshogarRunResult {
+  inserted:           number
+  expensesInserted:   number
+  incomesInserted:    number
+  categoriesCreated:  number
+  errors:             string[]
+}
 
 // ── Recurring templates ────────────────────────────────────────────────────
 
