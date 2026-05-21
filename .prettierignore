@@ -1,0 +1,9 @@
+node_modules
+.next
+out
+dist-electron
+legacy
+build
+package-lock.json
+next-env.d.ts
+*.db

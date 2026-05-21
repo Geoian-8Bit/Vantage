@@ -1,11 +1,31 @@
 node_modules
 .env
+.env.local
+.env*.local
+
+# Next.js
+.next
+next-env.d.ts
+
+# Tooling
 dist
-build
 .DS_Store
-out/
+*.tsbuildinfo
+
+# Electron legacy
+legacy/electron/out/
+legacy/electron/dist-electron/
 dist-electron/
+
+# DBs
 *.db
+
+# Tests
+coverage
+playwright-report
+test-results
+
+# IDE
 .claude/settings.local.json
 .claude/scheduled_tasks.lock
 Vantage_Proyecto.docx.pdf
