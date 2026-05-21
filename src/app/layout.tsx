@@ -1,6 +1,6 @@
 import type { Metadata } from 'next'
 
-import { QueryProvider } from '@/lib/query/QueryProvider'
+import { Providers } from '@/lib/providers/Providers'
 import { ThemeBootstrap } from '@/lib/theme/ThemeBootstrap'
 
 import './globals.css'
@@ -17,7 +17,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <ThemeBootstrap />
       </head>
       <body>
-        <QueryProvider>{children}</QueryProvider>
+        <Providers>{children}</Providers>
       </body>
     </html>
   )
