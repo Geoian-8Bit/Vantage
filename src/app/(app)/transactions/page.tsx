@@ -1,6 +1,7 @@
 'use client'
 
-import { useCallback, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { useQueryClient } from '@tanstack/react-query'
 
 import { PageHeader } from '@/components/layout/PageHeader'
 import { Modal } from '@/components/ui/Modal'
@@ -75,7 +76,40 @@ export default function TransactionsPage() {
   const { data: savingsAccounts = [] } = useSavings()
   const { enabled: rolloverEnabled, toggle: toggleRollover } = useRolloverEnabled()
   const toast = useToast()
+  const queryClient = useQueryClient()
   const { origin: modalOrigin, captureFromEvent, setOrigin } = useModalOrigin()
+  const processedRef = useRef(false)
+
+  // Materializar recurrentes pendientes al abrir la pantalla, como el legacy.
+  // Idempotente: si nada vence, no crea nada. Solo lo intentamos una vez por
+  // sesión de pestaña para no spamear el backend en cada navegación.
+  useEffect(() => {
+    if (processedRef.current) return
+    processedRef.current = true
+    if (typeof window !== 'undefined' && window.sessionStorage.getItem('vantage:recurring-processed')) {
+      return
+    }
+    window.sessionStorage?.setItem('vantage:recurring-processed', '1')
+    void (async () => {
+      try {
+        const res = await fetch('/api/recurring/process', { method: 'POST' })
+        if (!res.ok) return
+        const body = (await res.json()) as { data: { count: number } }
+        if (body.data.count > 0) {
+          await queryClient.invalidateQueries({ queryKey: ['transactions'] })
+          await queryClient.invalidateQueries({ queryKey: ['recurring'] })
+          toast.success(
+            body.data.count === 1
+              ? '1 transacción recurrente registrada'
+              : `${body.data.count} transacciones recurrentes registradas`,
+            'Procesado automáticamente al abrir'
+          )
+        }
+      } catch {
+        // Silencioso: el cron Vercel se encarga si esto falla.
+      }
+    })()
+  }, [queryClient, toast])
 
   const [modalType, setModalType] = useState<ModalType>(null)
   const [filter, setFilter] = useState<TypeFilter>('all')

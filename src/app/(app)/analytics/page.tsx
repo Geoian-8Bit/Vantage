@@ -21,6 +21,7 @@ import { PageHeader } from '@/components/layout/PageHeader'
 import { TiltCard } from '@/components/ui/TiltCard'
 import { Tabs } from '@/components/ui/Tabs'
 import { EmptyState } from '@/components/ui/EmptyState'
+import { StatsSkeleton } from '@/components/skeletons/StatsSkeleton'
 import {
   ChartTooltip,
   ChartPieTooltip,
@@ -435,12 +436,7 @@ export default function AnalyticsPage() {
   }
 
   if (loading) {
-    return (
-      <div className="w-full space-y-4 lg:space-y-5">
-        <PageHeader section="Estadísticas" page="Resumen" />
-        <p className="text-sm text-subtext">Cargando…</p>
-      </div>
-    )
+    return <StatsSkeleton />
   }
 
   return (

@@ -7,6 +7,7 @@ import { EmptyState } from '@/components/ui/EmptyState'
 import { Modal } from '@/components/ui/Modal'
 import { useToast } from '@/components/ui/Toast'
 import { DateInput } from '@/components/ui/DateInput'
+import { RecurringSkeleton } from '@/components/skeletons/RecurringSkeleton'
 import {
   FREQ_COLORS,
   FREQ_LABELS,
@@ -98,7 +99,7 @@ export default function RecurringPage() {
       />
 
       {isLoading ? (
-        <p className="text-sm text-subtext">Cargando…</p>
+        <RecurringSkeleton />
       ) : templates.length === 0 ? (
         <div className="rounded-xl border border-border bg-card shadow-sm">
           <EmptyState

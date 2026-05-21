@@ -6,6 +6,7 @@ import { PageHeader } from '@/components/layout/PageHeader'
 import { Modal } from '@/components/ui/Modal'
 import { EmptyState } from '@/components/ui/EmptyState'
 import { useToast } from '@/components/ui/Toast'
+import { CalendarSkeleton } from '@/components/skeletons/CalendarSkeleton'
 import { formatCurrency, MONTH_NAMES_FULL, pad } from '@/lib/utils/format'
 
 import { useTransactions, useCreateTransaction } from '@/features/transactions/ui/useTransactions'
@@ -127,12 +128,7 @@ export default function CalendarPage() {
   }
 
   if (isLoading) {
-    return (
-      <div className="w-full space-y-4 lg:space-y-5">
-        <PageHeader section="Calendario" page="Vista mensual" />
-        <p className="text-sm text-subtext">Cargando…</p>
-      </div>
-    )
+    return <CalendarSkeleton />
   }
 
   return (

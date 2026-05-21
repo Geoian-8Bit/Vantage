@@ -14,6 +14,7 @@ import {
 import { PageHeader } from '@/components/layout/PageHeader'
 import { TiltCard } from '@/components/ui/TiltCard'
 import { EmptyState } from '@/components/ui/EmptyState'
+import { DashboardSkeleton } from '@/components/skeletons/DashboardSkeleton'
 import { ChartTooltip } from '@/components/charts/ChartTheme'
 import {
   CHART_GRID_PROPS,
@@ -163,12 +164,7 @@ export default function DashboardPage() {
   const animTotalDebt = useAnimatedNumber(totalDebt)
 
   if (loading) {
-    return (
-      <div className="space-y-4 lg:space-y-5">
-        <PageHeader section="Inicio" page="Panel" />
-        <p className="text-sm text-subtext">Cargando…</p>
-      </div>
-    )
+    return <DashboardSkeleton />
   }
 
   const changeIsPositive = stats.monthExpenseChange > 0
