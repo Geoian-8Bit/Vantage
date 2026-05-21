@@ -24,6 +24,8 @@ import {
   useTransactions,
 } from '@/features/transactions/ui/useTransactions'
 import { TransactionForm } from '@/features/transactions/ui/TransactionForm'
+import { useSavings } from '@/features/savings/ui/useSavings'
+import { DebtSimulator } from '@/features/debts/ui/DebtSimulator'
 
 const COLOR_OPTIONS = [
   '#7A1B2D',
@@ -41,6 +43,7 @@ type DebtsTab = 'active' | 'archived' | 'simulator'
 export default function DebtsPage() {
   const { data: debts = [], isLoading } = useDebts()
   const { data: transactions = [] } = useTransactions()
+  const { data: savingsAccounts = [] } = useSavings()
   const create = useCreateDebt()
   const update = useUpdateDebt()
   const remove = useDeleteDebt()
@@ -54,6 +57,17 @@ export default function DebtsPage() {
   const [confirmDelete, setConfirmDelete] = useState<Debt | null>(null)
   const [extraTarget, setExtraTarget] = useState<Debt | null>(null)
   const [extraDirty, setExtraDirty] = useState(false)
+
+  const savingsBalances = useMemo(() => {
+    const map = new Map<string, number>()
+    for (const t of transactions) {
+      if (!t.savingsAccountId) continue
+      const amt = Number(t.amount)
+      const current = map.get(t.savingsAccountId) ?? 0
+      map.set(t.savingsAccountId, current + (t.type === 'expense' ? amt : -amt))
+    }
+    return map
+  }, [transactions])
 
   const paidByDebt = useMemo(() => {
     const map = new Map<string, number>()
@@ -325,29 +339,13 @@ export default function DebtsPage() {
         ))}
 
       {activeTab === 'simulator' && (
-        <div className="rounded-xl border border-border bg-card p-8 shadow-sm">
-          <EmptyState
-            icon={
-              <svg
-                xmlns="http://www.w3.org/2000/svg"
-                width="32"
-                height="32"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="1.6"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-              >
-                <line x1="12" y1="20" x2="12" y2="10" />
-                <line x1="18" y1="20" x2="18" y2="4" />
-                <line x1="6" y1="20" x2="6" y2="16" />
-              </svg>
-            }
-            title="Simulador de amortización"
-            description="Próximamente: planifica pagos extra para acortar plazos y ver cuánto ahorras en intereses."
-          />
-        </div>
+        <DebtSimulator
+          activeDebts={activeDebts}
+          paidByDebt={paidByDebt}
+          transactions={transactions}
+          savingsAccounts={savingsAccounts}
+          savingsBalances={savingsBalances}
+        />
       )}
 
       <Modal

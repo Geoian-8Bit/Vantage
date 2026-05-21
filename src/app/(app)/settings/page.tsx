@@ -5,6 +5,7 @@ import { useState, type MouseEvent as ReactMouseEvent, type ReactNode } from 're
 
 import { PageHeader } from '@/components/layout/PageHeader'
 import { Modal } from '@/components/ui/Modal'
+import { TiltCard } from '@/components/ui/TiltCard'
 import { EmptyState } from '@/components/ui/EmptyState'
 import { useToast } from '@/components/ui/Toast'
 import { useDesignTheme } from '@/lib/theme/useDesignTheme'
@@ -174,8 +175,8 @@ export default function SettingsPage() {
   if (view === 'menu') return <SettingsHub onPick={setView} />
   if (view === 'categories') return <CategoriesView onBack={() => setView('menu')} />
   if (view === 'appearance') return <AppearanceView onBack={() => setView('menu')} />
-  if (view === 'import') return <PlaceholderView title="Importar datos" onBack={() => setView('menu')} description="La importación desde Excel y Access estará disponible próximamente desde el servidor." />
-  if (view === 'backup') return <PlaceholderView title="Copia de seguridad" onBack={() => setView('menu')} description="La gestión de backups automáticos llegará pronto. Por ahora tu base de datos se respalda automáticamente en Supabase." />
+  if (view === 'import') return <ImportView onBack={() => setView('menu')} />
+  if (view === 'backup') return <BackupView onBack={() => setView('menu')} />
   if (view === 'account') return <AccountView onBack={() => setView('menu')} />
   return null
 }
@@ -917,27 +918,385 @@ function AccountView({ onBack }: { onBack: () => void }) {
   )
 }
 
-// ── Placeholders ────────────────────────────────────────────────────────
+// ── Import ──────────────────────────────────────────────────────────────
 
-function PlaceholderView({
-  title,
-  description,
-  onBack,
-}: {
-  title: string
-  description: string
-  onBack: () => void
-}) {
+type ImportField = 'date' | 'amount' | 'type' | 'description' | 'category'
+
+interface ParsedFile {
+  sheetName: string
+  headers: string[]
+  mapping: Record<ImportField, string | null>
+  rows: Record<string, string>[]
+  total: number
+}
+
+function ImportView({ onBack }: { onBack: () => void }) {
+  const [parsing, setParsing] = useState(false)
+  const [committing, setCommitting] = useState(false)
+  const [parsed, setParsed] = useState<ParsedFile | null>(null)
+  const [mapping, setMapping] = useState<Record<ImportField, string | null>>({
+    date: null,
+    amount: null,
+    type: null,
+    description: null,
+    category: null,
+  })
+  const toast = useToast()
+
+  async function handleFile(file: File) {
+    if (parsing) return
+    setParsing(true)
+    try {
+      const fd = new FormData()
+      fd.append('file', file)
+      const res = await fetch('/api/import/parse', { method: 'POST', body: fd })
+      const body = (await res.json()) as
+        | { data: ParsedFile }
+        | { error: { message: string } }
+      if (!res.ok || 'error' in body) {
+        const msg = 'error' in body ? body.error.message : 'Error al leer el archivo'
+        throw new Error(msg)
+      }
+      setParsed(body.data)
+      setMapping(body.data.mapping)
+      toast.success(
+        'Archivo leído',
+        `${body.data.total} filas · hoja "${body.data.sheetName}"`
+      )
+    } catch (err) {
+      toast.error('No se pudo leer', err instanceof Error ? err.message : undefined)
+    } finally {
+      setParsing(false)
+    }
+  }
+
+  async function handleCommit() {
+    if (!parsed || committing) return
+    if (!mapping.date || !mapping.amount) {
+      toast.error('Faltan columnas', 'Asigna al menos Fecha e Importe')
+      return
+    }
+    setCommitting(true)
+    try {
+      const res = await fetch('/api/import/commit', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ rows: parsed.rows, mapping }),
+      })
+      const body = (await res.json()) as
+        | {
+            data: {
+              inserted: number
+              invalid: number
+              errors: string[]
+              invalidRows: { rowIndex: number; reason: string }[]
+            }
+          }
+        | { error: { message: string } }
+      if (!res.ok || 'error' in body) {
+        const msg = 'error' in body ? body.error.message : 'Error al importar'
+        throw new Error(msg)
+      }
+      const r = body.data
+      if (r.inserted > 0) {
+        toast.success(
+          `${r.inserted} importadas`,
+          r.invalid > 0 ? `${r.invalid} filas inválidas omitidas` : undefined
+        )
+      } else if (r.invalid > 0) {
+        toast.warning('Ninguna importada', `${r.invalid} filas con errores`)
+      } else {
+        toast.info('Sin cambios')
+      }
+      setParsed(null)
+      setMapping({
+        date: null,
+        amount: null,
+        type: null,
+        description: null,
+        category: null,
+      })
+    } catch (err) {
+      toast.error('No se pudo importar', err instanceof Error ? err.message : undefined)
+    } finally {
+      setCommitting(false)
+    }
+  }
+
   return (
-    <div className="settings-view-anim w-full space-y-5">
-      <PageHeader section="Ajustes" page={title} actions={<BackButton onBack={onBack} />} />
-      <div className="rounded-2xl border border-border bg-card p-8 shadow-sm">
-        <EmptyState
-          icon={
+    <div key="settings-import" className="settings-view-anim w-full space-y-4 lg:space-y-5">
+      <PageHeader
+        section="Ajustes"
+        page="Importar datos"
+        actions={<BackButton onBack={onBack} />}
+      />
+
+      {!parsed ? (
+        <div className="rounded-2xl border border-border bg-card p-8 shadow-sm">
+          <div className="flex flex-col items-center gap-4 text-center">
+            <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-brand-light text-brand">
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                width="26"
+                height="26"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              >
+                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+                <polyline points="17 8 12 3 7 8" />
+                <line x1="12" y1="3" x2="12" y2="15" />
+              </svg>
+            </div>
+            <div>
+              <h3 className="text-base font-bold text-text">Sube un Excel o CSV</h3>
+              <p className="mt-1.5 max-w-md text-xs leading-relaxed text-subtext">
+                Detectamos automáticamente las columnas de Fecha, Importe, Tipo, Descripción y
+                Categoría. Podrás revisar el mapping antes de importar.
+              </p>
+              <p className="mt-2 text-[11px] text-subtext">
+                Formatos: <strong>.xlsx, .xls, .csv</strong> · Máx 5 MB · Hasta 500 filas
+              </p>
+            </div>
+            <label
+              className={`flex cursor-pointer items-center gap-2 rounded-xl bg-brand px-5 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-brand-hover ${
+                parsing ? 'cursor-not-allowed opacity-50' : ''
+              }`}
+            >
+              <input
+                type="file"
+                accept=".xlsx,.xls,.csv"
+                disabled={parsing}
+                onChange={(e) => {
+                  const f = e.target.files?.[0]
+                  if (f) handleFile(f)
+                  e.target.value = ''
+                }}
+                className="hidden"
+              />
+              {parsing ? (
+                <>
+                  <span className="h-4 w-4 animate-spin rounded-full border-2 border-white/40 border-t-white" />
+                  Leyendo…
+                </>
+              ) : (
+                'Elegir archivo'
+              )}
+            </label>
+            <p className="text-[11px] text-subtext">
+              La importación desde Microsoft Access (.mdb, .accdb) estará disponible próximamente.
+            </p>
+          </div>
+        </div>
+      ) : (
+        <div className="space-y-4">
+          <div className="rounded-2xl border border-border bg-card p-5 shadow-sm">
+            <div className="mb-4 flex items-baseline justify-between gap-3">
+              <div>
+                <h3 className="text-sm font-semibold text-text">Mapping de columnas</h3>
+                <p className="text-[11px] text-subtext">
+                  Hoja: <strong>{parsed.sheetName}</strong> · {parsed.total} filas detectadas
+                </p>
+              </div>
+              <button
+                onClick={() => setParsed(null)}
+                className="cursor-pointer text-xs font-semibold text-subtext underline-offset-2 hover:text-text hover:underline"
+              >
+                Cambiar archivo
+              </button>
+            </div>
+
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-5">
+              {(
+                [
+                  { key: 'date', label: 'Fecha', required: true },
+                  { key: 'amount', label: 'Importe', required: true },
+                  { key: 'type', label: 'Tipo', required: false },
+                  { key: 'description', label: 'Descripción', required: false },
+                  { key: 'category', label: 'Categoría', required: false },
+                ] as { key: ImportField; label: string; required: boolean }[]
+              ).map(({ key, label, required }) => (
+                <div key={key}>
+                  <label className="mb-1.5 block text-[11px] font-semibold tracking-wider text-subtext uppercase">
+                    {label}
+                    {required && <span className="ml-0.5 text-expense">*</span>}
+                  </label>
+                  <select
+                    value={mapping[key] ?? ''}
+                    onChange={(e) =>
+                      setMapping((m) => ({
+                        ...m,
+                        [key]: e.target.value === '' ? null : e.target.value,
+                      }))
+                    }
+                    className="w-full rounded-lg border border-border bg-surface px-2.5 py-2 text-xs text-text"
+                  >
+                    <option value="">— ninguna —</option>
+                    {parsed.headers.map((h) => (
+                      <option key={h} value={h}>
+                        {h}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          <div className="overflow-hidden rounded-2xl border border-border bg-card shadow-sm">
+            <div className="border-b border-border bg-surface px-5 py-3">
+              <p className="text-[11px] font-semibold tracking-wider text-subtext uppercase">
+                Vista previa (primeras {Math.min(10, parsed.rows.length)} filas)
+              </p>
+            </div>
+            <div className="overflow-x-auto">
+              <table className="w-full text-xs">
+                <thead>
+                  <tr className="border-b border-border/40 bg-surface/40 text-[10px] font-semibold tracking-wider text-subtext uppercase">
+                    {parsed.headers.map((h) => (
+                      <th key={h} className="whitespace-nowrap px-3 py-2 text-left">
+                        {h}
+                      </th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-border/40">
+                  {parsed.rows.slice(0, 10).map((row, idx) => (
+                    <tr key={idx} className="hover:bg-surface/40">
+                      {parsed.headers.map((h) => (
+                        <td
+                          key={h}
+                          className="whitespace-nowrap px-3 py-1.5 text-text tabular-nums"
+                        >
+                          {row[h] ?? ''}
+                        </td>
+                      ))}
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          <div className="flex justify-end gap-3">
+            <button
+              onClick={() => setParsed(null)}
+              disabled={committing}
+              className="cursor-pointer rounded-xl border border-border bg-surface px-4 py-2.5 text-sm font-semibold text-subtext transition-colors hover:bg-border hover:text-text disabled:opacity-60"
+            >
+              Cancelar
+            </button>
+            <button
+              onClick={handleCommit}
+              disabled={committing}
+              className="flex cursor-pointer items-center gap-2 rounded-xl bg-brand px-5 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-brand-hover disabled:cursor-wait disabled:opacity-60"
+            >
+              {committing && (
+                <span className="h-4 w-4 animate-spin rounded-full border-2 border-white/40 border-t-white" />
+              )}
+              {committing ? 'Importando…' : `Importar ${parsed.total} filas`}
+            </button>
+          </div>
+        </div>
+      )}
+    </div>
+  )
+}
+
+// ── Backup ──────────────────────────────────────────────────────────────
+
+function BackupView({ onBack }: { onBack: () => void }) {
+  const [exporting, setExporting] = useState(false)
+  const [restoring, setRestoring] = useState(false)
+  const [showRestoreConfirm, setShowRestoreConfirm] = useState(false)
+  const [pendingFile, setPendingFile] = useState<File | null>(null)
+  const toast = useToast()
+
+  async function handleExport() {
+    if (exporting) return
+    setExporting(true)
+    try {
+      const res = await fetch('/api/backup/export', { method: 'GET' })
+      if (!res.ok) {
+        const body = await res.text()
+        throw new Error(body || 'No se pudo generar la copia')
+      }
+      const blob = await res.blob()
+      const url = URL.createObjectURL(blob)
+      const a = document.createElement('a')
+      a.href = url
+      a.download = `vantage-backup-${new Date().toISOString().slice(0, 10)}.json`
+      document.body.appendChild(a)
+      a.click()
+      document.body.removeChild(a)
+      URL.revokeObjectURL(url)
+      toast.success('Copia exportada')
+    } catch (err) {
+      toast.error('No se pudo exportar', err instanceof Error ? err.message : undefined)
+    } finally {
+      setExporting(false)
+    }
+  }
+
+  function handleFilePick(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0]
+    if (!file) return
+    setPendingFile(file)
+    setShowRestoreConfirm(true)
+    e.target.value = ''
+  }
+
+  async function handleRestoreConfirm() {
+    if (!pendingFile || restoring) return
+    setRestoring(true)
+    try {
+      const text = await pendingFile.text()
+      const parsed = JSON.parse(text)
+      const res = await fetch('/api/backup/restore', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(parsed),
+      })
+      const body = (await res.json()) as
+        | { data: { transactions: number; categories: number; savings: number; debts: number; recurring: number; skipped: number } }
+        | { error: { message: string } }
+      if (!res.ok || 'error' in body) {
+        const msg = 'error' in body ? body.error.message : 'Error al restaurar'
+        throw new Error(msg)
+      }
+      const s = body.data
+      toast.success(
+        'Copia restaurada',
+        `${s.transactions} mov · ${s.categories} cat · ${s.savings} aps · ${s.debts} deud · ${s.recurring} rec${s.skipped > 0 ? ` · ${s.skipped} omitidos` : ''}`
+      )
+      setShowRestoreConfirm(false)
+      setPendingFile(null)
+      // Forzar refresh de queries
+      window.setTimeout(() => window.location.reload(), 1200)
+    } catch (err) {
+      toast.error('No se pudo restaurar', err instanceof Error ? err.message : undefined)
+    } finally {
+      setRestoring(false)
+    }
+  }
+
+  return (
+    <div key="settings-backup" className="settings-view-anim w-full space-y-4 lg:space-y-5">
+      <PageHeader section="Ajustes" page="Copia de seguridad" actions={<BackButton onBack={onBack} />} />
+
+      <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
+        <TiltCard
+          intensity={3}
+          className="card-anim space-y-4 rounded-2xl border border-border bg-card p-6 shadow-sm"
+        >
+          <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-income-light text-income">
             <svg
               xmlns="http://www.w3.org/2000/svg"
-              width="28"
-              height="28"
+              width="22"
+              height="22"
               viewBox="0 0 24 24"
               fill="none"
               stroke="currentColor"
@@ -945,14 +1304,183 @@ function PlaceholderView({
               strokeLinecap="round"
               strokeLinejoin="round"
             >
-              <circle cx="12" cy="12" r="10" />
-              <polyline points="12 6 12 12 16 14" />
+              <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+              <polyline points="17 8 12 3 7 8" />
+              <line x1="12" y1="3" x2="12" y2="15" />
             </svg>
-          }
-          title="Próximamente"
-          description={description}
-        />
+          </div>
+          <div>
+            <p
+              className="text-base font-bold text-text"
+              style={{ fontFamily: 'var(--font-display)' }}
+            >
+              Exportar tus datos
+            </p>
+            <p className="mt-1.5 text-xs leading-relaxed text-subtext">
+              Descarga un archivo JSON con todas tus transacciones, categorías, apartados,
+              deudas y plantillas recurrentes.
+            </p>
+            <p className="mt-2 flex items-start gap-1.5 text-[11px] leading-snug text-subtext">
+              <svg
+                aria-hidden="true"
+                xmlns="http://www.w3.org/2000/svg"
+                width="12"
+                height="12"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                className="mt-0.5 shrink-0 text-income"
+              >
+                <circle cx="12" cy="12" r="10" />
+                <line x1="12" y1="16" x2="12" y2="12" />
+                <line x1="12" y1="8" x2="12.01" y2="8" />
+              </svg>
+              <span>
+                El JSON queda en tu equipo. Puedes guardarlo, versionarlo o moverlo a otra
+                instalación de Vantage.
+              </span>
+            </p>
+          </div>
+          <button
+            onClick={handleExport}
+            disabled={exporting}
+            className="flex w-full cursor-pointer items-center justify-center gap-2 rounded-xl bg-income py-2.5 text-sm font-semibold text-white transition-colors hover:bg-income-hover disabled:cursor-not-allowed disabled:opacity-50"
+          >
+            {exporting ? (
+              <>
+                <span className="h-4 w-4 animate-spin rounded-full border-2 border-white/40 border-t-white" />
+                Exportando…
+              </>
+            ) : (
+              'Exportar copia'
+            )}
+          </button>
+        </TiltCard>
+
+        <TiltCard
+          intensity={3}
+          className="card-anim space-y-4 rounded-2xl border border-border bg-card p-6 shadow-sm"
+        >
+          <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-error-light text-error">
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              width="22"
+              height="22"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            >
+              <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+              <polyline points="7 10 12 15 17 10" />
+              <line x1="12" y1="15" x2="12" y2="3" />
+            </svg>
+          </div>
+          <div>
+            <p
+              className="text-base font-bold text-text"
+              style={{ fontFamily: 'var(--font-display)' }}
+            >
+              Restaurar desde JSON
+            </p>
+            <p className="mt-1.5 text-xs leading-relaxed text-subtext">
+              Sube un archivo de copia previa. Los datos se{' '}
+              <strong className="text-text">añaden</strong> a tu espacio actual (no reemplaza
+              lo existente).
+            </p>
+            <p className="mt-2 flex items-start gap-1.5 text-[11px] leading-snug text-subtext">
+              <svg
+                aria-hidden="true"
+                xmlns="http://www.w3.org/2000/svg"
+                width="12"
+                height="12"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                className="mt-0.5 shrink-0 text-error"
+              >
+                <path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z" />
+                <line x1="12" y1="9" x2="12" y2="13" />
+                <line x1="12" y1="17" x2="12.01" y2="17" />
+              </svg>
+              <span>
+                Los IDs de apartados/deudas se regeneran al importar, por lo que las
+                transacciones se reasocian solo por su categoría textual.
+              </span>
+            </p>
+          </div>
+          <label
+            className={`flex w-full cursor-pointer items-center justify-center gap-2 rounded-xl bg-error py-2.5 text-sm font-semibold text-white transition-colors hover:bg-error/90 ${
+              restoring ? 'cursor-not-allowed opacity-50' : ''
+            }`}
+          >
+            <input
+              type="file"
+              accept="application/json,.json"
+              onChange={handleFilePick}
+              disabled={restoring}
+              className="hidden"
+            />
+            {restoring ? (
+              <>
+                <span className="h-4 w-4 animate-spin rounded-full border-2 border-white/40 border-t-white" />
+                Restaurando…
+              </>
+            ) : (
+              'Elegir archivo .json'
+            )}
+          </label>
+        </TiltCard>
       </div>
+
+      <Modal
+        isOpen={showRestoreConfirm}
+        onClose={() => {
+          if (!restoring) {
+            setShowRestoreConfirm(false)
+            setPendingFile(null)
+          }
+        }}
+        title="Restaurar copia"
+      >
+        <p className="text-sm leading-relaxed text-subtext">
+          Vamos a <strong className="text-text">añadir</strong> al espacio actual el
+          contenido de <span className="font-semibold">{pendingFile?.name}</span>. Los
+          movimientos, categorías, apartados, deudas y plantillas que ya tengas se
+          mantienen — los importados se suman.
+        </p>
+        <div className="flex gap-3 pt-5">
+          <button
+            onClick={() => {
+              setShowRestoreConfirm(false)
+              setPendingFile(null)
+            }}
+            disabled={restoring}
+            className="flex-1 cursor-pointer rounded-xl bg-surface py-2.5 text-sm font-semibold text-subtext transition-colors hover:bg-border disabled:opacity-60"
+          >
+            Cancelar
+          </button>
+          <button
+            onClick={handleRestoreConfirm}
+            disabled={restoring}
+            className="flex flex-1 cursor-pointer items-center justify-center gap-2 rounded-xl bg-error py-2.5 text-sm font-semibold text-white transition-colors hover:bg-error/90 disabled:cursor-wait disabled:opacity-60"
+          >
+            {restoring && (
+              <span className="h-4 w-4 animate-spin rounded-full border-2 border-white/40 border-t-white" />
+            )}
+            {restoring ? 'Restaurando…' : 'Sí, restaurar'}
+          </button>
+        </div>
+      </Modal>
     </div>
   )
 }
+

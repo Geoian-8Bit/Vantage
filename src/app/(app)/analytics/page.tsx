@@ -48,6 +48,8 @@ import {
 import { getCategoryColor, PIE_COLORS } from '@/lib/utils/categoryColors'
 import { resolveSavingsColor } from '@/lib/utils/savingsColors'
 
+import { useToast } from '@/components/ui/Toast'
+
 import { useTransactions } from '@/features/transactions/ui/useTransactions'
 import { useSavings } from '@/features/savings/ui/useSavings'
 
@@ -71,6 +73,8 @@ function formatYAxis(value: number): string {
 export default function AnalyticsPage() {
   const { data: transactions = [], isLoading: txLoading } = useTransactions()
   const { data: savingsAccounts = [], isLoading: savLoading } = useSavings()
+  const toast = useToast()
+  const [exportingPDF, setExportingPDF] = useState(false)
   const loading = txLoading || savLoading
 
   const [dateMode, setDateMode] = useState<DateMode>('compare')
@@ -378,6 +382,58 @@ export default function AnalyticsPage() {
       ? `Comparativa: ${compareMonths.length} meses seleccionados`
       : `Ingresos vs Gastos · ${periodLabel}`
 
+  async function handleExportPDF() {
+    if (exportingPDF || periodTransactions.length === 0) return
+    setExportingPDF(true)
+    try {
+      const cats = categoryData.map((c) => ({
+        name: c.name,
+        amount: c.value,
+        percent:
+          periodStats.expenses > 0 ? Math.round((c.value / periodStats.expenses) * 100) : 0,
+      }))
+      const txs = [...periodTransactions]
+        .sort((a, b) => a.date.localeCompare(b.date))
+        .map((t) => ({
+          date: t.date,
+          description: t.description,
+          category: t.category,
+          amount: Number(t.amount),
+          type: t.type,
+        }))
+      const res = await fetch('/api/export/pdf', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          period: periodLabel,
+          income: periodStats.income,
+          expenses: periodStats.expenses,
+          balance: periodStats.balance,
+          categories: cats,
+          transactions: txs,
+        }),
+      })
+      if (!res.ok) {
+        const text = await res.text()
+        throw new Error(text || 'Error al generar el PDF')
+      }
+      const blob = await res.blob()
+      const url = URL.createObjectURL(blob)
+      const a = document.createElement('a')
+      a.href = url
+      a.download = `vantage-reporte-${periodLabel.replace(/\s/g, '-')}.pdf`
+      document.body.appendChild(a)
+      a.click()
+      document.body.removeChild(a)
+      URL.revokeObjectURL(url)
+      toast.success('Reporte PDF exportado', `Periodo: ${periodLabel}`)
+    } catch (err) {
+      toast.error('No se pudo exportar el PDF', err instanceof Error ? err.message : undefined)
+    } finally {
+      setExportingPDF(false)
+    }
+  }
+
   if (loading) {
     return (
       <div className="w-full space-y-4 lg:space-y-5">
@@ -394,27 +450,36 @@ export default function AnalyticsPage() {
         page="Resumen"
         actions={
           <button
-            disabled
-            title="Próximamente"
-            className="flex cursor-not-allowed items-center gap-1.5 rounded-lg border border-border bg-surface px-3 py-1.5 text-xs font-medium text-subtext opacity-40 transition-colors"
+            onClick={handleExportPDF}
+            disabled={periodTransactions.length === 0 || exportingPDF}
+            className="flex cursor-pointer items-center gap-1.5 rounded-lg border border-border bg-surface px-3 py-1.5 text-xs font-medium text-subtext transition-colors hover:bg-border disabled:cursor-not-allowed disabled:opacity-40"
           >
-            <svg
-              xmlns="http://www.w3.org/2000/svg"
-              width="13"
-              height="13"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="2"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-            >
-              <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
-              <polyline points="14 2 14 8 20 8" />
-              <line x1="16" y1="13" x2="8" y2="13" />
-              <line x1="16" y1="17" x2="8" y2="17" />
-            </svg>
-            Exportar PDF
+            {exportingPDF ? (
+              <>
+                <span className="h-3 w-3 animate-spin rounded-full border-2 border-subtext/30 border-t-subtext" />
+                Generando PDF…
+              </>
+            ) : (
+              <>
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  width="13"
+                  height="13"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                >
+                  <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+                  <polyline points="14 2 14 8 20 8" />
+                  <line x1="16" y1="13" x2="8" y2="13" />
+                  <line x1="16" y1="17" x2="8" y2="17" />
+                </svg>
+                Exportar PDF
+              </>
+            )}
           </button>
         }
       />

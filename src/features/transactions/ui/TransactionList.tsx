@@ -6,6 +6,9 @@ import { EmptyState } from '@/components/ui/EmptyState'
 import { originFromElement, type ModalOrigin } from '@/lib/hooks/useModalOrigin'
 import { getCategoryColor } from '@/lib/utils/categoryColors'
 import { formatCurrency, formatDate } from '@/lib/utils/format'
+import { resolveSavingsColor } from '@/lib/utils/savingsColors'
+
+import type { SavingsAccount } from '@/features/savings/domain/savings.schema'
 
 import type { Transaction } from '../domain/transaction.schema'
 
@@ -19,6 +22,8 @@ interface TransactionListProps {
   hasActiveFilter?: boolean
   onClearFilters?: () => void
   flashIds?: Set<string>
+  /** Apartados conocidos para resolver savingsAccountId → nombre + color */
+  savingsAccounts?: SavingsAccount[]
 }
 
 export function TransactionList({
@@ -31,7 +36,9 @@ export function TransactionList({
   hasActiveFilter,
   onClearFilters,
   flashIds,
+  savingsAccounts,
 }: TransactionListProps) {
+  const savingsById = new Map((savingsAccounts ?? []).map((a) => [a.id, a]))
   const [highlightedIds, setHighlightedIds] = useState<Set<string>>(new Set())
   const knownIdsRef = useRef<Set<string>>(new Set())
 
@@ -213,6 +220,26 @@ export function TransactionList({
                         {method}
                       </span>
                     )}
+                    {transaction.savingsAccountId &&
+                      savingsById.has(transaction.savingsAccountId) &&
+                      (() => {
+                        const acc = savingsById.get(transaction.savingsAccountId)!
+                        const accent = resolveSavingsColor(acc.color)
+                        return (
+                          <span
+                            className="inline-flex shrink-0 items-center gap-1 rounded px-1.5 py-0.5 text-[10px] font-semibold"
+                            style={{
+                              background: `color-mix(in srgb, ${accent} 14%, transparent)`,
+                              color: accent,
+                            }}
+                            title={
+                              isIncome ? 'Retirada del apartado' : 'Aportación al apartado'
+                            }
+                          >
+                            {isIncome ? '←' : '→'} {acc.name}
+                          </span>
+                        )
+                      })()}
                   </div>
                   {noteRest && (
                     <p

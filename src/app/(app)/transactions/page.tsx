@@ -17,6 +17,7 @@ import { BalanceSummary } from '@/features/transactions/ui/BalanceSummary'
 import { HomeSkeleton } from '@/features/transactions/ui/HomeSkeleton'
 import { useCategories } from '@/features/categories/ui/useCategories'
 import { useCreateRecurring } from '@/features/recurring/ui/useRecurring'
+import { useSavings } from '@/features/savings/ui/useSavings'
 import { TransactionForm } from '@/features/transactions/ui/TransactionForm'
 import { TransactionList } from '@/features/transactions/ui/TransactionList'
 import {
@@ -71,6 +72,7 @@ export default function TransactionsPage() {
   const remove = useDeleteTransaction()
   const createRecurring = useCreateRecurring()
   const { categories } = useCategories()
+  const { data: savingsAccounts = [] } = useSavings()
   const { enabled: rolloverEnabled, toggle: toggleRollover } = useRolloverEnabled()
   const toast = useToast()
   const { origin: modalOrigin, captureFromEvent, setOrigin } = useModalOrigin()
@@ -92,6 +94,9 @@ export default function TransactionsPage() {
   const [editDirty, setEditDirty] = useState(false)
   const [removingIds, setRemovingIds] = useState<Set<string>>(new Set())
   const [editedIds, setEditedIds] = useState<Set<string>>(new Set())
+  const [exporting, setExporting] = useState(false)
+  const [confirmBulkDelete, setConfirmBulkDelete] = useState(false)
+  const [bulkDeleting, setBulkDeleting] = useState(false)
 
   const { fromDate, toDate, periodLabel } = useMemo(() => {
     const y = refDate.getFullYear()
@@ -255,6 +260,88 @@ export default function TransactionsPage() {
     [editingTransaction, update, toast]
   )
 
+  const handleExportExcel = useCallback(async () => {
+    if (filteredTransactions.length === 0 || exporting) return
+    setExporting(true)
+    try {
+      // Cedemos un frame para que React pinte el spinner antes de bloquear el
+      // thread con XLSX.write (puede tardar 1-2s con varios miles de filas).
+      await new Promise((r) => requestAnimationFrame(() => r(null)))
+      const XLSX = await import('xlsx')
+      const rows = filteredTransactions.map((t) => ({
+        Fecha: t.date,
+        Tipo: t.type === 'income' ? 'Ingreso' : 'Gasto',
+        Descripción: t.description,
+        Categoría: t.category,
+        Importe: Number(t.amount),
+      }))
+      const ws = XLSX.utils.json_to_sheet(rows)
+      ws['!cols'] = [12, 10, 36, 20, 12].map((w) => ({ wch: w }))
+      const wb = XLSX.utils.book_new()
+      XLSX.utils.book_append_sheet(wb, ws, 'Movimientos')
+      const buf = XLSX.write(wb, { type: 'array', bookType: 'xlsx' }) as ArrayBuffer
+      const blob = new Blob([buf], {
+        type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+      })
+      const url = URL.createObjectURL(blob)
+      const a = document.createElement('a')
+      a.href = url
+      a.download = `vantage-${new Date().toISOString().slice(0, 10)}.xlsx`
+      document.body.appendChild(a)
+      a.click()
+      document.body.removeChild(a)
+      URL.revokeObjectURL(url)
+      toast.success(`${filteredTransactions.length} movimientos exportados`)
+    } catch (err) {
+      toast.error('No se pudo exportar', err instanceof Error ? err.message : String(err))
+    } finally {
+      setExporting(false)
+    }
+  }, [filteredTransactions, exporting, toast])
+
+  const handleBulkDelete = useCallback(async () => {
+    if (filteredTransactions.length === 0 || bulkDeleting) return
+    setBulkDeleting(true)
+    const ids = filteredTransactions.map((t) => t.id)
+    setRemovingIds((prev) => {
+      const next = new Set(prev)
+      for (const id of ids) next.add(id)
+      return next
+    })
+    try {
+      // Borramos en serie usando el mutate del hook (la última invalidación
+      // refresca la lista). Si alguno falla, mostramos cuántos sí se borraron.
+      let okCount = 0
+      let firstError: unknown = null
+      for (const id of ids) {
+        try {
+          await remove.mutateAsync(id)
+          okCount++
+        } catch (err) {
+          if (!firstError) firstError = err
+        }
+      }
+      if (okCount === ids.length) {
+        toast.success(`${okCount} movimientos eliminados`)
+      } else if (okCount > 0) {
+        toast.warning(`${okCount} de ${ids.length} eliminados`, 'Algunos fallaron')
+      } else {
+        toast.error(
+          'No se pudo eliminar',
+          firstError instanceof Error ? firstError.message : undefined
+        )
+      }
+      setConfirmBulkDelete(false)
+    } finally {
+      setBulkDeleting(false)
+      setRemovingIds((prev) => {
+        const next = new Set(prev)
+        for (const id of ids) next.delete(id)
+        return next
+      })
+    }
+  }, [filteredTransactions, bulkDeleting, remove, toast])
+
   const handleDeleteConfirm = useCallback(async () => {
     if (!confirmDeleteId) return
     const idToDelete = confirmDeleteId
@@ -316,6 +403,64 @@ export default function TransactionsPage() {
                 <path d="M21 11.8v2a4 4 0 0 1-4 4H4.2" />
               </svg>
               Acumular meses
+            </button>
+            <button
+              onClick={(e) => {
+                captureFromEvent(e)
+                setConfirmBulkDelete(true)
+              }}
+              disabled={filteredTransactions.length === 0}
+              className="flex cursor-pointer items-center gap-1.5 rounded-lg border border-expense/20 bg-expense-light px-3 py-1.5 text-xs font-medium text-expense hover:bg-expense/20 disabled:cursor-not-allowed disabled:opacity-40"
+            >
+              <svg
+                aria-hidden="true"
+                xmlns="http://www.w3.org/2000/svg"
+                width="13"
+                height="13"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              >
+                <path d="M3 6h18" />
+                <path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6" />
+                <path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2" />
+              </svg>
+              Eliminar filtrados
+            </button>
+            <button
+              onClick={handleExportExcel}
+              disabled={filteredTransactions.length === 0 || exporting}
+              className="flex cursor-pointer items-center gap-1.5 rounded-lg border border-border bg-surface px-3 py-1.5 text-xs font-medium text-subtext hover:bg-border disabled:cursor-not-allowed disabled:opacity-40"
+            >
+              {exporting ? (
+                <>
+                  <span className="h-3 w-3 animate-spin rounded-full border-2 border-subtext/30 border-t-subtext" />
+                  Exportando…
+                </>
+              ) : (
+                <>
+                  <svg
+                    aria-hidden="true"
+                    xmlns="http://www.w3.org/2000/svg"
+                    width="13"
+                    height="13"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="2"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                  >
+                    <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+                    <polyline points="7 10 12 15 17 10" />
+                    <line x1="12" y1="15" x2="12" y2="3" />
+                  </svg>
+                  Exportar Excel
+                </>
+              )}
             </button>
             <button
               onClick={(e) => {
@@ -528,6 +673,7 @@ export default function TransactionsPage() {
       >
         <TransactionList
           transactions={pagedTransactions}
+          savingsAccounts={savingsAccounts}
           onDelete={(id, origin) => {
             if (origin) setOrigin(origin)
             setConfirmDeleteId(id)
@@ -772,6 +918,44 @@ export default function TransactionsPage() {
           >
             Eliminar
           </button>
+        </div>
+      </Modal>
+
+      <Modal
+        isOpen={confirmBulkDelete}
+        onClose={() => {
+          if (!bulkDeleting) setConfirmBulkDelete(false)
+        }}
+        title="Eliminar movimientos filtrados"
+      >
+        <div className="space-y-4">
+          <p className="text-sm text-text">
+            ¿Eliminar{' '}
+            <span className="font-bold tabular-nums">{filteredTransactions.length}</span>{' '}
+            movimientos del filtro actual?
+          </p>
+          <p className="text-xs leading-relaxed text-subtext">
+            Solo afecta a los que ves ahora con los filtros aplicados. No se puede deshacer.
+          </p>
+          <div className="flex gap-2 pt-2">
+            <button
+              onClick={() => setConfirmBulkDelete(false)}
+              disabled={bulkDeleting}
+              className="flex-1 cursor-pointer rounded-xl border border-border bg-surface py-2.5 text-sm font-semibold text-subtext transition-colors hover:bg-border hover:text-text disabled:opacity-60"
+            >
+              Cancelar
+            </button>
+            <button
+              onClick={handleBulkDelete}
+              disabled={bulkDeleting}
+              className="flex flex-1 cursor-pointer items-center justify-center gap-2 rounded-xl bg-expense py-2.5 text-sm font-semibold text-white transition-colors hover:bg-expense-hover disabled:cursor-wait disabled:opacity-60"
+            >
+              {bulkDeleting && (
+                <span className="h-4 w-4 animate-spin rounded-full border-2 border-white/40 border-t-white" />
+              )}
+              {bulkDeleting ? 'Eliminando…' : 'Eliminar todos'}
+            </button>
+          </div>
         </div>
       </Modal>
 
