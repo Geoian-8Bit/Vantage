@@ -10,27 +10,27 @@ export default async function ForgotPasswordPage({ searchParams }: ForgotPagePro
   const { error, sent, email } = await searchParams
 
   return (
-    <main className="flex min-h-screen items-center justify-center bg-neutral-950 p-6">
-      <div className="w-full max-w-sm space-y-6 rounded-lg border border-neutral-800 bg-neutral-900 p-8 shadow-xl">
+    <main className="flex min-h-screen items-center justify-center p-6">
+      <div className="w-full max-w-sm space-y-6 rounded-2xl border border-border bg-card p-8 shadow-xl">
         <div className="space-y-1">
-          <Link href="/login" className="text-xs text-neutral-500 transition hover:text-neutral-300">
+          <Link href="/login" className="text-xs text-subtext transition hover:text-text">
             ← volver a iniciar sesión
           </Link>
-          <h1 className="text-2xl font-semibold tracking-tight">Recupera tu contraseña</h1>
-          <p className="text-sm text-neutral-400">
+          <h1 className="text-2xl font-bold tracking-tight text-text">Recupera tu contraseña</h1>
+          <p className="text-sm text-subtext">
             Si la cuenta existe, te enviaremos un email con un enlace para crear una nueva.
           </p>
         </div>
 
         {sent ? (
-          <div className="rounded-md border border-emerald-800/60 bg-emerald-950/40 p-4 text-sm text-emerald-200">
-            Si <span className="font-medium">{email}</span> tiene cuenta, te llegará el correo en
+          <div className="rounded-lg border border-income/30 bg-income-light p-4 text-sm text-income">
+            Si <span className="font-semibold">{email}</span> tiene cuenta, te llegará el correo en
             unos minutos. Revisa también spam.
           </div>
         ) : (
           <form action={requestPasswordReset} className="space-y-4">
             <div className="space-y-1.5">
-              <label htmlFor="email" className="text-sm font-medium text-neutral-300">
+              <label htmlFor="email" className="text-sm font-medium text-text">
                 Email
               </label>
               <input
@@ -40,19 +40,19 @@ export default async function ForgotPasswordPage({ searchParams }: ForgotPagePro
                 required
                 autoComplete="email"
                 placeholder="tu@correo.com"
-                className="w-full rounded-md border border-neutral-700 bg-neutral-950 px-3 py-2 text-sm placeholder:text-neutral-600 focus:border-neutral-500 focus:outline-none"
+                className="w-full rounded-xl border border-border bg-surface px-3 py-2.5 text-sm text-text"
               />
             </div>
 
             {error && (
-              <p className="text-sm text-red-400" role="alert">
+              <p className="text-sm text-expense" role="alert">
                 {error}
               </p>
             )}
 
             <button
               type="submit"
-              className="w-full rounded-md bg-white px-4 py-2 text-sm font-medium text-black transition hover:bg-neutral-200"
+              className="w-full rounded-xl bg-brand px-4 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-brand-hover"
             >
               Enviar enlace
             </button>

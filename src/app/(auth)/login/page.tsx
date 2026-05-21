@@ -10,31 +10,31 @@ export default async function LoginPage({ searchParams }: LoginPageProps) {
   const { error, confirmed, reset } = await searchParams
 
   return (
-    <main className="flex min-h-screen items-center justify-center bg-neutral-950 p-6">
-      <div className="w-full max-w-sm space-y-6 rounded-lg border border-neutral-800 bg-neutral-900 p-8 shadow-xl">
+    <main className="flex min-h-screen items-center justify-center p-6">
+      <div className="w-full max-w-sm space-y-6 rounded-2xl border border-border bg-card p-8 shadow-xl">
         <div className="space-y-1">
-          <Link href="/" className="text-xs text-neutral-500 transition hover:text-neutral-300">
+          <Link href="/" className="text-xs text-subtext transition hover:text-text">
             ← volver
           </Link>
-          <h1 className="text-2xl font-semibold tracking-tight">Inicia sesión</h1>
-          <p className="text-sm text-neutral-400">Accede a tu cuenta de Vantage.</p>
+          <h1 className="text-2xl font-bold tracking-tight text-text">Inicia sesión</h1>
+          <p className="text-sm text-subtext">Accede a tu cuenta de Vantage.</p>
         </div>
 
         {confirmed && (
-          <div className="rounded-md border border-emerald-800/60 bg-emerald-950/40 p-3 text-sm text-emerald-200">
+          <div className="rounded-lg border border-income/30 bg-income-light p-3 text-sm text-income">
             Email confirmado. Ya puedes iniciar sesión.
           </div>
         )}
 
         {reset && (
-          <div className="rounded-md border border-emerald-800/60 bg-emerald-950/40 p-3 text-sm text-emerald-200">
+          <div className="rounded-lg border border-income/30 bg-income-light p-3 text-sm text-income">
             Contraseña actualizada. Inicia sesión con la nueva.
           </div>
         )}
 
         <form action={signIn} className="space-y-4">
           <div className="space-y-1.5">
-            <label htmlFor="email" className="text-sm font-medium text-neutral-300">
+            <label htmlFor="email" className="text-sm font-medium text-text">
               Email
             </label>
             <input
@@ -44,18 +44,18 @@ export default async function LoginPage({ searchParams }: LoginPageProps) {
               required
               autoComplete="email"
               placeholder="tu@correo.com"
-              className="w-full rounded-md border border-neutral-700 bg-neutral-950 px-3 py-2 text-sm placeholder:text-neutral-600 focus:border-neutral-500 focus:outline-none"
+              className="w-full rounded-xl border border-border bg-surface px-3 py-2.5 text-sm text-text"
             />
           </div>
 
           <div className="space-y-1.5">
             <div className="flex items-center justify-between">
-              <label htmlFor="password" className="text-sm font-medium text-neutral-300">
+              <label htmlFor="password" className="text-sm font-medium text-text">
                 Contraseña
               </label>
               <Link
                 href="/forgot-password"
-                className="text-xs text-neutral-500 transition hover:text-neutral-300"
+                className="text-xs text-subtext transition hover:text-brand"
               >
                 ¿Olvidaste?
               </Link>
@@ -67,27 +67,27 @@ export default async function LoginPage({ searchParams }: LoginPageProps) {
               required
               autoComplete="current-password"
               minLength={6}
-              className="w-full rounded-md border border-neutral-700 bg-neutral-950 px-3 py-2 text-sm placeholder:text-neutral-600 focus:border-neutral-500 focus:outline-none"
+              className="w-full rounded-xl border border-border bg-surface px-3 py-2.5 text-sm text-text"
             />
           </div>
 
           {error && (
-            <p className="text-sm text-red-400" role="alert">
+            <p className="text-sm text-expense" role="alert">
               {error}
             </p>
           )}
 
           <button
             type="submit"
-            className="w-full rounded-md bg-white px-4 py-2 text-sm font-medium text-black transition hover:bg-neutral-200"
+            className="w-full rounded-xl bg-brand px-4 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-brand-hover"
           >
             Entrar
           </button>
         </form>
 
-        <p className="text-center text-sm text-neutral-500">
+        <p className="text-center text-sm text-subtext">
           ¿No tienes cuenta?{' '}
-          <Link href="/signup" className="text-neutral-300 underline-offset-4 hover:underline">
+          <Link href="/signup" className="font-medium text-brand hover:text-brand-hover">
             Regístrate
           </Link>
         </p>
