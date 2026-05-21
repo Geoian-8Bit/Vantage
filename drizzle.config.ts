@@ -1,5 +1,8 @@
 import { defineConfig } from 'drizzle-kit'
-import 'dotenv/config'
+import { config as loadEnv } from 'dotenv'
+
+loadEnv({ path: '.env.local' })
+loadEnv({ path: '.env' })
 
 // DATABASE_URL solo es obligatorio para push/migrate/studio; generate no lo necesita.
 const databaseUrl = process.env.DATABASE_URL ?? ''

@@ -3,8 +3,11 @@
  * Uso: npm run db:verify
  */
 
-import 'dotenv/config'
+import { config as loadEnv } from 'dotenv'
 import postgres from 'postgres'
+
+loadEnv({ path: '.env.local' })
+loadEnv({ path: '.env' })
 
 const EXPECTED_TABLES = [
   'audit_log',
@@ -64,7 +67,7 @@ async function main() {
   const helpers = await sql<{ name: string }[]>`
     SELECT proname AS name
     FROM pg_proc
-    WHERE pronamespace = 'public'::regnamespace
+    WHERE pronamespace = 'private'::regnamespace
       AND proname = ANY(${EXPECTED_HELPERS})
     ORDER BY proname;
   `
@@ -116,7 +119,7 @@ async function main() {
 
   // ── Helpers ────────────────────────────────────────────────────────────────
   console.log()
-  console.log('Helpers RLS en public:')
+  console.log('Helpers RLS en private:')
   console.log('─'.repeat(72))
   for (const expected of EXPECTED_HELPERS) {
     const found = helpers.some((h) => h.name === expected)
