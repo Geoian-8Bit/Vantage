@@ -16,6 +16,7 @@ import type { CreateTransactionInput, Transaction } from '@/features/transaction
 import { BalanceSummary } from '@/features/transactions/ui/BalanceSummary'
 import { HomeSkeleton } from '@/features/transactions/ui/HomeSkeleton'
 import { useCategories } from '@/features/categories/ui/useCategories'
+import { useCreateRecurring } from '@/features/recurring/ui/useRecurring'
 import { TransactionForm } from '@/features/transactions/ui/TransactionForm'
 import { TransactionList } from '@/features/transactions/ui/TransactionList'
 import {
@@ -68,6 +69,7 @@ export default function TransactionsPage() {
   const create = useCreateTransaction()
   const update = useUpdateTransaction()
   const remove = useDeleteTransaction()
+  const createRecurring = useCreateRecurring()
   const { categories } = useCategories()
   const { enabled: rolloverEnabled, toggle: toggleRollover } = useRolloverEnabled()
   const toast = useToast()
@@ -696,6 +698,20 @@ export default function TransactionsPage() {
           <TransactionForm
             type={modalType}
             onSubmit={handleSubmit}
+            onSubmitRecurring={async (data) => {
+              try {
+                await createRecurring.mutateAsync(data)
+                setModalType(null)
+                setCreateDirty(false)
+                toast.success('Plantilla recurrente creada')
+              } catch (err) {
+                toast.error(
+                  'No se pudo crear la plantilla',
+                  err instanceof Error ? err.message : undefined
+                )
+                throw err
+              }
+            }}
             onCancel={() => {
               setModalType(null)
               setCreateDirty(false)
@@ -729,6 +745,7 @@ export default function TransactionsPage() {
               date: editingTransaction.date,
               category: editingTransaction.category,
               note: editingTransaction.note ?? '',
+              savingsAccountId: editingTransaction.savingsAccountId,
             }}
           />
         )}
