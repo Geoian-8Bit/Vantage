@@ -15,9 +15,9 @@ import { MONTH_NAMES_FULL, pad } from '@/lib/utils/format'
 import type { CreateTransactionInput, Transaction } from '@/features/transactions/domain/transaction.schema'
 import { BalanceSummary } from '@/features/transactions/ui/BalanceSummary'
 import { HomeSkeleton } from '@/features/transactions/ui/HomeSkeleton'
+import { useCategories } from '@/features/categories/ui/useCategories'
 import { TransactionForm } from '@/features/transactions/ui/TransactionForm'
 import { TransactionList } from '@/features/transactions/ui/TransactionList'
-import { useCategories } from '@/features/transactions/ui/useCategories'
 import {
   useCreateTransaction,
   useDeleteTransaction,

@@ -5,8 +5,9 @@ import { useEffect, useMemo, useState } from 'react'
 import { DateInput } from '@/components/ui/DateInput'
 import { getTodayString } from '@/lib/utils/format'
 
+import { useCategories } from '@/features/categories/ui/useCategories'
+
 import type { CreateTransactionInput, TxType } from '../domain/transaction.schema'
-import { useCategories } from './useCategories'
 
 interface InitialValues {
   amount: string
