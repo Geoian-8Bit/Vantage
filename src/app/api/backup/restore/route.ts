@@ -300,6 +300,8 @@ export async function POST(request: NextRequest) {
           data = await parseLegacyDatabase(buf)
         } catch (err) {
           const msg = err instanceof Error ? err.message : String(err)
+          // Log explicito para que aparezca en Vercel runtime logs como warning.
+          console.warn('[backup/restore] sqlite parse failed:', msg)
           return jsonError(new ValidationError(`No se pudo leer el .db SQLite: ${msg}`))
         }
         stats = await importLegacy(space.id, user.id, data)
