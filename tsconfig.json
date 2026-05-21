@@ -28,6 +28,11 @@
     "src/**/*.tsx",
     "tests/unit/**/*.ts",
     "tests/unit/**/*.tsx",
+    "scripts/**/*.ts",
+    "drizzle.config.ts",
+    "next.config.ts",
+    "vitest.config.ts",
+    "playwright.config.ts",
     ".next/types/**/*.ts"
   ],
   "exclude": [
