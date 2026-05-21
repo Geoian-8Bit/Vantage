@@ -1,4 +1,7 @@
 import type { Metadata } from 'next'
+
+import { QueryProvider } from '@/lib/query/QueryProvider'
+
 import './globals.css'
 
 export const metadata: Metadata = {
@@ -9,7 +12,9 @@ export const metadata: Metadata = {
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="es">
-      <body className="antialiased">{children}</body>
+      <body className="antialiased">
+        <QueryProvider>{children}</QueryProvider>
+      </body>
     </html>
   )
 }
