@@ -3,6 +3,8 @@
 import { useMemo, useState } from 'react'
 
 import { PageHeader } from '@/components/layout/PageHeader'
+import { TiltCard } from '@/components/ui/TiltCard'
+import { Tabs } from '@/components/ui/Tabs'
 import { DateInput } from '@/components/ui/DateInput'
 import { EmptyState } from '@/components/ui/EmptyState'
 import { Modal } from '@/components/ui/Modal'
@@ -17,7 +19,11 @@ import {
   useDeleteDebt,
   useUpdateDebt,
 } from '@/features/debts/ui/useDebts'
-import { useTransactions } from '@/features/transactions/ui/useTransactions'
+import {
+  useCreateTransaction,
+  useTransactions,
+} from '@/features/transactions/ui/useTransactions'
+import { TransactionForm } from '@/features/transactions/ui/TransactionForm'
 
 const COLOR_OPTIONS = [
   '#7A1B2D',
@@ -30,18 +36,25 @@ const COLOR_OPTIONS = [
   '#5A6B7E',
 ]
 
+type DebtsTab = 'active' | 'archived' | 'simulator'
+
 export default function DebtsPage() {
   const { data: debts = [], isLoading } = useDebts()
   const { data: transactions = [] } = useTransactions()
   const create = useCreateDebt()
   const update = useUpdateDebt()
   const remove = useDeleteDebt()
+  const createTx = useCreateTransaction()
   const toast = useToast()
 
-  const [modal, setModal] = useState<{ mode: 'create' } | { mode: 'edit'; debt: Debt } | null>(null)
+  const [activeTab, setActiveTab] = useState<DebtsTab>('active')
+  const [modal, setModal] = useState<{ mode: 'create' } | { mode: 'edit'; debt: Debt } | null>(
+    null
+  )
   const [confirmDelete, setConfirmDelete] = useState<Debt | null>(null)
+  const [extraTarget, setExtraTarget] = useState<Debt | null>(null)
+  const [extraDirty, setExtraDirty] = useState(false)
 
-  // Pagado por deuda: sum(expense con debt_id)
   const paidByDebt = useMemo(() => {
     const map = new Map<string, number>()
     for (const t of transactions) {
@@ -52,42 +65,267 @@ export default function DebtsPage() {
     return map
   }, [transactions])
 
-  const activeDebts = debts.filter((d) => !d.archivedAt)
-  const archivedDebts = debts.filter((d) => d.archivedAt)
+  const activeDebts = useMemo(() => debts.filter((d) => !d.archivedAt), [debts])
+  const archivedDebts = useMemo(() => debts.filter((d) => d.archivedAt), [debts])
+
+  const aggregate = useMemo(() => {
+    let initial = 0
+    let paid = 0
+    let pending = 0
+    let monthly = 0
+    for (const d of activeDebts) {
+      const ini = Number(d.initialAmount)
+      const pd = paidByDebt.get(d.id) ?? 0
+      initial += ini
+      paid += pd
+      pending += Math.max(0, ini - pd)
+      monthly += Number(d.monthlyAmount)
+    }
+    return { initial, paid, pending, monthly }
+  }, [activeDebts, paidByDebt])
+
+  const animTotal = useAnimatedNumber(aggregate.pending)
+  const animMonthly = useAnimatedNumber(aggregate.monthly)
+  const globalProgress =
+    aggregate.initial > 0 ? Math.min(100, (aggregate.paid / aggregate.initial) * 100) : 0
+  const animProgress = useAnimatedNumber(globalProgress)
+
+  const tabItems = [
+    { id: 'active' as const, label: `Activas (${activeDebts.length})` },
+    { id: 'archived' as const, label: `Saldadas (${archivedDebts.length})` },
+    { id: 'simulator' as const, label: 'Simulador' },
+  ]
 
   return (
-    <div className="space-y-4 lg:space-y-5">
+    <div className="w-full space-y-4 lg:space-y-5">
       <PageHeader
-        section="Deudas"
-        page="Activas"
+        section="Finanzas"
+        page="Deudas"
         actions={
           <button
             onClick={() => setModal({ mode: 'create' })}
-            className="btn-primary flex cursor-pointer items-center gap-2 rounded-lg bg-brand px-4 py-2 text-sm font-semibold text-white hover:bg-brand-hover"
+            className="flex cursor-pointer items-center gap-2 rounded-xl bg-brand px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-brand-hover"
           >
             <svg
+              aria-hidden="true"
               xmlns="http://www.w3.org/2000/svg"
-              width="15"
-              height="15"
+              width="14"
+              height="14"
               viewBox="0 0 24 24"
               fill="none"
               stroke="currentColor"
-              strokeWidth="2.5"
+              strokeWidth="3"
               strokeLinecap="round"
               strokeLinejoin="round"
             >
-              <path d="M5 12h14" />
-              <path d="M12 5v14" />
+              <path d="M12 5v14M5 12h14" />
             </svg>
             Nueva deuda
           </button>
         }
       />
 
-      {isLoading ? (
-        <p className="text-sm text-subtext">Cargando deudas...</p>
-      ) : activeDebts.length === 0 && archivedDebts.length === 0 ? (
-        <div className="rounded-xl border border-border bg-card shadow-sm">
+      <TiltCard
+        intensity={1.2}
+        className="card-anim min-w-0 rounded-xl border border-border bg-card p-6 shadow-sm"
+        style={{ animationDelay: '0ms' }}
+      >
+        <div className="flex min-w-0 flex-wrap items-start justify-between gap-4">
+          <div className="min-w-0">
+            <p className="mb-1 text-xs font-semibold tracking-wider text-subtext uppercase">
+              Capital pendiente total
+            </p>
+            <p
+              className="truncate font-bold tabular-nums text-expense"
+              style={{
+                fontSize: 'clamp(1.5rem, 3vw, 2rem)',
+                lineHeight: 1.15,
+                fontFamily: 'var(--font-display)',
+              }}
+              title={formatCurrency(aggregate.pending)}
+            >
+              {formatCurrency(animTotal)}
+            </p>
+            <p className="mt-1 text-xs tabular-nums text-subtext">
+              {formatCurrency(aggregate.paid)} ya pagados de{' '}
+              {formatCurrency(aggregate.initial)}
+            </p>
+          </div>
+          <div className="flex shrink-0 flex-col items-end gap-1.5">
+            <span className="inline-flex items-center gap-1.5 rounded-full border border-border bg-surface px-2.5 py-1 text-[11px] font-semibold text-subtext">
+              <span className="h-1.5 w-1.5 rounded-full bg-expense" />
+              {activeDebts.length} {activeDebts.length === 1 ? 'activa' : 'activas'}
+            </span>
+            {archivedDebts.length > 0 && (
+              <span
+                className="inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[11px] font-semibold"
+                style={{
+                  background: 'color-mix(in srgb, var(--color-income) 14%, transparent)',
+                  color: 'var(--color-income)',
+                  border: '1px solid var(--color-border)',
+                }}
+              >
+                <svg
+                  aria-hidden="true"
+                  xmlns="http://www.w3.org/2000/svg"
+                  width="10"
+                  height="10"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="3.5"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                >
+                  <polyline points="20 6 9 17 4 12" />
+                </svg>
+                {archivedDebts.length} {archivedDebts.length === 1 ? 'saldada' : 'saldadas'}
+              </span>
+            )}
+            {aggregate.monthly > 0 && (
+              <span className="inline-flex items-center gap-1.5 rounded-full border border-border bg-surface px-2.5 py-1 text-[11px] font-semibold tabular-nums text-subtext">
+                {formatCurrency(animMonthly)} / mes
+              </span>
+            )}
+          </div>
+        </div>
+
+        {aggregate.initial > 0 && (
+          <div className="mt-4">
+            <div className="mb-1.5 flex items-baseline justify-between text-[11px]">
+              <span className="text-subtext">{animProgress.toFixed(0)}% pagado en conjunto</span>
+              <span className="font-semibold tabular-nums text-subtext">
+                {formatCurrency(Math.max(0, aggregate.initial - aggregate.paid))} restantes
+              </span>
+            </div>
+            <div
+              className="relative h-2 overflow-hidden rounded-full"
+              style={{ background: 'var(--color-surface)' }}
+            >
+              <div
+                className="absolute inset-y-0 left-0 rounded-full"
+                style={{
+                  width: `${globalProgress}%`,
+                  background:
+                    'linear-gradient(90deg, var(--color-brand) 0%, var(--color-accent) 100%)',
+                  transition: 'width var(--duration-slow) var(--ease-spring)',
+                }}
+              />
+            </div>
+          </div>
+        )}
+      </TiltCard>
+
+      <Tabs items={tabItems} activeId={activeTab} onChange={setActiveTab} size="md" />
+
+      {activeTab === 'active' &&
+        (isLoading ? (
+          <p className="text-sm text-subtext">Cargando deudas…</p>
+        ) : activeDebts.length === 0 ? (
+          <div className="rounded-xl border border-border bg-card shadow-sm">
+            <EmptyState
+              icon={
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  width="32"
+                  height="32"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="1.6"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                >
+                  <path d="M14 2H6a2 2 0 0 0-2 2v16l3-2 2 2 2-2 2 2 2-2 3 2V8z" />
+                  <line x1="9" y1="9" x2="15" y2="9" />
+                  <line x1="9" y1="13" x2="15" y2="13" />
+                  <line x1="9" y1="17" x2="13" y2="17" />
+                </svg>
+              }
+              title="Aún no tienes deudas registradas"
+              description="Registra una deuda con su cuota mensual y se descontará automáticamente cada mes hasta saldarla. Puedes simular el plan antes en la pestaña Simulador."
+              action={
+                <button
+                  onClick={() => setModal({ mode: 'create' })}
+                  className="cursor-pointer rounded-xl bg-brand px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-brand-hover"
+                >
+                  Registrar primera deuda
+                </button>
+              }
+            />
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
+            {activeDebts.map((debt, idx) => (
+              <div key={debt.id} style={{ animationDelay: `${idx * 60}ms` }}>
+                <DebtCard
+                  debt={debt}
+                  paid={paidByDebt.get(debt.id) ?? 0}
+                  onEdit={() => setModal({ mode: 'edit', debt })}
+                  onDelete={() => setConfirmDelete(debt)}
+                  onArchive={async () => {
+                    try {
+                      await update.mutateAsync({
+                        id: debt.id,
+                        input: { archivedAt: new Date().toISOString() },
+                      })
+                      toast.success('Deuda archivada')
+                    } catch (err) {
+                      toast.error(
+                        'No se pudo archivar',
+                        err instanceof Error ? err.message : undefined
+                      )
+                    }
+                  }}
+                  onExtraPayment={() => {
+                    setExtraTarget(debt)
+                    setExtraDirty(false)
+                  }}
+                />
+              </div>
+            ))}
+          </div>
+        ))}
+
+      {activeTab === 'archived' &&
+        (archivedDebts.length === 0 ? (
+          <div className="rounded-xl border border-border bg-card shadow-sm">
+            <EmptyState
+              icon={
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  width="32"
+                  height="32"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="1.6"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                >
+                  <polyline points="20 6 9 17 4 12" />
+                </svg>
+              }
+              title="Aún no has saldado ninguna deuda"
+              description="Las deudas se archivan automáticamente aquí cuando las pagas por completo. ¡Tú puedes!"
+            />
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
+            {archivedDebts.map((debt, idx) => (
+              <div key={debt.id} style={{ animationDelay: `${idx * 60}ms` }}>
+                <DebtCard
+                  debt={debt}
+                  paid={paidByDebt.get(debt.id) ?? 0}
+                  onDelete={() => setConfirmDelete(debt)}
+                />
+              </div>
+            ))}
+          </div>
+        ))}
+
+      {activeTab === 'simulator' && (
+        <div className="rounded-xl border border-border bg-card p-8 shadow-sm">
           <EmptyState
             icon={
               <svg
@@ -101,68 +339,21 @@ export default function DebtsPage() {
                 strokeLinecap="round"
                 strokeLinejoin="round"
               >
-                <path d="M14 2H6a2 2 0 0 0-2 2v16l3-2 2 2 2-2 2 2 2-2 3 2V8z" />
-                <line x1="9" y1="9" x2="15" y2="9" />
-                <line x1="9" y1="13" x2="15" y2="13" />
-                <line x1="9" y1="17" x2="13" y2="17" />
+                <line x1="12" y1="20" x2="12" y2="10" />
+                <line x1="18" y1="20" x2="18" y2="4" />
+                <line x1="6" y1="20" x2="6" y2="16" />
               </svg>
             }
-            title="No tienes deudas registradas"
-            description="Añade deudas con importe inicial, cuota mensual y fecha de inicio para hacerles seguimiento."
+            title="Simulador de amortización"
+            description="Próximamente: planifica pagos extra para acortar plazos y ver cuánto ahorras en intereses."
           />
         </div>
-      ) : (
-        <>
-          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-            {activeDebts.map((debt) => (
-              <DebtCard
-                key={debt.id}
-                debt={debt}
-                paid={paidByDebt.get(debt.id) ?? 0}
-                onEdit={() => setModal({ mode: 'edit', debt })}
-                onDelete={() => setConfirmDelete(debt)}
-                onArchive={async () => {
-                  try {
-                    await update.mutateAsync({
-                      id: debt.id,
-                      input: { archivedAt: new Date().toISOString() },
-                    })
-                    toast.success('Deuda archivada')
-                  } catch (err) {
-                    toast.error(
-                      'No se pudo archivar',
-                      err instanceof Error ? err.message : undefined
-                    )
-                  }
-                }}
-              />
-            ))}
-          </div>
-          {archivedDebts.length > 0 && (
-            <details className="mt-6">
-              <summary className="cursor-pointer text-sm font-semibold text-subtext hover:text-text">
-                Archivadas ({archivedDebts.length})
-              </summary>
-              <div className="mt-3 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-                {archivedDebts.map((debt) => (
-                  <DebtCard
-                    key={debt.id}
-                    debt={debt}
-                    paid={paidByDebt.get(debt.id) ?? 0}
-                    onEdit={() => setModal({ mode: 'edit', debt })}
-                    onDelete={() => setConfirmDelete(debt)}
-                  />
-                ))}
-              </div>
-            </details>
-          )}
-        </>
       )}
 
       <Modal
         isOpen={modal !== null}
         onClose={() => setModal(null)}
-        title={modal?.mode === 'edit' ? 'Editar deuda' : 'Nueva deuda'}
+        title={modal?.mode === 'edit' ? `Editar ${modal.debt.name}` : 'Nueva deuda'}
       >
         {modal && (
           <DebtForm
@@ -189,34 +380,138 @@ export default function DebtsPage() {
       <Modal
         isOpen={confirmDelete !== null}
         onClose={() => setConfirmDelete(null)}
-        title="Eliminar deuda"
+        title={`Eliminar ${confirmDelete?.name ?? ''}`}
       >
-        <p className="text-sm text-subtext">
-          ¿Seguro que quieres eliminar la deuda <strong>{confirmDelete?.name}</strong>?
-        </p>
-        <div className="flex gap-3 pt-4">
-          <button
-            onClick={() => setConfirmDelete(null)}
-            className="flex-1 cursor-pointer rounded-lg bg-surface py-2.5 text-sm font-medium text-subtext hover:bg-border"
-          >
-            Cancelar
-          </button>
-          <button
-            onClick={async () => {
-              if (!confirmDelete) return
+        {confirmDelete &&
+          (() => {
+            const paid = paidByDebt.get(confirmDelete.id) ?? 0
+            const hasPaid = !confirmDelete.archivedAt && paid > 0.005
+            return (
+              <div className="space-y-4">
+                {hasPaid ? (
+                  <>
+                    <p className="text-sm text-text">
+                      Esta deuda tiene{' '}
+                      <span className="font-bold tabular-nums">{formatCurrency(paid)}</span>{' '}
+                      pagados.
+                    </p>
+                    <p className="text-sm leading-relaxed text-subtext">
+                      Por seguridad no se puede eliminar mientras tenga pagos. Espera a saldarla
+                      por completo o anula los pagos individuales antes de borrarla.
+                    </p>
+                    <div className="flex gap-2 pt-2">
+                      <button
+                        onClick={() => setConfirmDelete(null)}
+                        className="flex-1 cursor-pointer rounded-xl border border-border bg-surface py-2.5 text-sm font-semibold text-subtext transition-colors hover:bg-border hover:text-text"
+                      >
+                        Cerrar
+                      </button>
+                    </div>
+                  </>
+                ) : (
+                  <>
+                    <p className="text-sm text-text">
+                      ¿Eliminar la deuda{' '}
+                      <span className="font-semibold">{confirmDelete.name}</span>?
+                    </p>
+                    <p className="text-xs leading-relaxed text-subtext">
+                      Si tenía cuota recurrente, también se eliminará. Las transacciones
+                      históricas se conservan pero ya no aparecerán vinculadas.
+                    </p>
+                    <div className="flex gap-2 pt-2">
+                      <button
+                        onClick={() => setConfirmDelete(null)}
+                        className="flex-1 cursor-pointer rounded-xl border border-border bg-surface py-2.5 text-sm font-semibold text-subtext transition-colors hover:bg-border hover:text-text"
+                      >
+                        Cancelar
+                      </button>
+                      <button
+                        onClick={async () => {
+                          try {
+                            await remove.mutateAsync(confirmDelete.id)
+                            toast.success('Deuda eliminada')
+                            setConfirmDelete(null)
+                          } catch (err) {
+                            toast.error(
+                              'No se pudo eliminar',
+                              err instanceof Error ? err.message : undefined
+                            )
+                          }
+                        }}
+                        className="flex-1 cursor-pointer rounded-xl bg-expense py-2.5 text-sm font-semibold text-white transition-colors hover:bg-expense-hover"
+                      >
+                        Eliminar
+                      </button>
+                    </div>
+                  </>
+                )}
+              </div>
+            )
+          })()}
+      </Modal>
+
+      <Modal
+        isOpen={extraTarget !== null}
+        onClose={() => {
+          setExtraTarget(null)
+          setExtraDirty(false)
+        }}
+        title={`Pago extra a ${extraTarget?.name ?? ''}`}
+        dirty={extraDirty}
+      >
+        {extraTarget && (
+          <TransactionForm
+            type="expense"
+            presetDebtId={extraTarget.id}
+            initialValues={{
+              amount: '',
+              description: `Pago extra ${extraTarget.name}`,
+              date: getTodayString(),
+              category: 'Deudas',
+              note: '',
+            }}
+            onDirtyChange={setExtraDirty}
+            onCancel={() => {
+              setExtraTarget(null)
+              setExtraDirty(false)
+            }}
+            onSubmit={async (data) => {
               try {
-                await remove.mutateAsync(confirmDelete.id)
-                toast.success('Deuda eliminada')
-                setConfirmDelete(null)
+                const remainingBefore = Math.max(
+                  0,
+                  Number(extraTarget.initialAmount) - (paidByDebt.get(extraTarget.id) ?? 0)
+                )
+                const amt = Number(data.amount)
+                const remainingAfter = Math.max(0, remainingBefore - amt)
+                await createTx.mutateAsync(data)
+                if (remainingAfter <= 0.005) {
+                  try {
+                    await update.mutateAsync({
+                      id: extraTarget.id,
+                      input: { archivedAt: new Date().toISOString() },
+                    })
+                    toast.success('Deuda saldada', `Has terminado con "${extraTarget.name}".`)
+                  } catch {
+                    toast.success('Pago registrado')
+                  }
+                } else {
+                  toast.success(
+                    'Pago registrado',
+                    `Quedan ${formatCurrency(remainingAfter)} por pagar.`
+                  )
+                }
+                setExtraTarget(null)
+                setExtraDirty(false)
               } catch (err) {
-                toast.error('No se pudo eliminar', err instanceof Error ? err.message : undefined)
+                toast.error(
+                  'No se pudo registrar',
+                  err instanceof Error ? err.message : undefined
+                )
+                throw err
               }
             }}
-            className="flex-1 cursor-pointer rounded-lg bg-expense py-2.5 text-sm font-medium text-white hover:bg-expense-hover"
-          >
-            Eliminar
-          </button>
-        </div>
+          />
+        )}
       </Modal>
     </div>
   )
@@ -228,12 +523,14 @@ function DebtCard({
   onEdit,
   onDelete,
   onArchive,
+  onExtraPayment,
 }: {
   debt: Debt
   paid: number
-  onEdit: () => void
+  onEdit?: () => void
   onDelete: () => void
   onArchive?: () => void
+  onExtraPayment?: () => void
 }) {
   const initial = Number(debt.initialAmount)
   const remaining = Math.max(0, initial - paid)
@@ -248,15 +545,27 @@ function DebtCard({
         isArchived ? 'opacity-70' : ''
       }`}
     >
-      <div aria-hidden="true" className="absolute inset-x-0 top-0 h-1" style={{ background: color }} />
+      <div
+        aria-hidden="true"
+        className="absolute inset-x-0 top-0 h-1"
+        style={{ background: color }}
+      />
       <div className="flex items-start justify-between">
-        <div>
-          <h3 className="text-sm font-semibold text-text">{debt.name}</h3>
-          {debt.creditor && <p className="text-xs text-subtext">{debt.creditor}</p>}
+        <div className="min-w-0">
+          <h3 className="truncate text-sm font-semibold text-text" title={debt.name}>
+            {debt.name}
+          </h3>
+          {debt.creditor && (
+            <p className="truncate text-xs text-subtext" title={debt.creditor}>
+              {debt.creditor}
+            </p>
+          )}
           <p className="mt-1 text-xs text-subtext">
-            Cuota: <span className="font-semibold tabular-nums text-text">
+            Cuota:{' '}
+            <span className="font-semibold tabular-nums text-text">
               {formatCurrency(Number(debt.monthlyAmount))}
-            </span>/mes
+            </span>
+            /mes
           </p>
         </div>
         <div className="flex gap-1 opacity-0 transition-opacity group-hover:opacity-100">
@@ -283,25 +592,27 @@ function DebtCard({
               </svg>
             </button>
           )}
-          <button
-            onClick={onEdit}
-            aria-label="Editar"
-            className="cursor-pointer rounded p-1 text-subtext hover:bg-surface hover:text-text"
-          >
-            <svg
-              width="14"
-              height="14"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="2"
-              strokeLinecap="round"
-              strokeLinejoin="round"
+          {onEdit && (
+            <button
+              onClick={onEdit}
+              aria-label="Editar"
+              className="cursor-pointer rounded p-1 text-subtext hover:bg-surface hover:text-text"
             >
-              <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" />
-              <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" />
-            </svg>
-          </button>
+              <svg
+                width="14"
+                height="14"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              >
+                <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" />
+                <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" />
+              </svg>
+            </button>
+          )}
           <button
             onClick={onDelete}
             aria-label="Eliminar"
@@ -340,10 +651,24 @@ function DebtCard({
         <div className="mt-2 h-2 overflow-hidden rounded-full bg-surface">
           <div
             className="h-full rounded-full transition-all"
-            style={{ width: `${progress}%`, background: color }}
+            style={{
+              width: `${progress}%`,
+              background: color,
+              transition: 'width var(--duration-slow) var(--ease-spring)',
+            }}
           />
         </div>
       </div>
+      {!isArchived && onExtraPayment && (
+        <div className="mt-4">
+          <button
+            onClick={onExtraPayment}
+            className="w-full cursor-pointer rounded-lg bg-brand-light py-1.5 text-xs font-semibold text-brand transition-colors hover:bg-brand hover:text-white"
+          >
+            + Pago extra
+          </button>
+        </div>
+      )}
     </div>
   )
 }
@@ -410,6 +735,7 @@ function DebtForm({
         <input
           type="text"
           required
+          autoFocus
           value={name}
           onChange={(e) => setName(e.target.value)}
           placeholder="Ej: Préstamo coche"

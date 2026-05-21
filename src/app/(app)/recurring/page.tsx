@@ -7,7 +7,12 @@ import { EmptyState } from '@/components/ui/EmptyState'
 import { Modal } from '@/components/ui/Modal'
 import { useToast } from '@/components/ui/Toast'
 import { DateInput } from '@/components/ui/DateInput'
-import { FREQ_LABELS, formatCurrency, formatDate, getTodayString } from '@/lib/utils/format'
+import {
+  FREQ_COLORS,
+  FREQ_LABELS,
+  formatCurrency,
+  getTodayString,
+} from '@/lib/utils/format'
 
 import { useCategories } from '@/features/categories/ui/useCategories'
 import type {
@@ -39,16 +44,39 @@ export default function RecurringPage() {
     { mode: 'create' } | { mode: 'edit'; template: RecurringTemplate } | null
   >(null)
   const [confirmDelete, setConfirmDelete] = useState<RecurringTemplate | null>(null)
+  const [togglingIds, setTogglingIds] = useState<Set<string>>(new Set())
+
+  async function handleToggle(t: RecurringTemplate) {
+    setTogglingIds((prev) => {
+      const next = new Set(prev)
+      next.add(t.id)
+      return next
+    })
+    try {
+      await update.mutateAsync({ id: t.id, input: { active: !t.active } })
+    } catch (err) {
+      toast.error('No se pudo cambiar el estado', err instanceof Error ? err.message : undefined)
+    } finally {
+      setTogglingIds((prev) => {
+        const next = new Set(prev)
+        next.delete(t.id)
+        return next
+      })
+    }
+  }
+
+  const expense = templates.filter((t) => t.type === 'expense')
+  const income = templates.filter((t) => t.type === 'income')
 
   return (
-    <div className="space-y-4 lg:space-y-5">
+    <div className="w-full space-y-4 lg:space-y-5">
       <PageHeader
         section="Recurrentes"
         page="Plantillas"
         actions={
           <button
             onClick={() => setModal({ mode: 'create' })}
-            className="btn-primary flex cursor-pointer items-center gap-2 rounded-lg bg-brand px-4 py-2 text-sm font-semibold text-white hover:bg-brand-hover"
+            className="flex cursor-pointer items-center gap-2 rounded-lg bg-brand px-4 py-2 text-sm font-semibold text-white hover:bg-brand-hover"
           >
             <svg
               xmlns="http://www.w3.org/2000/svg"
@@ -91,125 +119,30 @@ export default function RecurringPage() {
                 <path d="M21 11.8v2a4 4 0 0 1-4 4H4.2" />
               </svg>
             }
-            title="No tienes plantillas recurrentes"
+            title="Sin transacciones recurrentes"
             description="Crea plantillas para gastos o ingresos que se repiten cada semana, mes, trimestre o año."
           />
         </div>
       ) : (
-        <div className="overflow-hidden rounded-2xl border border-border bg-card shadow-sm">
-          <div className="grid grid-cols-[minmax(0,1fr)_120px_140px_120px_88px] gap-3 border-b border-border bg-surface px-5 py-3 text-[11px] font-semibold uppercase tracking-wider text-subtext">
-            <span>Descripción</span>
-            <span>Frecuencia</span>
-            <span className="text-right">Próxima fecha</span>
-            <span className="text-right">Importe</span>
-            <span className="text-right">Acciones</span>
-          </div>
-          <div className="divide-y divide-border/40">
-            {templates.map((t) => (
-              <div
-                key={t.id}
-                className="grid grid-cols-[minmax(0,1fr)_120px_140px_120px_88px] items-center gap-3 px-5 py-3 transition-colors hover:bg-surface/50"
-              >
-                <div>
-                  <p className="text-sm font-semibold text-text">{t.description}</p>
-                  <p className="text-xs text-subtext">
-                    {t.type === 'income' ? 'Ingreso' : 'Gasto'}
-                    {!t.active && ' · Pausada'}
-                  </p>
-                </div>
-                <span className="rounded-full bg-surface px-2.5 py-1 text-xs font-semibold text-subtext">
-                  {FREQ_LABELS[t.frequency]}
-                </span>
-                <span className="text-right text-sm tabular-nums text-subtext">
-                  {formatDate(t.nextDate)}
-                </span>
-                <span
-                  className={`text-right text-sm tabular-nums ${
-                    t.type === 'income' ? 'text-income' : 'text-expense'
-                  }`}
-                >
-                  {t.type === 'income' ? '+' : '−'}
-                  {formatCurrency(Number(t.amount))}
-                </span>
-                <div className="flex items-center justify-end gap-1">
-                  <button
-                    onClick={() =>
-                      update.mutate({ id: t.id, input: { active: !t.active } })
-                    }
-                    title={t.active ? 'Pausar' : 'Reanudar'}
-                    aria-label={t.active ? 'Pausar' : 'Reanudar'}
-                    className="cursor-pointer rounded p-1 text-subtext hover:bg-surface hover:text-text"
-                  >
-                    {t.active ? (
-                      <svg
-                        width="14"
-                        height="14"
-                        viewBox="0 0 24 24"
-                        fill="none"
-                        stroke="currentColor"
-                        strokeWidth="2"
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                      >
-                        <rect x="6" y="4" width="4" height="16" />
-                        <rect x="14" y="4" width="4" height="16" />
-                      </svg>
-                    ) : (
-                      <svg
-                        width="14"
-                        height="14"
-                        viewBox="0 0 24 24"
-                        fill="currentColor"
-                        stroke="none"
-                      >
-                        <polygon points="5 3 19 12 5 21 5 3" />
-                      </svg>
-                    )}
-                  </button>
-                  <button
-                    onClick={() => setModal({ mode: 'edit', template: t })}
-                    title="Editar"
-                    aria-label="Editar"
-                    className="cursor-pointer rounded p-1 text-subtext hover:bg-surface hover:text-text"
-                  >
-                    <svg
-                      width="14"
-                      height="14"
-                      viewBox="0 0 24 24"
-                      fill="none"
-                      stroke="currentColor"
-                      strokeWidth="2"
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                    >
-                      <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" />
-                      <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" />
-                    </svg>
-                  </button>
-                  <button
-                    onClick={() => setConfirmDelete(t)}
-                    title="Eliminar"
-                    aria-label="Eliminar"
-                    className="cursor-pointer rounded p-1 text-subtext hover:bg-expense-light hover:text-expense"
-                  >
-                    <svg
-                      width="14"
-                      height="14"
-                      viewBox="0 0 24 24"
-                      fill="none"
-                      stroke="currentColor"
-                      strokeWidth="2"
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                    >
-                      <path d="M3 6h18" />
-                      <path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6" />
-                    </svg>
-                  </button>
-                </div>
-              </div>
-            ))}
-          </div>
+        <div className="flex flex-col gap-4 lg:flex-row">
+          <TemplateColumn
+            title="Gastos recurrentes"
+            tone="expense"
+            items={expense}
+            toggling={togglingIds}
+            onToggle={handleToggle}
+            onEdit={(t) => setModal({ mode: 'edit', template: t })}
+            onDelete={setConfirmDelete}
+          />
+          <TemplateColumn
+            title="Ingresos recurrentes"
+            tone="income"
+            items={income}
+            toggling={togglingIds}
+            onToggle={handleToggle}
+            onEdit={(t) => setModal({ mode: 'edit', template: t })}
+            onDelete={setConfirmDelete}
+          />
         </div>
       )}
 
@@ -245,34 +178,232 @@ export default function RecurringPage() {
         onClose={() => setConfirmDelete(null)}
         title="Eliminar plantilla"
       >
-        <p className="text-sm text-subtext">
-          ¿Eliminar la plantilla <strong>{confirmDelete?.description}</strong>? Las transacciones
-          ya generadas permanecen.
-        </p>
-        <div className="flex gap-3 pt-4">
-          <button
-            onClick={() => setConfirmDelete(null)}
-            className="flex-1 cursor-pointer rounded-lg bg-surface py-2.5 text-sm font-medium text-subtext hover:bg-border"
-          >
-            Cancelar
-          </button>
-          <button
-            onClick={async () => {
-              if (!confirmDelete) return
-              try {
-                await remove.mutateAsync(confirmDelete.id)
-                toast.success('Eliminada')
-                setConfirmDelete(null)
-              } catch (err) {
-                toast.error('No se pudo eliminar', err instanceof Error ? err.message : undefined)
-              }
-            }}
-            className="flex-1 cursor-pointer rounded-lg bg-expense py-2.5 text-sm font-medium text-white hover:bg-expense-hover"
-          >
-            Eliminar
-          </button>
-        </div>
+        {confirmDelete && (
+          <div className="space-y-4">
+            <p className="text-sm text-text">
+              ¿Eliminar la plantilla{' '}
+              <span className="font-semibold">«{confirmDelete.description || 'Sin descripción'}»</span>?
+            </p>
+            <p className="text-xs leading-relaxed text-subtext">
+              Las transacciones ya generadas se mantienen, pero no se crearán nuevas.
+            </p>
+            <div className="flex gap-2 pt-2">
+              <button
+                onClick={() => setConfirmDelete(null)}
+                className="flex-1 cursor-pointer rounded-xl border border-border bg-surface py-2.5 text-sm font-semibold text-subtext transition-colors hover:bg-border hover:text-text"
+              >
+                Cancelar
+              </button>
+              <button
+                onClick={async () => {
+                  try {
+                    await remove.mutateAsync(confirmDelete.id)
+                    toast.success('Plantilla eliminada')
+                    setConfirmDelete(null)
+                  } catch (err) {
+                    toast.error('No se pudo eliminar', err instanceof Error ? err.message : undefined)
+                  }
+                }}
+                className="flex-1 cursor-pointer rounded-xl bg-expense py-2.5 text-sm font-semibold text-white hover:bg-expense-hover"
+              >
+                Eliminar
+              </button>
+            </div>
+          </div>
+        )}
       </Modal>
+    </div>
+  )
+}
+
+interface TemplateColumnProps {
+  title: string
+  tone: 'expense' | 'income'
+  items: RecurringTemplate[]
+  toggling: Set<string>
+  onToggle: (t: RecurringTemplate) => void
+  onEdit: (t: RecurringTemplate) => void
+  onDelete: (t: RecurringTemplate) => void
+}
+
+function TemplateColumn({
+  title,
+  tone,
+  items,
+  toggling,
+  onToggle,
+  onEdit,
+  onDelete,
+}: TemplateColumnProps) {
+  return (
+    <div className="flex-1 overflow-hidden rounded-xl border border-border bg-card shadow-sm">
+      <div
+        className={`flex items-center gap-2 border-b border-border px-5 py-3 ${
+          tone === 'expense' ? 'bg-expense-light' : 'bg-income-light'
+        }`}
+      >
+        <div
+          className={`h-2 w-2 rounded-full ${tone === 'expense' ? 'bg-expense' : 'bg-income'}`}
+        />
+        <h3
+          className={`text-sm font-bold ${tone === 'expense' ? 'text-expense' : 'text-income'}`}
+        >
+          {title}
+        </h3>
+        <span className="ml-auto text-xs text-subtext">{items.length}</span>
+      </div>
+      <div className="divide-y divide-border/40">
+        {items.length === 0 ? (
+          <p className="px-5 py-4 text-sm text-subtext italic">
+            Sin {tone === 'expense' ? 'gastos' : 'ingresos'} recurrentes
+          </p>
+        ) : (
+          items.map((t, i) => (
+            <TemplateRow
+              key={t.id}
+              tpl={t}
+              staggerIndex={i}
+              toggling={toggling.has(t.id)}
+              onToggle={onToggle}
+              onEdit={onEdit}
+              onDelete={onDelete}
+            />
+          ))
+        )}
+      </div>
+    </div>
+  )
+}
+
+interface TemplateRowProps {
+  tpl: RecurringTemplate
+  staggerIndex?: number
+  toggling: boolean
+  onToggle: (t: RecurringTemplate) => void
+  onEdit: (t: RecurringTemplate) => void
+  onDelete: (t: RecurringTemplate) => void
+}
+
+function TemplateRow({
+  tpl,
+  staggerIndex = 0,
+  toggling,
+  onToggle,
+  onEdit,
+  onDelete,
+}: TemplateRowProps) {
+  const description = tpl.description || 'Sin descripción'
+  return (
+    <div
+      data-stagger={staggerIndex % 8}
+      className="tx-row group flex items-center gap-3 px-5 py-3.5 transition-colors hover:bg-surface/60"
+    >
+      <div
+        className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-lg ${
+          tpl.type === 'income' ? 'bg-income-light' : 'bg-expense-light'
+        }`}
+      >
+        <svg
+          xmlns="http://www.w3.org/2000/svg"
+          width="14"
+          height="14"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="2.5"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          className={tpl.type === 'income' ? 'text-income' : 'text-expense'}
+        >
+          {tpl.type === 'income' ? (
+            <path d="M12 19V5M5 12l7-7 7 7" />
+          ) : (
+            <path d="M12 5v14M5 12l7 7 7-7" />
+          )}
+        </svg>
+      </div>
+      <div className="min-w-0 flex-1">
+        <p className="truncate text-sm font-semibold text-text">{description}</p>
+        <p className="text-xs text-subtext">
+          Próx: {tpl.nextDate}
+          {!tpl.active && ' · Pausada'}
+        </p>
+      </div>
+      <span
+        className={`rounded-full px-2.5 py-1 text-xs font-semibold whitespace-nowrap ${
+          FREQ_COLORS[tpl.frequency] ?? FREQ_COLORS.annual
+        }`}
+      >
+        {FREQ_LABELS[tpl.frequency] ?? tpl.frequency}
+      </span>
+      <span
+        className={`w-24 text-right text-sm font-bold tabular-nums ${
+          tpl.type === 'income' ? 'text-income' : 'text-expense'
+        }`}
+      >
+        {tpl.type === 'income' ? '+' : '−'}
+        {formatCurrency(Number(tpl.amount))}
+      </span>
+      <button
+        onClick={() => onToggle(tpl)}
+        disabled={toggling}
+        title={tpl.active ? 'Pausar' : 'Activar'}
+        aria-label={tpl.active ? `Pausar ${description}` : `Activar ${description}`}
+        className="cursor-pointer disabled:cursor-wait disabled:opacity-60"
+      >
+        <div
+          className={`toggle-switch relative h-5 w-9 rounded-full ${
+            tpl.active ? 'toggle-on bg-brand' : 'bg-border'
+          }`}
+        >
+          <span
+            className={`toggle-thumb absolute top-0.5 left-0.5 h-4 w-4 rounded-full bg-white shadow ${
+              tpl.active ? 'toggle-thumb-on-sm' : ''
+            }`}
+          />
+        </div>
+      </button>
+      <button
+        onClick={() => onEdit(tpl)}
+        aria-label={`Editar ${description}`}
+        className="cursor-pointer rounded-lg p-1.5 text-subtext opacity-0 transition-all group-hover:opacity-100 hover:bg-surface hover:text-text"
+      >
+        <svg
+          xmlns="http://www.w3.org/2000/svg"
+          width="13"
+          height="13"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="2"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+        >
+          <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" />
+          <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" />
+        </svg>
+      </button>
+      <button
+        onClick={() => onDelete(tpl)}
+        aria-label={`Eliminar ${description}`}
+        className="cursor-pointer rounded-lg p-1.5 text-subtext opacity-0 transition-all group-hover:opacity-100 hover:bg-expense-light hover:text-expense"
+      >
+        <svg
+          xmlns="http://www.w3.org/2000/svg"
+          width="13"
+          height="13"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="2"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+        >
+          <path d="M3 6h18" />
+          <path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6" />
+          <path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2" />
+        </svg>
+      </button>
     </div>
   )
 }
@@ -304,7 +435,6 @@ function RecurringForm({
   const parsedAmount = parseFloat(amount)
   const valid = !isNaN(parsedAmount) && parsedAmount > 0 && description.trim().length > 0
 
-  // Mantenemos categories importado para que la lista de filtros tenga sentido
   void categories
 
   async function handleSubmit(e: React.FormEvent) {

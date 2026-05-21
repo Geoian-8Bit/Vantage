@@ -23,6 +23,10 @@ interface TransactionFormProps {
   onCancel: () => void
   initialValues?: InitialValues
   onDirtyChange?: (dirty: boolean) => void
+  /** Si está fijado, la transacción se vincula a este apartado y se omite el cambio de tipo. */
+  presetSavingsAccountId?: string
+  /** Si está fijado, la transacción se vincula a esta deuda (pago extra / cuota manual). */
+  presetDebtId?: string
 }
 
 const PAYMENT_METHODS = ['Efectivo', 'Visa', 'Transferencia', 'Bizum'] as const
@@ -33,6 +37,8 @@ export function TransactionForm({
   onCancel,
   initialValues,
   onDirtyChange,
+  presetSavingsAccountId,
+  presetDebtId,
 }: TransactionFormProps) {
   const { categories } = useCategories()
 
@@ -120,6 +126,8 @@ export function TransactionForm({
         date,
         category,
         note: finalNote,
+        ...(presetSavingsAccountId ? { savingsAccountId: presetSavingsAccountId } : {}),
+        ...(presetDebtId ? { debtId: presetDebtId } : {}),
       })
       setSuccess(true)
       onDirtyChange?.(false)
