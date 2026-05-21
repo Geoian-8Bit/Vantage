@@ -96,7 +96,6 @@ const navItems: NavItem[] = [
     id: 'savings',
     href: '/savings',
     label: 'Ahorros',
-    disabled: true,
     icon: (
       <svg
         xmlns="http://www.w3.org/2000/svg"
@@ -117,7 +116,6 @@ const navItems: NavItem[] = [
     id: 'debts',
     href: '/debts',
     label: 'Deudas',
-    disabled: true,
     icon: (
       <svg
         xmlns="http://www.w3.org/2000/svg"
@@ -141,7 +139,6 @@ const navItems: NavItem[] = [
     id: 'analytics',
     href: '/analytics',
     label: 'Estadísticas',
-    disabled: true,
     icon: (
       <svg
         xmlns="http://www.w3.org/2000/svg"
@@ -164,7 +161,6 @@ const navItems: NavItem[] = [
     id: 'calendar',
     href: '/calendar',
     label: 'Calendario',
-    disabled: true,
     icon: (
       <svg
         xmlns="http://www.w3.org/2000/svg"
@@ -188,7 +184,6 @@ const navItems: NavItem[] = [
     id: 'settings',
     href: '/settings',
     label: 'Ajustes',
-    disabled: true,
     icon: (
       <svg
         xmlns="http://www.w3.org/2000/svg"
