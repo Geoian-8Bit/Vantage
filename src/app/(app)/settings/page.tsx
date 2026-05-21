@@ -949,6 +949,36 @@ function ImportView({ onBack }: { onBack: () => void }) {
     try {
       const fd = new FormData()
       fd.append('file', file)
+      const lower = file.name.toLowerCase()
+      const isAccess = lower.endsWith('.mdb') || lower.endsWith('.accdb')
+
+      if (isAccess) {
+        const res = await fetch('/api/import/access', { method: 'POST', body: fd })
+        const body = (await res.json()) as
+          | {
+              data: {
+                inserted: number
+                expensesInserted: number
+                incomesInserted: number
+                categoriesCreated: number
+                errors: string[]
+              }
+            }
+          | { error: { message: string } }
+        if (!res.ok || 'error' in body) {
+          const msg = 'error' in body ? body.error.message : 'Error al leer el archivo'
+          throw new Error(msg)
+        }
+        const s = body.data
+        const errBit =
+          s.errors.length > 0 ? ` · ${s.errors.length} con errores` : ''
+        toast.success(
+          `${s.inserted} movimientos importados`,
+          `${s.expensesInserted} gastos · ${s.incomesInserted} ingresos · ${s.categoriesCreated} categorías${errBit}`
+        )
+        return
+      }
+
       const res = await fetch('/api/import/parse', { method: 'POST', body: fd })
       const body = (await res.json()) as
         | { data: ParsedFile }
@@ -1052,13 +1082,17 @@ function ImportView({ onBack }: { onBack: () => void }) {
               </svg>
             </div>
             <div>
-              <h3 className="text-base font-bold text-text">Sube un Excel o CSV</h3>
+              <h3 className="text-base font-bold text-text">Sube un Excel, CSV o Access</h3>
               <p className="mt-1.5 max-w-md text-xs leading-relaxed text-subtext">
-                Detectamos automáticamente las columnas de Fecha, Importe, Tipo, Descripción y
-                Categoría. Podrás revisar el mapping antes de importar.
+                <strong>.xlsx/.xls/.csv</strong>: detectamos columnas y muestras un preview
+                con mapping editable.
+                <br />
+                <strong>.mdb/.accdb</strong> (Geshogar): si encontramos las tablas
+                Apuntes_Gastos/Apuntes_Ingresos/Cuentas, importamos todo automáticamente
+                (categorías + gastos + ingresos).
               </p>
               <p className="mt-2 text-[11px] text-subtext">
-                Formatos: <strong>.xlsx, .xls, .csv</strong> · Máx 5 MB · Hasta 500 filas
+                Formatos: <strong>.xlsx, .xls, .csv, .mdb, .accdb</strong> · Máx 25 MB
               </p>
             </div>
             <label
@@ -1068,7 +1102,7 @@ function ImportView({ onBack }: { onBack: () => void }) {
             >
               <input
                 type="file"
-                accept=".xlsx,.xls,.csv"
+                accept=".xlsx,.xls,.csv,.mdb,.accdb"
                 disabled={parsing}
                 onChange={(e) => {
                   const f = e.target.files?.[0]
@@ -1086,9 +1120,6 @@ function ImportView({ onBack }: { onBack: () => void }) {
                 'Elegir archivo'
               )}
             </label>
-            <p className="text-[11px] text-subtext">
-              La importación desde Microsoft Access (.mdb, .accdb) estará disponible próximamente.
-            </p>
           </div>
         </div>
       ) : (

@@ -1,6 +1,7 @@
 'use client'
 
 import { useMemo, useState } from 'react'
+import { useQueryClient } from '@tanstack/react-query'
 
 import { PageHeader } from '@/components/layout/PageHeader'
 import { TiltCard } from '@/components/ui/TiltCard'
@@ -19,10 +20,7 @@ import {
   useDeleteDebt,
   useUpdateDebt,
 } from '@/features/debts/ui/useDebts'
-import {
-  useCreateTransaction,
-  useTransactions,
-} from '@/features/transactions/ui/useTransactions'
+import { useTransactions } from '@/features/transactions/ui/useTransactions'
 import { TransactionForm } from '@/features/transactions/ui/TransactionForm'
 import { useSavings } from '@/features/savings/ui/useSavings'
 import { DebtSimulator } from '@/features/debts/ui/DebtSimulator'
@@ -47,8 +45,8 @@ export default function DebtsPage() {
   const create = useCreateDebt()
   const update = useUpdateDebt()
   const remove = useDeleteDebt()
-  const createTx = useCreateTransaction()
   const toast = useToast()
+  const qcDebts = useQueryClient()
 
   const [activeTab, setActiveTab] = useState<DebtsTab>('active')
   const [modal, setModal] = useState<{ mode: 'create' } | { mode: 'edit'; debt: Debt } | null>(
@@ -475,27 +473,35 @@ export default function DebtsPage() {
             }}
             onSubmit={async (data) => {
               try {
-                const remainingBefore = Math.max(
-                  0,
-                  Number(extraTarget.initialAmount) - (paidByDebt.get(extraTarget.id) ?? 0)
-                )
-                const amt = Number(data.amount)
-                const remainingAfter = Math.max(0, remainingBefore - amt)
-                await createTx.mutateAsync(data)
-                if (remainingAfter <= 0.005) {
-                  try {
-                    await update.mutateAsync({
-                      id: extraTarget.id,
-                      input: { archivedAt: new Date().toISOString() },
-                    })
-                    toast.success('Deuda saldada', `Has terminado con "${extraTarget.name}".`)
-                  } catch {
-                    toast.success('Pago registrado')
-                  }
+                // Endpoint dedicado: crea la transacción y archiva la deuda
+                // si con el pago queda saldada, todo server-side.
+                const res = await fetch(`/api/debts/${extraTarget.id}/extra-payment`, {
+                  method: 'POST',
+                  headers: { 'Content-Type': 'application/json' },
+                  body: JSON.stringify({
+                    amount: data.amount,
+                    date: data.date,
+                    note: data.note,
+                  }),
+                })
+                const body = (await res.json()) as
+                  | { data: { archived: boolean; pendingAfter: number } }
+                  | { error: { message: string } }
+                if (!res.ok || 'error' in body) {
+                  throw new Error(
+                    'error' in body ? body.error.message : 'No se pudo registrar'
+                  )
+                }
+                await Promise.all([
+                  qcDebts.invalidateQueries({ queryKey: ['transactions'] }),
+                  qcDebts.invalidateQueries({ queryKey: ['debts'] }),
+                ])
+                if (body.data.archived) {
+                  toast.success('Deuda saldada', `Has terminado con "${extraTarget.name}".`)
                 } else {
                   toast.success(
                     'Pago registrado',
-                    `Quedan ${formatCurrency(remainingAfter)} por pagar.`
+                    `Quedan ${formatCurrency(body.data.pendingAfter)} por pagar.`
                   )
                 }
                 setExtraTarget(null)

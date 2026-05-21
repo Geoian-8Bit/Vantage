@@ -343,29 +343,28 @@ export default function TransactionsPage() {
       return next
     })
     try {
-      // Borramos en serie usando el mutate del hook (la última invalidación
-      // refresca la lista). Si alguno falla, mostramos cuántos sí se borraron.
-      let okCount = 0
-      let firstError: unknown = null
-      for (const id of ids) {
-        try {
-          await remove.mutateAsync(id)
-          okCount++
-        } catch (err) {
-          if (!firstError) firstError = err
-        }
+      const res = await fetch('/api/transactions/bulk-delete', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ ids }),
+      })
+      const body = (await res.json()) as
+        | { data: { removed: number; requested: number } }
+        | { error: { message: string } }
+      if (!res.ok || 'error' in body) {
+        throw new Error('error' in body ? body.error.message : 'Error al eliminar')
       }
-      if (okCount === ids.length) {
-        toast.success(`${okCount} movimientos eliminados`)
-      } else if (okCount > 0) {
-        toast.warning(`${okCount} de ${ids.length} eliminados`, 'Algunos fallaron')
+      const { removed, requested } = body.data
+      // Invalidamos para refrescar la lista en pantalla
+      await queryClient.invalidateQueries({ queryKey: ['transactions'] })
+      if (removed === requested) {
+        toast.success(`${removed} movimientos eliminados`)
       } else {
-        toast.error(
-          'No se pudo eliminar',
-          firstError instanceof Error ? firstError.message : undefined
-        )
+        toast.warning(`${removed} de ${requested} eliminados`, 'Algunos no se encontraron')
       }
       setConfirmBulkDelete(false)
+    } catch (err) {
+      toast.error('No se pudo eliminar', err instanceof Error ? err.message : undefined)
     } finally {
       setBulkDeleting(false)
       setRemovingIds((prev) => {
@@ -374,7 +373,7 @@ export default function TransactionsPage() {
         return next
       })
     }
-  }, [filteredTransactions, bulkDeleting, remove, toast])
+  }, [filteredTransactions, bulkDeleting, queryClient, toast])
 
   const handleDeleteConfirm = useCallback(async () => {
     if (!confirmDeleteId) return
