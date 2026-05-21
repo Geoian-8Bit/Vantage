@@ -8,6 +8,13 @@
       "when": 1779353243092,
       "tag": "0000_graceful_gambit",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1779375770840,
+      "tag": "0001_fair_tigra",
+      "breakpoints": true
     }
   ]
 }

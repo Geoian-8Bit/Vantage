@@ -16,6 +16,7 @@ export const transactionSchema = z.object({
   description: z.string(),
   note: z.string(),
   date: z.string(),
+  category: z.string(),
   categoryId: z.string().uuid().nullable(),
   savingsAccountId: z.string().uuid().nullable(),
   debtId: z.string().uuid().nullable(),
@@ -45,6 +46,7 @@ export const createTransactionInputSchema = z.object({
   description: z.string().min(1, 'La descripción es obligatoria').max(200),
   note: z.string().max(1000).default(''),
   date: dateSchema,
+  category: z.string().min(1).max(50).default('Otros'),
   categoryId: z.string().uuid().nullable().optional(),
   savingsAccountId: z.string().uuid().nullable().optional(),
   debtId: z.string().uuid().nullable().optional(),
@@ -56,6 +58,7 @@ export type UpdateTransactionInput = z.infer<typeof updateTransactionInputSchema
 
 export const listTransactionsQuerySchema = z.object({
   type: txTypeSchema.optional(),
+  category: z.string().optional(),
   categoryId: z.string().uuid().optional(),
   fromDate: dateSchema.optional(),
   toDate: dateSchema.optional(),

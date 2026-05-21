@@ -33,7 +33,7 @@ async function api<T>(input: RequestInfo, init?: RequestInit): Promise<T> {
 export function useTransactions() {
   return useQuery({
     queryKey: KEY,
-    queryFn: () => api<Transaction[]>('/api/transactions'),
+    queryFn: () => api<Transaction[]>('/api/transactions?limit=500'),
   })
 }
 

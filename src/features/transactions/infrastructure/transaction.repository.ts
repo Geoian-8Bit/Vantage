@@ -21,6 +21,7 @@ function toDomain(row: typeof transactions.$inferSelect): Transaction {
     description: row.description,
     note: row.note,
     date: row.date,
+    category: row.category,
     categoryId: row.categoryId,
     savingsAccountId: row.savingsAccountId,
     debtId: row.debtId,
@@ -34,6 +35,7 @@ export const transactionRepository = {
   async findAll(spaceId: string, query: ListTransactionsQuery): Promise<Transaction[]> {
     const conditions = [eq(transactions.spaceId, spaceId)]
     if (query.type) conditions.push(eq(transactions.type, query.type))
+    if (query.category) conditions.push(eq(transactions.category, query.category))
     if (query.categoryId) conditions.push(eq(transactions.categoryId, query.categoryId))
     if (query.fromDate) conditions.push(gte(transactions.date, query.fromDate))
     if (query.toDate) conditions.push(lte(transactions.date, query.toDate))
@@ -74,6 +76,7 @@ export const transactionRepository = {
         description: input.description,
         note: input.note ?? '',
         date: input.date,
+        category: input.category ?? 'Otros',
         categoryId: input.categoryId ?? null,
         savingsAccountId: input.savingsAccountId ?? null,
         debtId: input.debtId ?? null,

@@ -232,6 +232,7 @@ export const transactions = pgTable(
     description: text('description').notNull().default(''),
     note: text('note').notNull().default(''),
     date: date('date').notNull(),
+    category: text('category').notNull().default('Otros'),
     categoryId: uuid('category_id').references(() => categories.id, { onDelete: 'set null' }),
     savingsAccountId: uuid('savings_account_id').references(() => savingsAccounts.id, {
       onDelete: 'set null',
