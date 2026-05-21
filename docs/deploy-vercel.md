@@ -57,7 +57,7 @@ Para coger la del pooler en modo Transaction:
 4. URI: copia, sustituye `[YOUR-PASSWORD]` por la contraseña real.
 5. Quedará:
    ```
-   postgresql://postgres.syhtdsbhltfonuydfbme:Inazuma_2002@aws-1-eu-central-1.pooler.supabase.com:6543/postgres
+   postgresql://postgres.syhtdsbhltfonuydfbme:[YOUR-PASSWORD]@aws-1-eu-central-1.pooler.supabase.com:6543/postgres
    ```
 
 ## 6. Deploy
