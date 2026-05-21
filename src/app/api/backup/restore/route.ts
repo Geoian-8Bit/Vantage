@@ -4,6 +4,7 @@ import { z } from 'zod'
 import { getActiveSpace } from '@/lib/auth/space'
 import { requireUser } from '@/lib/auth/session'
 import { jsonOk, jsonError } from '@/lib/api/response'
+import { ValidationError } from '@/lib/api/errors'
 import {
   isSqliteFile,
   parseLegacyDatabase,
@@ -294,7 +295,13 @@ export async function POST(request: NextRequest) {
       const name = file.name.toLowerCase()
 
       if (isSqliteFile(buf) || name.endsWith('.db') || name.endsWith('.sqlite')) {
-        const data = await parseLegacyDatabase(buf)
+        let data
+        try {
+          data = await parseLegacyDatabase(buf)
+        } catch (err) {
+          const msg = err instanceof Error ? err.message : String(err)
+          return jsonError(new ValidationError(`No se pudo leer el .db SQLite: ${msg}`))
+        }
         stats = await importLegacy(space.id, user.id, data)
       } else {
         // Asumimos JSON

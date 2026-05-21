@@ -45,27 +45,47 @@ export interface LegacyExport {
   }>
 }
 
-let cachedWasmBinary: Uint8Array | null = null
+let cachedWasmPath: string | null = null
 
-function loadWasmBinary(): Uint8Array {
-  if (cachedWasmBinary) return cachedWasmBinary
-  // En Vercel serverless, los assets incluidos via outputFileTracingIncludes
-  // viven en process.cwd() bajo node_modules/.
-  const wasmPath = path.join(
-    process.cwd(),
-    'node_modules',
-    'sql.js',
-    'dist',
-    'sql-wasm.wasm'
+/**
+ * Resuelve el path al sql-wasm.wasm en runtime. En serverless Vercel los
+ * assets viven dentro del bundle, pero pueden estar en distintas rutas según
+ * el bundling. Probamos varias y cacheamos la primera que existe.
+ */
+function resolveWasmPath(): string {
+  if (cachedWasmPath) return cachedWasmPath
+
+  // Construimos el path con string concatenation para evitar que webpack
+  // detecte el import del .wasm e intente bundlarlo como módulo.
+  // En Vercel los assets viven en process.cwd() (= /var/task) tras el tracing.
+  const sqlJsDir = path.join(process.cwd(), 'node_modules', 'sql.js', 'dist')
+  const wasmName = 'sql-wasm.wasm'
+  const candidates: string[] = [
+    path.join(sqlJsDir, wasmName),
+    // Algunas configs bundlan node_modules dentro de la función
+    path.join(process.cwd(), '.next', 'server', 'node_modules', 'sql.js', 'dist', wasmName),
+  ]
+
+  for (const p of candidates) {
+    try {
+      readFileSync(p)
+      cachedWasmPath = p
+      return p
+    } catch {
+      // sigue probando
+    }
+  }
+  throw new Error(
+    `No se pudo encontrar sql-wasm.wasm. Intentado: ${candidates.join(' | ')}. CWD=${process.cwd()}`
   )
-  const buf = readFileSync(wasmPath)
-  cachedWasmBinary = new Uint8Array(buf)
-  return cachedWasmBinary
 }
 
 async function openDatabase(buffer: Buffer): Promise<Database> {
-  const wasmBinary = loadWasmBinary()
-  const SQL = await initSqlJs({ wasmBinary: wasmBinary.buffer as ArrayBuffer })
+  const wasmPath = resolveWasmPath()
+  // En Node, sql.js carga el WASM con su propio fs.readFile cuando se le
+  // pasa locateFile. Es más fiable que pasar wasmBinary porque evita issues
+  // con el shape del ArrayBuffer derivado de un Buffer.
+  const SQL = await initSqlJs({ locateFile: () => wasmPath })
   return new SQL.Database(new Uint8Array(buffer))
 }
 
