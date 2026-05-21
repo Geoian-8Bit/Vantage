@@ -1253,12 +1253,11 @@ function BackupView({ onBack }: { onBack: () => void }) {
     if (!pendingFile || restoring) return
     setRestoring(true)
     try {
-      const text = await pendingFile.text()
-      const parsed = JSON.parse(text)
+      const fd = new FormData()
+      fd.append('file', pendingFile)
       const res = await fetch('/api/backup/restore', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(parsed),
+        body: fd,
       })
       const body = (await res.json()) as
         | { data: { transactions: number; categories: number; savings: number; debts: number; recurring: number; skipped: number } }
@@ -1389,9 +1388,10 @@ function BackupView({ onBack }: { onBack: () => void }) {
               Restaurar desde JSON
             </p>
             <p className="mt-1.5 text-xs leading-relaxed text-subtext">
-              Sube un archivo de copia previa. Los datos se{' '}
-              <strong className="text-text">añaden</strong> a tu espacio actual (no reemplaza
-              lo existente).
+              Sube un <strong className="text-text">.json</strong> de Vantage o el{' '}
+              <strong className="text-text">.db</strong> SQLite del Electron antiguo. Los
+              datos se <strong className="text-text">añaden</strong> a tu espacio actual
+              (no reemplaza lo existente).
             </p>
             <p className="mt-2 flex items-start gap-1.5 text-[11px] leading-snug text-subtext">
               <svg
@@ -1412,8 +1412,8 @@ function BackupView({ onBack }: { onBack: () => void }) {
                 <line x1="12" y1="17" x2="12.01" y2="17" />
               </svg>
               <span>
-                Los IDs de apartados/deudas se regeneran al importar, por lo que las
-                transacciones se reasocian solo por su categoría textual.
+                Si subes un .db SQLite las transacciones recuperan su vínculo con apartados
+                y deudas. Desde .json se mantiene solo la categoría textual.
               </span>
             </p>
           </div>
@@ -1424,7 +1424,7 @@ function BackupView({ onBack }: { onBack: () => void }) {
           >
             <input
               type="file"
-              accept="application/json,.json"
+              accept=".json,application/json,.db,.sqlite"
               onChange={handleFilePick}
               disabled={restoring}
               className="hidden"
@@ -1435,7 +1435,7 @@ function BackupView({ onBack }: { onBack: () => void }) {
                 Restaurando…
               </>
             ) : (
-              'Elegir archivo .json'
+              'Elegir archivo (.json o .db)'
             )}
           </label>
         </TiltCard>

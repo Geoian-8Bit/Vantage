@@ -383,7 +383,7 @@ export default function AnalyticsPage() {
       : `Ingresos vs Gastos · ${periodLabel}`
 
   async function handleExportPDF() {
-    if (exportingPDF || periodTransactions.length === 0) return
+    if (exportingPDF) return
     setExportingPDF(true)
     try {
       const cats = categoryData.map((c) => ({
@@ -451,7 +451,7 @@ export default function AnalyticsPage() {
         actions={
           <button
             onClick={handleExportPDF}
-            disabled={periodTransactions.length === 0 || exportingPDF}
+            disabled={exportingPDF}
             className="flex cursor-pointer items-center gap-1.5 rounded-lg border border-border bg-surface px-3 py-1.5 text-xs font-medium text-subtext transition-colors hover:bg-border disabled:cursor-not-allowed disabled:opacity-40"
           >
             {exportingPDF ? (
