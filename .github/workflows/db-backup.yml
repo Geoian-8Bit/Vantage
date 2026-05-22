@@ -1,0 +1,64 @@
+name: DB Backup
+
+# Backup semanal de la DB Supabase con pg_dump. El dump comprimido se sube
+# como artifact del run y se conserva 90 dias. Para descargar uno: pestaña
+# Actions del repo → este workflow → run → "Artifacts" abajo.
+#
+# Requisitos:
+# - Secret DATABASE_URL en Settings → Secrets and variables → Actions.
+#   Usar el connection string Modo Session (puerto 5432) de Supabase →
+#   Project Settings → Database → Connection string → URI.
+#
+# Trigger manual disponible (workflow_dispatch) para probar sin esperar al
+# domingo.
+
+on:
+  schedule:
+    # Domingos a las 03:00 UTC
+    - cron: '0 3 * * 0'
+  workflow_dispatch:
+
+jobs:
+  backup:
+    name: pg_dump del schema public
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Install PostgreSQL 17 client
+        # Supabase corre Postgres 17. El cliente por defecto de Ubuntu es
+        # mas antiguo y daria warnings de version mismatch. Anadimos el
+        # repo apt oficial de PostgreSQL y solo el cliente.
+        run: |
+          sudo install -d /usr/share/postgresql-common/pgdg
+          sudo curl -o /usr/share/postgresql-common/pgdg/apt.postgresql.org.asc \
+            --fail https://www.postgresql.org/media/keys/ACCC4CF8.asc
+          echo "deb [signed-by=/usr/share/postgresql-common/pgdg/apt.postgresql.org.asc] https://apt.postgresql.org/pub/repos/apt $(lsb_release -cs)-pgdg main" \
+            | sudo tee /etc/apt/sources.list.d/pgdg.list
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq postgresql-client-17
+
+      - name: Backup database
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+        run: |
+          if [ -z "$DATABASE_URL" ]; then
+            echo "::error::DATABASE_URL secret no esta configurado"
+            exit 1
+          fi
+          FILENAME="vantage_backup_$(date -u +%Y-%m-%d).sql"
+          pg_dump \
+            --schema=public \
+            --clean --if-exists \
+            --quote-all-identifiers \
+            --no-owner --no-privileges \
+            "$DATABASE_URL" > "$FILENAME"
+          gzip "$FILENAME"
+          ls -lh "${FILENAME}.gz"
+
+      - name: Upload backup as artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: vantage-backup-${{ github.run_id }}
+          path: vantage_backup_*.sql.gz
+          retention-days: 90
+          if-no-files-found: error
