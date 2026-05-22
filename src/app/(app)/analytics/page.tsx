@@ -448,32 +448,34 @@ export default function AnalyticsPage() {
           <button
             onClick={handleExportPDF}
             disabled={exportingPDF}
-            className="hidden cursor-pointer items-center gap-1.5 rounded-lg border border-border bg-surface px-3 py-1.5 text-xs font-medium text-subtext transition-colors hover:bg-border disabled:cursor-not-allowed disabled:opacity-40 sm:flex"
+            aria-label="Exportar PDF"
+            className="flex cursor-pointer items-center gap-1.5 rounded-lg border border-border bg-surface p-2 text-xs font-medium text-subtext transition-colors hover:bg-border disabled:cursor-not-allowed disabled:opacity-40 sm:px-3 sm:py-1.5"
           >
             {exportingPDF ? (
               <>
-                <span className="h-3 w-3 animate-spin rounded-full border-2 border-subtext/30 border-t-subtext" />
-                Generando PDF…
+                <span className="h-3.5 w-3.5 animate-spin rounded-full border-2 border-subtext/30 border-t-subtext sm:h-3 sm:w-3" />
+                <span className="hidden sm:inline">Generando PDF…</span>
               </>
             ) : (
               <>
                 <svg
                   xmlns="http://www.w3.org/2000/svg"
-                  width="13"
-                  height="13"
+                  width="15"
+                  height="15"
                   viewBox="0 0 24 24"
                   fill="none"
                   stroke="currentColor"
                   strokeWidth="2"
                   strokeLinecap="round"
                   strokeLinejoin="round"
+                  className="sm:h-[13px] sm:w-[13px]"
                 >
                   <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
                   <polyline points="14 2 14 8 20 8" />
                   <line x1="16" y1="13" x2="8" y2="13" />
                   <line x1="16" y1="17" x2="8" y2="17" />
                 </svg>
-                Exportar PDF
+                <span className="hidden sm:inline">Exportar PDF</span>
               </>
             )}
           </button>
@@ -611,7 +613,7 @@ export default function AnalyticsPage() {
         }`}
         style={{ animationDelay: '0ms' }}
       >
-        <p className="mb-1 text-xs font-semibold tracking-wider text-subtext uppercase">
+        <p className="mb-1 text-[11px] font-semibold tracking-wider text-subtext uppercase sm:text-xs">
           Balance del periodo
         </p>
         <p
@@ -619,8 +621,8 @@ export default function AnalyticsPage() {
             periodStats.balance >= 0 ? 'text-text' : 'text-expense'
           }`}
           style={{
-            fontSize: 'clamp(1.75rem, 3.5vw, 2.5rem)',
-            lineHeight: 1.1,
+            fontSize: 'clamp(2.25rem, 10vw, 2.5rem)',
+            lineHeight: 1.05,
             fontFamily: 'var(--font-display)',
             letterSpacing: 'var(--letter-spacing-display)',
           }}
@@ -636,7 +638,7 @@ export default function AnalyticsPage() {
             </p>
             <p
               className="truncate font-bold tabular-nums text-income"
-              style={{ fontSize: 'clamp(0.95rem, 1.5vw, 1.15rem)' }}
+              style={{ fontSize: 'clamp(1.05rem, 4.5vw, 1.15rem)' }}
               title={formatCurrency(periodStats.income)}
             >
               {formatCurrency(periodStats.income)}
@@ -648,7 +650,7 @@ export default function AnalyticsPage() {
             </p>
             <p
               className="truncate font-bold tabular-nums text-expense"
-              style={{ fontSize: 'clamp(0.95rem, 1.5vw, 1.15rem)' }}
+              style={{ fontSize: 'clamp(1.05rem, 4.5vw, 1.15rem)' }}
               title={formatCurrency(periodStats.expenses)}
             >
               {formatCurrency(periodStats.expenses)}
@@ -662,7 +664,7 @@ export default function AnalyticsPage() {
               className={`truncate font-bold tabular-nums ${
                 periodStats.savedNet >= 0 ? 'text-brand' : 'text-subtext'
               }`}
-              style={{ fontSize: 'clamp(0.95rem, 1.5vw, 1.15rem)' }}
+              style={{ fontSize: 'clamp(1.05rem, 4.5vw, 1.15rem)' }}
               title={`${periodStats.savedNet >= 0 ? '+' : '−'}${formatCurrency(Math.abs(periodStats.savedNet))}`}
             >
               {periodStats.savedNet >= 0 ? '+' : '−'}
@@ -1015,16 +1017,17 @@ export default function AnalyticsPage() {
               <div className="border-b border-border px-4 py-3 sm:px-5">
                 <h3 className="text-sm font-semibold text-text">Comparativa mensual</h3>
               </div>
-              <div className="overflow-x-auto">
-                <table className="w-full text-sm">
+              <div className="relative">
+                <div className="overflow-x-auto">
+                  <table className="w-full text-sm">
                   <thead>
                     <tr className="bg-surface text-xs font-semibold tracking-wider text-subtext uppercase">
-                      <th className="px-5 py-2.5 text-left">Mes</th>
-                      <th className="px-5 py-2.5 text-right">Ingresos</th>
-                      <th className="px-5 py-2.5 text-right">Gastos</th>
-                      <th className="px-5 py-2.5 text-right">Ahorrado</th>
-                      <th className="px-5 py-2.5 text-right">Balance</th>
-                      <th className="px-5 py-2.5 text-right">Δ Gastos</th>
+                      <th className="px-3 py-2.5 text-left sm:px-5">Mes</th>
+                      <th className="px-3 py-2.5 text-right sm:px-5">Ingresos</th>
+                      <th className="px-3 py-2.5 text-right sm:px-5">Gastos</th>
+                      <th className="px-3 py-2.5 text-right sm:px-5">Ahorrado</th>
+                      <th className="px-3 py-2.5 text-right sm:px-5">Balance</th>
+                      <th className="px-3 py-2.5 text-right sm:px-5">Δ Gastos</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-border/40">
@@ -1034,29 +1037,29 @@ export default function AnalyticsPage() {
                         data-stagger={idx % 8}
                         className="tx-row transition-colors hover:bg-surface/60"
                       >
-                        <td className="px-5 py-2.5 font-medium text-text">{row.month}</td>
-                        <td className="px-5 py-2.5 text-right tabular-nums text-income">
+                        <td className="px-3 py-2.5 font-medium text-text sm:px-5">{row.month}</td>
+                        <td className="px-3 py-2.5 text-right tabular-nums text-income sm:px-5">
                           {formatCurrency(row.income)}
                         </td>
-                        <td className="px-5 py-2.5 text-right tabular-nums text-expense">
+                        <td className="px-3 py-2.5 text-right tabular-nums text-expense sm:px-5">
                           {formatCurrency(row.expenses)}
                         </td>
                         <td
-                          className={`px-5 py-2.5 text-right tabular-nums ${
+                          className={`px-3 py-2.5 text-right tabular-nums sm:px-5 ${
                             row.saved > 0.005 ? 'font-semibold text-brand' : 'text-subtext'
                           }`}
                         >
                           {row.saved > 0.005 ? `+${formatCurrency(row.saved)}` : '·'}
                         </td>
                         <td
-                          className={`px-5 py-2.5 text-right font-semibold tabular-nums ${
+                          className={`px-3 py-2.5 text-right font-semibold tabular-nums sm:px-5 ${
                             row.balance >= 0 ? 'text-income' : 'text-expense'
                           }`}
                         >
                           {row.balance >= 0 ? '+' : ''}
                           {formatCurrency(row.balance)}
                         </td>
-                        <td className="px-5 py-2.5 text-right tabular-nums">
+                        <td className="px-3 py-2.5 text-right tabular-nums sm:px-5">
                           {row.change !== null ? (
                             <span
                               className={`text-xs font-semibold ${
@@ -1071,8 +1074,14 @@ export default function AnalyticsPage() {
                         </td>
                       </tr>
                     ))}
-                  </tbody>
-                </table>
+                    </tbody>
+                  </table>
+                </div>
+                {/* Indicador visual de scroll horizontal (mobile only) */}
+                <div
+                  aria-hidden="true"
+                  className="pointer-events-none absolute inset-y-0 right-0 w-6 bg-gradient-to-l from-card to-transparent md:hidden"
+                />
               </div>
             </div>
           )}
@@ -1100,14 +1109,23 @@ export default function AnalyticsPage() {
                       }}
                     >
                       <span
-                        className={`text-[9px] font-bold tabular-nums sm:text-xs lg:text-sm ${
+                        className={`text-[10px] font-bold tabular-nums sm:text-xs lg:text-sm ${
                           d.intensity > 0.3 ? 'text-white' : 'text-subtext'
                         }`}
                       >
-                        {d.avg > 0 ? formatCurrency(d.avg) : '·'}
+                        {d.avg > 0 ? (
+                          <>
+                            <span className="hidden sm:inline">{formatCurrency(d.avg)}</span>
+                            <span className="sm:hidden">
+                              {Math.round(d.avg).toLocaleString('es-ES')}€
+                            </span>
+                          </>
+                        ) : (
+                          '·'
+                        )}
                       </span>
                     </div>
-                    <p className="text-[10px] text-subtext">
+                    <p className="hidden text-[10px] text-subtext sm:block">
                       {d.total > 0 ? `Total: ${formatCurrency(d.total)}` : ''}
                     </p>
                   </div>

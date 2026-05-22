@@ -1,5 +1,6 @@
 'use client'
 
+import { usePathname } from 'next/navigation'
 import { useEffect, useState } from 'react'
 
 import { Modal } from '@/components/ui/Modal'
@@ -12,11 +13,26 @@ import type { CreateTransactionInput } from '@/features/transactions/domain/tran
 type ModalType = 'expense' | 'income' | null
 
 export function GlobalFAB() {
+  const pathname = usePathname()
   const [fabOpen, setFabOpen] = useState(false)
   const [modalType, setModalType] = useState<ModalType>(null)
   const [dirty, setDirty] = useState(false)
   const create = useCreateTransaction()
   const toast = useToast()
+
+  // El FAB solo aparece en /transactions. En el resto de pantallas no
+  // tiene sentido contextual (no estás viendo movimientos).
+  const isOnTransactions =
+    pathname === '/transactions' || (pathname?.startsWith('/transactions/') ?? false)
+
+  // Si la ruta cambia, colapsa el speed-dial. Patrón "ajustar state al
+  // cambiar prop" durante el render (recomendado por React docs sobre
+  // useEffect + setState).
+  const [prevPathname, setPrevPathname] = useState(pathname)
+  if (prevPathname !== pathname) {
+    setPrevPathname(pathname)
+    if (fabOpen) setFabOpen(false)
+  }
 
   useEffect(() => {
     if (!fabOpen) return
@@ -26,6 +42,8 @@ export function GlobalFAB() {
     document.addEventListener('keydown', onKey)
     return () => document.removeEventListener('keydown', onKey)
   }, [fabOpen])
+
+  if (!isOnTransactions) return null
 
   const handleSubmit = async (data: CreateTransactionInput) => {
     try {
