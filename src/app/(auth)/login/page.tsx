@@ -1,6 +1,7 @@
 import Link from 'next/link'
 
 import { signIn } from './actions'
+import { GoogleOAuthButton, OAuthDivider } from '../OAuthButtons'
 
 interface LoginPageProps {
   searchParams: Promise<{ error?: string; confirmed?: string; reset?: string }>
@@ -84,6 +85,9 @@ export default async function LoginPage({ searchParams }: LoginPageProps) {
             Entrar
           </button>
         </form>
+
+        <OAuthDivider />
+        <GoogleOAuthButton label="Entrar con Google" />
 
         <p className="text-center text-sm text-subtext">
           ¿No tienes cuenta?{' '}

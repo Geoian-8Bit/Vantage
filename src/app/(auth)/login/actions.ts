@@ -28,6 +28,14 @@ export async function signIn(formData: FormData) {
     redirect(`/login?error=${encodeURIComponent(translateError(error.message))}`)
   }
 
+  // Si el usuario tiene 2FA TOTP activado, signInWithPassword deja la sesión
+  // en AAL1 y hay que pedirle el código para subir a AAL2.
+  const { data: factors } = await supabase.auth.mfa.listFactors()
+  const hasVerifiedTotp = factors?.totp.some((f) => f.status === 'verified') ?? false
+  if (hasVerifiedTotp) {
+    redirect('/verify-mfa')
+  }
+
   redirect('/dashboard')
 }
 

@@ -1,8 +1,14 @@
 'use client'
 
 import Link from 'next/link'
-import { useState, type MouseEvent as ReactMouseEvent, type ReactNode } from 'react'
+import {
+  useEffect,
+  useState,
+  type MouseEvent as ReactMouseEvent,
+  type ReactNode,
+} from 'react'
 
+import { createClient as createSupabaseClient } from '@/lib/supabase/client'
 import { PageHeader } from '@/components/layout/PageHeader'
 import { Modal } from '@/components/ui/Modal'
 import { TiltCard } from '@/components/ui/TiltCard'
@@ -885,9 +891,27 @@ function AppearanceView({ onBack }: { onBack: () => void }) {
 // ── Cuenta ──────────────────────────────────────────────────────────────
 
 function AccountView({ onBack }: { onBack: () => void }) {
+  const [currentEmail, setCurrentEmail] = useState<string | null>(null)
+
+  useEffect(() => {
+    let cancelled = false
+    void (async () => {
+      const supabase = createSupabaseClient()
+      const { data } = await supabase.auth.getUser()
+      if (!cancelled) setCurrentEmail(data.user?.email ?? null)
+    })()
+    return () => {
+      cancelled = true
+    }
+  }, [])
+
   return (
     <div key="settings-account" className="settings-view-anim w-full space-y-5 lg:space-y-6">
       <PageHeader section="Ajustes" page="Cuenta" actions={<BackButton onBack={onBack} />} />
+
+      <EmailCard currentEmail={currentEmail} />
+      <PasswordCard currentEmail={currentEmail} />
+      <MfaCard />
 
       <div className="rounded-2xl border border-border bg-card p-5 shadow-sm">
         <h3 className="text-sm font-semibold tracking-wider text-subtext uppercase">Sesión</h3>
@@ -909,11 +933,436 @@ function AccountView({ onBack }: { onBack: () => void }) {
           Próximamente
         </h3>
         <ul className="mt-3 space-y-2 text-sm text-subtext">
-          <li>• Cambio de email y contraseña</li>
           <li>• Gestión de hogares (compartir datos con familiares)</li>
-          <li>• 2FA</li>
         </ul>
       </div>
+    </div>
+  )
+}
+
+function EmailCard({ currentEmail }: { currentEmail: string | null }) {
+  const [newEmail, setNewEmail] = useState('')
+  const [submitting, setSubmitting] = useState(false)
+  const toast = useToast()
+
+  async function handleSubmit(e: React.FormEvent) {
+    e.preventDefault()
+    const trimmed = newEmail.trim()
+    if (!trimmed) return
+    if (trimmed === currentEmail) {
+      toast.info('Ese ya es tu email actual')
+      return
+    }
+    setSubmitting(true)
+    try {
+      const supabase = createSupabaseClient()
+      const { error } = await supabase.auth.updateUser({ email: trimmed })
+      if (error) throw error
+      toast.success(
+        'Confirma el cambio',
+        `Te hemos enviado un email a ${trimmed} y a tu dirección actual para confirmar.`
+      )
+      setNewEmail('')
+    } catch (err) {
+      toast.error('No se pudo actualizar', err instanceof Error ? err.message : undefined)
+    } finally {
+      setSubmitting(false)
+    }
+  }
+
+  return (
+    <div className="rounded-2xl border border-border bg-card p-5 shadow-sm">
+      <h3 className="text-sm font-semibold tracking-wider text-subtext uppercase">Email</h3>
+      <p className="mt-3 text-sm text-text">
+        Email actual:{' '}
+        <span className="font-semibold tabular-nums">{currentEmail ?? '…'}</span>
+      </p>
+      <p className="mt-1 text-xs leading-relaxed text-subtext">
+        Al cambiar el email Supabase envía un enlace de confirmación a la dirección actual y
+        otro a la nueva. El cambio no se aplica hasta que pulses ambos.
+      </p>
+      <form onSubmit={handleSubmit} className="mt-4 flex flex-wrap items-end gap-3">
+        <div className="min-w-[220px] flex-1">
+          <label className="mb-1.5 block text-xs font-medium text-subtext">Nuevo email</label>
+          <input
+            type="email"
+            value={newEmail}
+            onChange={(e) => setNewEmail(e.target.value)}
+            placeholder="nuevo@email.com"
+            required
+            className="w-full rounded-xl border border-border bg-surface px-3 py-2.5 text-sm text-text focus:ring-2 focus:ring-brand focus:outline-none"
+          />
+        </div>
+        <button
+          type="submit"
+          disabled={submitting || !newEmail.trim()}
+          className="flex cursor-pointer items-center gap-2 rounded-xl bg-brand px-4 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-brand-hover disabled:cursor-not-allowed disabled:opacity-50"
+        >
+          {submitting && (
+            <span className="h-4 w-4 animate-spin rounded-full border-2 border-white/40 border-t-white" />
+          )}
+          {submitting ? 'Enviando…' : 'Cambiar email'}
+        </button>
+      </form>
+    </div>
+  )
+}
+
+interface TotpFactor {
+  id: string
+  status: 'verified' | 'unverified'
+  friendlyName?: string
+  createdAt: string
+}
+
+function MfaCard() {
+  const [factors, setFactors] = useState<TotpFactor[] | null>(null)
+  const [enrolling, setEnrolling] = useState<{
+    factorId: string
+    qrCode: string
+    secret: string
+  } | null>(null)
+  const [code, setCode] = useState('')
+  const [working, setWorking] = useState(false)
+  const toast = useToast()
+
+  async function refresh() {
+    const supabase = createSupabaseClient()
+    const { data, error } = await supabase.auth.mfa.listFactors()
+    if (error) return
+    setFactors(
+      data.totp.map((f) => ({
+        id: f.id,
+        status: f.status,
+        friendlyName: f.friendly_name ?? undefined,
+        createdAt: f.created_at,
+      }))
+    )
+  }
+
+  useEffect(() => {
+    void refresh()
+  }, [])
+
+  const activeFactor = factors?.find((f) => f.status === 'verified') ?? null
+
+  async function handleEnroll() {
+    if (working) return
+    setWorking(true)
+    try {
+      const supabase = createSupabaseClient()
+      const { data, error } = await supabase.auth.mfa.enroll({
+        factorType: 'totp',
+        friendlyName: `Vantage · ${new Date().toLocaleDateString('es-ES')}`,
+      })
+      if (error) throw error
+      setEnrolling({
+        factorId: data.id,
+        qrCode: data.totp.qr_code,
+        secret: data.totp.secret,
+      })
+      setCode('')
+    } catch (err) {
+      toast.error('No se pudo iniciar 2FA', err instanceof Error ? err.message : undefined)
+    } finally {
+      setWorking(false)
+    }
+  }
+
+  async function handleVerify(e: React.FormEvent) {
+    e.preventDefault()
+    if (!enrolling || working) return
+    setWorking(true)
+    try {
+      const supabase = createSupabaseClient()
+      const { data: chal, error: cErr } = await supabase.auth.mfa.challenge({
+        factorId: enrolling.factorId,
+      })
+      if (cErr) throw cErr
+      const { error: vErr } = await supabase.auth.mfa.verify({
+        factorId: enrolling.factorId,
+        challengeId: chal.id,
+        code: code.trim(),
+      })
+      if (vErr) throw vErr
+      toast.success('2FA activado')
+      setEnrolling(null)
+      setCode('')
+      await refresh()
+    } catch (err) {
+      toast.error('Código incorrecto', err instanceof Error ? err.message : undefined)
+    } finally {
+      setWorking(false)
+    }
+  }
+
+  async function handleCancel() {
+    if (!enrolling) return
+    // Borrar el factor no verificado que dejamos colgado
+    try {
+      const supabase = createSupabaseClient()
+      await supabase.auth.mfa.unenroll({ factorId: enrolling.factorId })
+    } catch {
+      // best-effort
+    }
+    setEnrolling(null)
+    setCode('')
+    await refresh()
+  }
+
+  async function handleDisable() {
+    if (!activeFactor || working) return
+    if (!window.confirm('¿Seguro que quieres desactivar 2FA? Perderás esa capa extra de seguridad.')) {
+      return
+    }
+    setWorking(true)
+    try {
+      const supabase = createSupabaseClient()
+      const { error } = await supabase.auth.mfa.unenroll({ factorId: activeFactor.id })
+      if (error) throw error
+      toast.success('2FA desactivado')
+      await refresh()
+    } catch (err) {
+      toast.error('No se pudo desactivar', err instanceof Error ? err.message : undefined)
+    } finally {
+      setWorking(false)
+    }
+  }
+
+  return (
+    <div className="rounded-2xl border border-border bg-card p-5 shadow-sm">
+      <div className="flex items-baseline justify-between gap-2">
+        <h3 className="text-sm font-semibold tracking-wider text-subtext uppercase">
+          Autenticación en dos pasos (2FA)
+        </h3>
+        {activeFactor && (
+          <span className="inline-flex items-center gap-1 rounded-full bg-income-light px-2 py-0.5 text-[11px] font-semibold text-income">
+            <span className="h-1.5 w-1.5 rounded-full bg-income" />
+            Activa
+          </span>
+        )}
+      </div>
+      <p className="mt-3 text-xs leading-relaxed text-subtext">
+        Añade una capa extra al iniciar sesión: además de tu contraseña pedimos un código de
+        6 dígitos generado por tu app de autenticación (Google Authenticator, 1Password,
+        Authy, etc.).
+      </p>
+
+      {enrolling ? (
+        <form onSubmit={handleVerify} className="mt-4 space-y-4">
+          <div className="flex flex-col items-center gap-3 rounded-xl border border-border bg-surface p-4">
+            <p className="text-xs text-subtext">
+              1. Escanea este QR con tu app de autenticación.
+            </p>
+            <div
+              className="rounded-lg bg-white p-2"
+              // El QR de Supabase viene como SVG inline en un string.
+              dangerouslySetInnerHTML={{ __html: enrolling.qrCode }}
+            />
+            <details className="w-full text-center text-[11px] text-subtext">
+              <summary className="cursor-pointer">¿No puedes escanear?</summary>
+              <p className="mt-2">
+                Introduce este código manualmente en tu app:
+                <br />
+                <code className="mt-1 inline-block break-all rounded bg-card px-2 py-1 font-mono text-xs text-text">
+                  {enrolling.secret}
+                </code>
+              </p>
+            </details>
+          </div>
+          <div>
+            <label className="mb-1.5 block text-xs font-medium text-subtext">
+              2. Código de 6 dígitos que muestra tu app
+            </label>
+            <input
+              type="text"
+              value={code}
+              onChange={(e) => setCode(e.target.value.replace(/\D/g, '').slice(0, 6))}
+              inputMode="numeric"
+              pattern="\d{6}"
+              placeholder="000000"
+              required
+              autoFocus
+              className="w-full rounded-xl border border-border bg-surface px-3 py-2.5 text-center text-lg tracking-[0.5em] tabular-nums text-text focus:ring-2 focus:ring-brand focus:outline-none"
+            />
+          </div>
+          <div className="flex gap-3">
+            <button
+              type="button"
+              onClick={handleCancel}
+              disabled={working}
+              className="flex-1 cursor-pointer rounded-xl border border-border bg-surface py-2.5 text-sm font-semibold text-subtext transition-colors hover:bg-border hover:text-text disabled:opacity-60"
+            >
+              Cancelar
+            </button>
+            <button
+              type="submit"
+              disabled={working || code.length !== 6}
+              className="flex flex-1 cursor-pointer items-center justify-center gap-2 rounded-xl bg-brand py-2.5 text-sm font-semibold text-white transition-colors hover:bg-brand-hover disabled:cursor-not-allowed disabled:opacity-50"
+            >
+              {working && (
+                <span className="h-4 w-4 animate-spin rounded-full border-2 border-white/40 border-t-white" />
+              )}
+              {working ? 'Verificando…' : 'Activar 2FA'}
+            </button>
+          </div>
+        </form>
+      ) : activeFactor ? (
+        <div className="mt-4 space-y-3">
+          <div className="rounded-xl border border-border bg-surface px-4 py-3">
+            <p className="text-xs text-subtext">
+              Configurado el{' '}
+              <span className="font-semibold text-text">
+                {new Date(activeFactor.createdAt).toLocaleDateString('es-ES')}
+              </span>
+            </p>
+          </div>
+          <div className="flex justify-end">
+            <button
+              onClick={handleDisable}
+              disabled={working}
+              className="cursor-pointer rounded-xl border border-expense/20 bg-expense-light px-4 py-2 text-sm font-semibold text-expense transition-colors hover:bg-expense hover:text-white disabled:opacity-60"
+            >
+              {working ? 'Desactivando…' : 'Desactivar 2FA'}
+            </button>
+          </div>
+        </div>
+      ) : (
+        <div className="mt-4 flex justify-end">
+          <button
+            onClick={handleEnroll}
+            disabled={working || factors === null}
+            className="flex cursor-pointer items-center gap-2 rounded-xl bg-brand px-4 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-brand-hover disabled:cursor-not-allowed disabled:opacity-50"
+          >
+            {working && (
+              <span className="h-4 w-4 animate-spin rounded-full border-2 border-white/40 border-t-white" />
+            )}
+            {working ? 'Generando…' : 'Activar 2FA'}
+          </button>
+        </div>
+      )}
+    </div>
+  )
+}
+
+function PasswordCard({ currentEmail }: { currentEmail: string | null }) {
+  const [currentPassword, setCurrentPassword] = useState('')
+  const [newPassword, setNewPassword] = useState('')
+  const [confirmPassword, setConfirmPassword] = useState('')
+  const [submitting, setSubmitting] = useState(false)
+  const toast = useToast()
+
+  async function handleSubmit(e: React.FormEvent) {
+    e.preventDefault()
+    if (newPassword.length < 8) {
+      toast.error('La contraseña debe tener al menos 8 caracteres')
+      return
+    }
+    if (newPassword !== confirmPassword) {
+      toast.error('Las contraseñas no coinciden')
+      return
+    }
+    if (!currentEmail) {
+      toast.error('Cargando email actual, intenta de nuevo en un segundo')
+      return
+    }
+    setSubmitting(true)
+    try {
+      const supabase = createSupabaseClient()
+      // Reautenticar primero para verificar que conoce la contraseña actual.
+      const { error: reauthErr } = await supabase.auth.signInWithPassword({
+        email: currentEmail,
+        password: currentPassword,
+      })
+      if (reauthErr) {
+        toast.error('Contraseña actual incorrecta')
+        return
+      }
+      const { error } = await supabase.auth.updateUser({ password: newPassword })
+      if (error) throw error
+      toast.success('Contraseña actualizada')
+      setCurrentPassword('')
+      setNewPassword('')
+      setConfirmPassword('')
+    } catch (err) {
+      toast.error(
+        'No se pudo actualizar',
+        err instanceof Error ? err.message : undefined
+      )
+    } finally {
+      setSubmitting(false)
+    }
+  }
+
+  return (
+    <div className="rounded-2xl border border-border bg-card p-5 shadow-sm">
+      <h3 className="text-sm font-semibold tracking-wider text-subtext uppercase">Contraseña</h3>
+      <p className="mt-3 text-xs leading-relaxed text-subtext">
+        Te pedimos la contraseña actual como medida de seguridad antes de cambiarla.
+        Mínimo 8 caracteres.
+      </p>
+      <form onSubmit={handleSubmit} className="mt-4 space-y-3">
+        <div>
+          <label className="mb-1.5 block text-xs font-medium text-subtext">
+            Contraseña actual
+          </label>
+          <input
+            type="password"
+            value={currentPassword}
+            onChange={(e) => setCurrentPassword(e.target.value)}
+            required
+            autoComplete="current-password"
+            className="w-full rounded-xl border border-border bg-surface px-3 py-2.5 text-sm text-text focus:ring-2 focus:ring-brand focus:outline-none"
+          />
+        </div>
+        <div className="grid gap-3 sm:grid-cols-2">
+          <div>
+            <label className="mb-1.5 block text-xs font-medium text-subtext">
+              Nueva contraseña
+            </label>
+            <input
+              type="password"
+              value={newPassword}
+              onChange={(e) => setNewPassword(e.target.value)}
+              required
+              minLength={8}
+              autoComplete="new-password"
+              className="w-full rounded-xl border border-border bg-surface px-3 py-2.5 text-sm text-text focus:ring-2 focus:ring-brand focus:outline-none"
+            />
+          </div>
+          <div>
+            <label className="mb-1.5 block text-xs font-medium text-subtext">
+              Repite la nueva
+            </label>
+            <input
+              type="password"
+              value={confirmPassword}
+              onChange={(e) => setConfirmPassword(e.target.value)}
+              required
+              minLength={8}
+              autoComplete="new-password"
+              className="w-full rounded-xl border border-border bg-surface px-3 py-2.5 text-sm text-text focus:ring-2 focus:ring-brand focus:outline-none"
+            />
+          </div>
+        </div>
+        <div className="flex justify-end">
+          <button
+            type="submit"
+            disabled={
+              submitting ||
+              !currentPassword ||
+              !newPassword ||
+              newPassword !== confirmPassword
+            }
+            className="flex cursor-pointer items-center gap-2 rounded-xl bg-brand px-4 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-brand-hover disabled:cursor-not-allowed disabled:opacity-50"
+          >
+            {submitting && (
+              <span className="h-4 w-4 animate-spin rounded-full border-2 border-white/40 border-t-white" />
+            )}
+            {submitting ? 'Guardando…' : 'Cambiar contraseña'}
+          </button>
+        </div>
+      </form>
     </div>
   )
 }

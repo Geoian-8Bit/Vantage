@@ -1,6 +1,7 @@
 import Link from 'next/link'
 
 import { signUp } from './actions'
+import { GoogleOAuthButton, OAuthDivider } from '../OAuthButtons'
 
 interface SignupPageProps {
   searchParams: Promise<{ error?: string; sent?: string; email?: string }>
@@ -94,6 +95,13 @@ export default async function SignupPage({ searchParams }: SignupPageProps) {
               Crear cuenta
             </button>
           </form>
+        )}
+
+        {!sent && (
+          <>
+            <OAuthDivider />
+            <GoogleOAuthButton label="Registrarse con Google" />
+          </>
         )}
 
         <p className="text-center text-sm text-subtext">
