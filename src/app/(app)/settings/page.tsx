@@ -1246,49 +1246,26 @@ function MfaCard() {
 }
 
 function PasswordCard({ currentEmail }: { currentEmail: string | null }) {
-  const [currentPassword, setCurrentPassword] = useState('')
-  const [newPassword, setNewPassword] = useState('')
-  const [confirmPassword, setConfirmPassword] = useState('')
   const [submitting, setSubmitting] = useState(false)
+  const [sent, setSent] = useState(false)
   const toast = useToast()
 
-  async function handleSubmit(e: React.FormEvent) {
-    e.preventDefault()
-    if (newPassword.length < 8) {
-      toast.error('La contraseña debe tener al menos 8 caracteres')
-      return
-    }
-    if (newPassword !== confirmPassword) {
-      toast.error('Las contraseñas no coinciden')
-      return
-    }
-    if (!currentEmail) {
-      toast.error('Cargando email actual, intenta de nuevo en un segundo')
-      return
-    }
+  async function handleRequest() {
+    if (submitting || !currentEmail) return
     setSubmitting(true)
     try {
       const supabase = createSupabaseClient()
-      // Reautenticar primero para verificar que conoce la contraseña actual.
-      const { error: reauthErr } = await supabase.auth.signInWithPassword({
-        email: currentEmail,
-        password: currentPassword,
+      const { error } = await supabase.auth.resetPasswordForEmail(currentEmail, {
+        redirectTo: `${window.location.origin}/auth/reset-password`,
       })
-      if (reauthErr) {
-        toast.error('Contraseña actual incorrecta')
-        return
-      }
-      const { error } = await supabase.auth.updateUser({ password: newPassword })
       if (error) throw error
-      toast.success('Contraseña actualizada')
-      setCurrentPassword('')
-      setNewPassword('')
-      setConfirmPassword('')
-    } catch (err) {
-      toast.error(
-        'No se pudo actualizar',
-        err instanceof Error ? err.message : undefined
+      setSent(true)
+      toast.success(
+        'Enlace enviado',
+        `Revisa la bandeja de ${currentEmail} (también spam).`
       )
+    } catch (err) {
+      toast.error('No se pudo enviar el enlace', err instanceof Error ? err.message : undefined)
     } finally {
       setSubmitting(false)
     }
@@ -1298,71 +1275,41 @@ function PasswordCard({ currentEmail }: { currentEmail: string | null }) {
     <div className="rounded-2xl border border-border bg-card p-5 shadow-sm">
       <h3 className="text-sm font-semibold tracking-wider text-subtext uppercase">Contraseña</h3>
       <p className="mt-3 text-xs leading-relaxed text-subtext">
-        Te pedimos la contraseña actual como medida de seguridad antes de cambiarla.
-        Mínimo 8 caracteres.
+        Por seguridad, el cambio de contraseña se confirma por email. Te enviamos un enlace a{' '}
+        <span className="font-semibold text-text">{currentEmail ?? '…'}</span> y solo desde
+        ahí podrás escribir la nueva contraseña.
       </p>
-      <form onSubmit={handleSubmit} className="mt-4 space-y-3">
-        <div>
-          <label className="mb-1.5 block text-xs font-medium text-subtext">
-            Contraseña actual
-          </label>
-          <input
-            type="password"
-            value={currentPassword}
-            onChange={(e) => setCurrentPassword(e.target.value)}
-            required
-            autoComplete="current-password"
-            className="w-full rounded-xl border border-border bg-surface px-3 py-2.5 text-sm text-text focus:ring-2 focus:ring-brand focus:outline-none"
-          />
-        </div>
-        <div className="grid gap-3 sm:grid-cols-2">
-          <div>
-            <label className="mb-1.5 block text-xs font-medium text-subtext">
-              Nueva contraseña
-            </label>
-            <input
-              type="password"
-              value={newPassword}
-              onChange={(e) => setNewPassword(e.target.value)}
-              required
-              minLength={8}
-              autoComplete="new-password"
-              className="w-full rounded-xl border border-border bg-surface px-3 py-2.5 text-sm text-text focus:ring-2 focus:ring-brand focus:outline-none"
-            />
-          </div>
-          <div>
-            <label className="mb-1.5 block text-xs font-medium text-subtext">
-              Repite la nueva
-            </label>
-            <input
-              type="password"
-              value={confirmPassword}
-              onChange={(e) => setConfirmPassword(e.target.value)}
-              required
-              minLength={8}
-              autoComplete="new-password"
-              className="w-full rounded-xl border border-border bg-surface px-3 py-2.5 text-sm text-text focus:ring-2 focus:ring-brand focus:outline-none"
-            />
-          </div>
-        </div>
-        <div className="flex justify-end">
+
+      {sent ? (
+        <div className="mt-4 rounded-xl border border-income/30 bg-income-light px-4 py-3 text-sm text-income">
+          <p className="font-semibold">Enlace enviado.</p>
+          <p className="mt-1 text-xs leading-relaxed">
+            Abre el correo y pulsa &laquo;Cambiar contraseña&raquo;. El enlace caduca en una
+            hora.
+          </p>
           <button
-            type="submit"
-            disabled={
-              submitting ||
-              !currentPassword ||
-              !newPassword ||
-              newPassword !== confirmPassword
-            }
+            type="button"
+            onClick={() => setSent(false)}
+            className="mt-2 cursor-pointer text-xs underline-offset-2 hover:underline"
+          >
+            Volver a enviar
+          </button>
+        </div>
+      ) : (
+        <div className="mt-4 flex justify-end">
+          <button
+            type="button"
+            onClick={handleRequest}
+            disabled={submitting || !currentEmail}
             className="flex cursor-pointer items-center gap-2 rounded-xl bg-brand px-4 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-brand-hover disabled:cursor-not-allowed disabled:opacity-50"
           >
             {submitting && (
               <span className="h-4 w-4 animate-spin rounded-full border-2 border-white/40 border-t-white" />
             )}
-            {submitting ? 'Guardando…' : 'Cambiar contraseña'}
+            {submitting ? 'Enviando…' : 'Enviar enlace para cambiar contraseña'}
           </button>
         </div>
-      </form>
+      )}
     </div>
   )
 }
