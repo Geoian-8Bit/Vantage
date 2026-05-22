@@ -604,7 +604,7 @@ export default function AnalyticsPage() {
       <TiltCard
         key={dateMode}
         intensity={1.5}
-        className={`card-anim rounded-2xl border p-5 shadow-md lg:p-6 ${
+        className={`card-anim rounded-2xl border p-4 shadow-md sm:p-5 lg:p-6 ${
           periodStats.balance >= 0
             ? 'border-border bg-card'
             : 'border-expense/20 bg-expense-light'
@@ -629,7 +629,7 @@ export default function AnalyticsPage() {
           {formatCurrency(Math.abs(periodStats.balance))}
         </p>
 
-        <div className="mt-5 grid grid-cols-3 gap-3 border-t border-border/60 pt-5 lg:gap-5">
+        <div className="mt-4 grid grid-cols-3 gap-2 border-t border-border/60 pt-4 sm:mt-5 sm:gap-3 sm:pt-5 lg:gap-5">
           <div className="min-w-0">
             <p className="mb-0.5 text-[11px] font-semibold tracking-wider text-subtext uppercase">
               Ingresos
@@ -673,7 +673,7 @@ export default function AnalyticsPage() {
       </TiltCard>
 
       <div className="flex flex-col gap-4 lg:grid lg:grid-cols-[1fr_300px]">
-        <div className="rounded-xl border border-border bg-card p-5 shadow-sm">
+        <div className="rounded-xl border border-border bg-card p-4 shadow-sm sm:p-5">
           <h3 className="mb-1 text-sm font-semibold text-text">{barChartTitle}</h3>
           <p className="mb-4 text-[11px] text-subtext">
             La parte coral de cada gasto es lo que fuiste a apartados de ahorro.
@@ -772,7 +772,7 @@ export default function AnalyticsPage() {
           )}
         </div>
 
-        <div className="rounded-xl border border-border bg-card p-5 shadow-sm lg:min-w-0">
+        <div className="rounded-xl border border-border bg-card p-4 shadow-sm sm:p-5 lg:min-w-0">
           <h3 className="mb-4 text-sm font-semibold text-text">Gastos por categoría</h3>
           {categoryData.length === 0 ? (
             <EmptyState
@@ -865,7 +865,7 @@ export default function AnalyticsPage() {
       </div>
 
       {(hasEvolutionData || hasSavingsData) && (
-        <div className="rounded-xl border border-border bg-card p-5 shadow-sm">
+        <div className="rounded-xl border border-border bg-card p-4 shadow-sm sm:p-5">
           <div className="mb-4 flex flex-wrap items-baseline justify-between gap-3">
             <div>
               <h3 className="text-sm font-semibold text-text">Tendencia del periodo</h3>
@@ -1012,7 +1012,7 @@ export default function AnalyticsPage() {
 
           {comparisonTableData.length > 1 && (
             <div className="overflow-hidden rounded-xl border border-border bg-card shadow-sm">
-              <div className="border-b border-border px-5 py-3">
+              <div className="border-b border-border px-4 py-3 sm:px-5">
                 <h3 className="text-sm font-semibold text-text">Comparativa mensual</h3>
               </div>
               <div className="overflow-x-auto">
@@ -1078,20 +1078,20 @@ export default function AnalyticsPage() {
           )}
 
           {weekdayData.some((d) => d.total > 0) && (
-            <div className="rounded-xl border border-border bg-card p-5 shadow-sm">
+            <div className="rounded-xl border border-border bg-card p-4 shadow-sm sm:p-5">
               <h3 className="mb-4 text-sm font-semibold text-text">
                 Gasto promedio por día de la semana
               </h3>
-              <div className="grid grid-cols-7 gap-2">
+              <div className="grid grid-cols-7 gap-1 sm:gap-2">
                 {weekdayData.map((d, i) => (
                   <div
                     key={d.name}
                     data-stagger={i}
-                    className="heatmap-cell space-y-2 text-center"
+                    className="heatmap-cell min-w-0 space-y-1.5 text-center sm:space-y-2"
                   >
-                    <p className="text-xs font-semibold text-subtext">{d.name}</p>
+                    <p className="text-[10px] font-semibold text-subtext sm:text-xs">{d.name}</p>
                     <div
-                      className="mx-auto flex h-12 w-12 items-center justify-center rounded-xl transition-colors lg:h-16 lg:w-16"
+                      className="mx-auto flex h-10 w-10 items-center justify-center rounded-xl transition-colors sm:h-12 sm:w-12 lg:h-16 lg:w-16"
                       style={{
                         backgroundColor:
                           d.intensity > 0
@@ -1100,7 +1100,7 @@ export default function AnalyticsPage() {
                       }}
                     >
                       <span
-                        className={`text-xs font-bold tabular-nums lg:text-sm ${
+                        className={`text-[9px] font-bold tabular-nums sm:text-xs lg:text-sm ${
                           d.intensity > 0.3 ? 'text-white' : 'text-subtext'
                         }`}
                       >

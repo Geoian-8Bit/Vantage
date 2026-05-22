@@ -177,7 +177,7 @@ export default function DashboardPage() {
       {/* Tres columnas: Total deudas / Balance / Ahorrado */}
       <TiltCard
         intensity={1.2}
-        className="card-anim min-w-0 rounded-xl border border-border bg-card p-5 shadow-sm"
+        className="card-anim min-w-0 rounded-xl border border-border bg-card p-4 shadow-sm sm:p-5"
         style={{ animationDelay: '0ms' }}
       >
         <div className="grid grid-cols-1 divide-y divide-border/60 sm:grid-cols-3 sm:divide-x sm:divide-y-0">
@@ -190,7 +190,7 @@ export default function DashboardPage() {
               className={`truncate font-bold tabular-nums ${
                 activeDebts.length > 0 ? 'text-expense' : 'text-subtext'
               }`}
-              style={{ fontSize: '1.5rem', lineHeight: 1.2 }}
+              style={{ fontSize: 'clamp(1.25rem, 5.5vw, 1.5rem)', lineHeight: 1.2 }}
               title={formatCurrency(totalDebt)}
             >
               {formatCurrency(animTotalDebt)}
@@ -229,7 +229,7 @@ export default function DashboardPage() {
               className={`truncate font-bold tabular-nums ${
                 stats.balance >= 0 ? 'text-income' : 'text-expense'
               }`}
-              style={{ fontSize: '1.5rem', lineHeight: 1.2 }}
+              style={{ fontSize: 'clamp(1.25rem, 5.5vw, 1.5rem)', lineHeight: 1.2 }}
               title={`${stats.balance < 0 ? '−' : ''}${formatCurrency(Math.abs(stats.balance))}`}
             >
               {stats.balance < 0 ? '−' : ''}
@@ -243,7 +243,7 @@ export default function DashboardPage() {
             </p>
             <p
               className="truncate font-bold tabular-nums text-brand"
-              style={{ fontSize: '1.5rem', lineHeight: 1.2 }}
+              style={{ fontSize: 'clamp(1.25rem, 5.5vw, 1.5rem)', lineHeight: 1.2 }}
               title={formatCurrency(stats.totalSavings)}
             >
               {formatCurrency(animSavings)}
@@ -257,7 +257,7 @@ export default function DashboardPage() {
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-5">
         <TiltCard
           intensity={3}
-          className="card-anim min-w-0 rounded-xl border border-border bg-card p-5 shadow-sm lg:col-span-3"
+          className="card-anim min-w-0 rounded-xl border border-border bg-card p-4 shadow-sm sm:p-5 lg:col-span-3"
           style={{ animationDelay: '60ms' }}
         >
           <div className="mb-2 flex items-start justify-between gap-3">
@@ -298,7 +298,7 @@ export default function DashboardPage() {
 
         <TiltCard
           intensity={3}
-          className="card-anim min-w-0 rounded-xl border border-border bg-card p-5 shadow-sm lg:col-span-2"
+          className="card-anim min-w-0 rounded-xl border border-border bg-card p-4 shadow-sm sm:p-5 lg:col-span-2"
           style={{ animationDelay: '120ms' }}
         >
           <p className="mb-2 text-xs font-semibold tracking-wider text-subtext uppercase">
@@ -327,7 +327,7 @@ export default function DashboardPage() {
 
       {/* Trend chart */}
       <div
-        className="card-anim rounded-xl border border-border bg-card p-5 shadow-sm"
+        className="card-anim rounded-xl border border-border bg-card p-4 shadow-sm sm:p-5"
         style={{ animationDelay: '180ms' }}
       >
         <p className="mb-4 text-xs font-semibold tracking-wider text-subtext uppercase">
@@ -395,7 +395,7 @@ export default function DashboardPage() {
         className="card-anim overflow-hidden rounded-xl border border-border bg-card shadow-sm"
         style={{ animationDelay: '240ms' }}
       >
-        <div className="border-b border-border bg-surface px-5 py-3">
+        <div className="border-b border-border bg-surface px-4 py-3 sm:px-5">
           <p className="text-xs font-semibold tracking-wider text-subtext uppercase">
             Próximos recurrentes
           </p>
@@ -412,7 +412,7 @@ export default function DashboardPage() {
               <div
                 key={r.id}
                 data-stagger={idx % 8}
-                className="tx-row flex items-center gap-3 px-5 py-3"
+                className="tx-row flex items-center gap-3 px-4 py-3 sm:px-5"
               >
                 <div
                   className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-lg ${

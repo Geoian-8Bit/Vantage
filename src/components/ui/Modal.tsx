@@ -115,7 +115,7 @@ export function Modal({ isOpen, onClose, title, children, dirty }: ModalProps) {
   if (!isOpen || !isClient) return null
 
   return createPortal(
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-2 sm:p-4">
       <div
         className="modal-overlay absolute inset-0 bg-black/40 backdrop-blur-sm"
         onClick={requestClose}
@@ -128,11 +128,11 @@ export function Modal({ isOpen, onClose, title, children, dirty }: ModalProps) {
         aria-modal="true"
         aria-labelledby={titleId}
         aria-hidden={confirmingClose || undefined}
-        style={{ maxHeight: '90vh' }}
+        style={{ maxHeight: 'min(90dvh, 90vh)' }}
         className="modal-panel relative flex w-full max-w-md flex-col overflow-hidden rounded-2xl border border-border bg-card shadow-2xl"
       >
-        <div className="flex shrink-0 items-center justify-between border-b border-border px-6 py-4">
-          <h2 id={titleId} className="text-lg font-semibold text-text">
+        <div className="flex shrink-0 items-center justify-between border-b border-border px-4 py-3 sm:px-6 sm:py-4">
+          <h2 id={titleId} className="text-base font-semibold text-text sm:text-lg">
             {title}
           </h2>
           <button
@@ -158,7 +158,7 @@ export function Modal({ isOpen, onClose, title, children, dirty }: ModalProps) {
           </button>
         </div>
 
-        <div className="min-h-0 flex-1 overflow-y-auto px-6 py-5">{children}</div>
+        <div className="min-h-0 flex-1 overflow-y-auto px-4 py-4 sm:px-6 sm:py-5">{children}</div>
       </div>
 
       {confirmingClose && (

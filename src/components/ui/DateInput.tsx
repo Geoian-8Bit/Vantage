@@ -91,11 +91,18 @@ export function DateInput({
     if (!open || !triggerRef.current) return
     const rect = triggerRef.current.getBoundingClientRect()
     const popoverHeight = variant === 'month' ? 220 : 320
+    const popoverWidth = variant === 'month' ? 280 : Math.max(rect.width, 300)
+    const margin = 8
     const wouldOverflow = rect.bottom + popoverHeight + 12 > window.innerHeight
+    // Clamp horizontal para que no se salga por izquierda ni derecha en móvil.
+    const left = Math.max(
+      margin,
+      Math.min(rect.left, window.innerWidth - popoverWidth - margin)
+    )
     setPopoverPos({
       top: wouldOverflow ? rect.top - popoverHeight - 8 : rect.bottom + 6,
-      left: rect.left,
-      width: Math.max(rect.width, 280),
+      left,
+      width: popoverWidth,
     })
   }, [open, variant])
 
@@ -246,7 +253,8 @@ export function DateInput({
               borderColor: 'var(--color-border)',
               boxShadow: 'var(--shadow-xl)',
               padding: 16,
-              width: variant === 'month' ? 280 : Math.max(popoverPos.width, 300),
+              width: popoverPos.width,
+              maxWidth: 'calc(100vw - 16px)',
             }}
           >
             <div className="mb-3 flex items-center justify-between">

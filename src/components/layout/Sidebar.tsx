@@ -247,7 +247,7 @@ export function Sidebar() {
   const isDark = activeMode === 'dark'
 
   return (
-    <aside className="relative flex h-screen w-14 shrink-0 flex-col overflow-hidden bg-sidebar text-sidebar-text lg:w-60">
+    <aside className="relative hidden h-screen w-14 shrink-0 flex-col overflow-hidden bg-sidebar text-sidebar-text md:flex lg:w-60">
       <div
         aria-hidden="true"
         className="pointer-events-none absolute inset-0 opacity-50"

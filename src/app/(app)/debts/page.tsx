@@ -116,7 +116,7 @@ export default function DebtsPage() {
         actions={
           <button
             onClick={() => setModal({ mode: 'create' })}
-            className="flex cursor-pointer items-center gap-2 rounded-xl bg-brand px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-brand-hover"
+            className="flex cursor-pointer items-center gap-1.5 rounded-xl bg-brand px-3 py-2 text-xs font-semibold text-white transition-colors hover:bg-brand-hover sm:gap-2 sm:px-4 sm:text-sm"
           >
             <svg
               aria-hidden="true"
@@ -139,7 +139,7 @@ export default function DebtsPage() {
 
       <TiltCard
         intensity={1.2}
-        className="card-anim min-w-0 rounded-xl border border-border bg-card p-6 shadow-sm"
+        className="card-anim min-w-0 rounded-xl border border-border bg-card p-4 shadow-sm sm:p-6"
         style={{ animationDelay: '0ms' }}
       >
         <div className="flex min-w-0 flex-wrap items-start justify-between gap-4">
@@ -545,7 +545,7 @@ function DebtCard({
 
   return (
     <div
-      className={`card-anim group relative overflow-hidden rounded-2xl border border-border bg-card p-5 shadow-sm ${
+      className={`card-anim group relative overflow-hidden rounded-2xl border border-border bg-card p-4 shadow-sm sm:p-5 ${
         isArchived ? 'opacity-70' : ''
       }`}
     >
@@ -572,7 +572,7 @@ function DebtCard({
             /mes
           </p>
         </div>
-        <div className="flex gap-1 opacity-0 transition-opacity group-hover:opacity-100">
+        <div className="flex gap-1 opacity-100 transition-opacity sm:opacity-0 sm:group-hover:opacity-100">
           {onArchive && !isArchived && (
             <button
               onClick={onArchive}

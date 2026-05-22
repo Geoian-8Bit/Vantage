@@ -110,6 +110,39 @@ body {
 
 * { box-sizing: border-box; }
 
+/* ═══════════════════════════════════════════════════════════════════════════
+   TOKENS RESPONSIVE (safe-area + altura bottom-tabs móvil)
+   --safe-* exponen env() para que cualquier componente pueda referenciarlos.
+   --bottom-tabs-h es 0 en desktop para que utilities como .pb-tabbar no
+   añadan padding cuando ya no hay bottom-tabs.
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+:root {
+  --safe-top: env(safe-area-inset-top, 0px);
+  --safe-bottom: env(safe-area-inset-bottom, 0px);
+  --safe-left: env(safe-area-inset-left, 0px);
+  --safe-right: env(safe-area-inset-right, 0px);
+  --bottom-tabs-h: 64px;
+}
+
+@media (min-width: 768px) {
+  :root {
+    --bottom-tabs-h: 0px;
+  }
+}
+
+/* Padding-bottom para contenido que vive sobre el BottomTabs en móvil.
+   Suma la altura del tabbar + el safe-area-inset-bottom (gestos iOS). */
+.pb-tabbar {
+  padding-bottom: calc(var(--bottom-tabs-h) + var(--safe-bottom));
+}
+
+/* Para el propio BottomTabs y elementos pegados al borde inferior. */
+.pb-safe { padding-bottom: var(--safe-bottom); }
+.pt-safe { padding-top: var(--safe-top); }
+.pl-safe { padding-left: var(--safe-left); }
+.pr-safe { padding-right: var(--safe-right); }
+
 h1, h2, h3, h4, h5, h6 {
   font-family: var(--font-display);
   letter-spacing: var(--letter-spacing-display);

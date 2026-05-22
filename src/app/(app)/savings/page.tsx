@@ -122,7 +122,7 @@ export default function SavingsPage() {
 
       <TiltCard
         intensity={1.2}
-        className="card-anim min-w-0 rounded-xl border border-border bg-card p-6 shadow-sm"
+        className="card-anim min-w-0 rounded-xl border border-border bg-card p-4 shadow-sm sm:p-6"
         style={{ animationDelay: '0ms' }}
       >
         <div className="flex min-w-0 items-start justify-between gap-4">
@@ -425,7 +425,7 @@ function SavingsCard({
 
   return (
     <div
-      className="card-anim group relative overflow-hidden rounded-2xl border border-border bg-card p-5 shadow-sm"
+      className="card-anim group relative overflow-hidden rounded-2xl border border-border bg-card p-4 shadow-sm sm:p-5"
       style={{ animationDelay: '0ms' }}
     >
       <div

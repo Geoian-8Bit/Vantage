@@ -135,9 +135,10 @@ export default function CalendarPage() {
     <div className="w-full space-y-4 lg:space-y-5">
       <PageHeader section="Calendario" page="Vista mensual" />
 
-      <div className="flex items-center justify-between rounded-xl border border-border bg-card px-5 py-3 shadow-sm">
+      <div className="flex items-center justify-between rounded-xl border border-border bg-card px-3 py-3 shadow-sm sm:px-5">
         <button
           onClick={navigatePrev}
+          aria-label="Mes anterior"
           className="cursor-pointer rounded-lg p-1.5 text-subtext transition-colors hover:bg-surface hover:text-text"
         >
           <svg
@@ -154,21 +155,22 @@ export default function CalendarPage() {
             <path d="M15 18l-6-6 6-6" />
           </svg>
         </button>
-        <div className="text-center">
-          <p className="text-base font-bold text-text">
+        <div className="min-w-0 px-2 text-center">
+          <p className="truncate text-base font-bold text-text">
             {MONTH_NAMES_FULL[month]} {year}
           </p>
-          <div className="mt-1 flex items-center justify-center gap-4">
-            <span className="text-xs font-semibold text-income">
+          <div className="mt-1 flex flex-col items-center justify-center gap-x-4 gap-y-0.5 sm:flex-row">
+            <span className="whitespace-nowrap text-[11px] font-semibold tabular-nums text-income sm:text-xs">
               Ingresos: {formatCurrency(monthTotals.income)}
             </span>
-            <span className="text-xs font-semibold text-expense">
+            <span className="whitespace-nowrap text-[11px] font-semibold tabular-nums text-expense sm:text-xs">
               Gastos: {formatCurrency(monthTotals.expense)}
             </span>
           </div>
         </div>
         <button
           onClick={navigateNext}
+          aria-label="Mes siguiente"
           className="cursor-pointer rounded-lg p-1.5 text-subtext transition-colors hover:bg-surface hover:text-text"
         >
           <svg
@@ -192,9 +194,10 @@ export default function CalendarPage() {
           {WEEKDAYS.map((d) => (
             <div
               key={d}
-              className="px-2 py-2 text-center text-xs font-semibold tracking-wider text-subtext uppercase"
+              className="px-1 py-2 text-center text-[10px] font-semibold tracking-wider text-subtext uppercase sm:px-2 sm:text-xs"
             >
-              {d}
+              <span className="sm:hidden">{d.slice(0, 1)}</span>
+              <span className="hidden sm:inline">{d}</span>
             </div>
           ))}
         </div>
@@ -219,8 +222,8 @@ export default function CalendarPage() {
                 key={i}
                 onClick={() => setSelectedDate(cell.date === selectedDate ? null : cell.date)}
                 onDoubleClick={() => setQuickCreate({ date: cell.date, type: 'expense' })}
-                title="Doble click para añadir gasto en esta fecha"
-                className={`relative min-h-[70px] cursor-pointer border-r border-b border-border/40 p-1.5 text-left transition-colors lg:min-h-[85px] lg:p-2 ${
+                title="Pulsa para ver movimientos; doble click para añadir gasto"
+                className={`relative min-h-[44px] cursor-pointer border-r border-b border-border/40 p-1 text-left transition-colors sm:min-h-[70px] sm:p-1.5 lg:min-h-[85px] lg:p-2 ${
                   !cell.inMonth
                     ? 'bg-surface/50'
                     : isSelected
@@ -233,7 +236,7 @@ export default function CalendarPage() {
                     !cell.inMonth
                       ? 'text-subtext/40'
                       : isToday
-                        ? 'cal-today-pulse inline-flex h-6 w-6 items-center justify-center rounded-full bg-brand text-xs text-white'
+                        ? 'cal-today-pulse inline-flex h-5 w-5 items-center justify-center rounded-full bg-brand text-[10px] text-white sm:h-6 sm:w-6 sm:text-xs'
                         : 'text-text'
                   }`}
                 >
@@ -241,24 +244,37 @@ export default function CalendarPage() {
                 </span>
 
                 {data && cell.inMonth && (
-                  <div className="mt-1 space-y-0.5">
-                    {data.income > 0 && (
-                      <div className="flex items-center gap-1">
-                        <div className="h-1.5 w-1.5 shrink-0 rounded-full bg-income" />
-                        <span className="truncate text-[10px] font-semibold tabular-nums text-income">
-                          +{formatCurrency(data.income)}
-                        </span>
-                      </div>
-                    )}
-                    {data.expense > 0 && (
-                      <div className="flex items-center gap-1">
-                        <div className="h-1.5 w-1.5 shrink-0 rounded-full bg-expense" />
-                        <span className="truncate text-[10px] font-semibold tabular-nums text-expense">
-                          −{formatCurrency(data.expense)}
-                        </span>
-                      </div>
-                    )}
-                  </div>
+                  <>
+                    {/* Móvil: solo dots como indicador, sin amounts (no caben) */}
+                    <div className="absolute bottom-1 left-1/2 flex -translate-x-1/2 gap-0.5 sm:hidden">
+                      {data.income > 0 && (
+                        <span className="h-1.5 w-1.5 rounded-full bg-income" aria-label="Ingresos" />
+                      )}
+                      {data.expense > 0 && (
+                        <span className="h-1.5 w-1.5 rounded-full bg-expense" aria-label="Gastos" />
+                      )}
+                    </div>
+
+                    {/* Desktop: amounts dentro de celda */}
+                    <div className="mt-1 hidden space-y-0.5 sm:block">
+                      {data.income > 0 && (
+                        <div className="flex items-center gap-1">
+                          <div className="h-1.5 w-1.5 shrink-0 rounded-full bg-income" />
+                          <span className="truncate text-[10px] font-semibold tabular-nums text-income">
+                            +{formatCurrency(data.income)}
+                          </span>
+                        </div>
+                      )}
+                      {data.expense > 0 && (
+                        <div className="flex items-center gap-1">
+                          <div className="h-1.5 w-1.5 shrink-0 rounded-full bg-expense" />
+                          <span className="truncate text-[10px] font-semibold tabular-nums text-expense">
+                            −{formatCurrency(data.expense)}
+                          </span>
+                        </div>
+                      )}
+                    </div>
+                  </>
                 )}
               </button>
             )
@@ -271,7 +287,7 @@ export default function CalendarPage() {
           key={selectedDate}
           className="cal-day-detail overflow-hidden rounded-xl border border-border bg-card shadow-sm"
         >
-          <div className="border-b border-border bg-surface px-5 py-3">
+          <div className="border-b border-border bg-surface px-4 py-3 sm:px-5">
             <p className="text-sm font-semibold text-text">
               {new Date(selectedDate + 'T00:00:00').toLocaleDateString('es-ES', {
                 weekday: 'long',
@@ -308,7 +324,7 @@ export default function CalendarPage() {
           ) : (
             <div className="divide-y divide-border/40">
               {selectedTransactions.map((t) => (
-                <div key={t.id} className="flex items-center gap-3 px-5 py-3">
+                <div key={t.id} className="flex items-center gap-3 px-4 py-3 sm:px-5">
                   <div
                     className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-lg ${
                       t.type === 'income' ? 'bg-income-light' : 'bg-expense-light'

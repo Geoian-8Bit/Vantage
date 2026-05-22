@@ -220,7 +220,7 @@ function SettingsHub({ onPick, isDemo }: { onPick: (v: SettingsView) => void; is
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
         {visibleOptions.map((opt) => {
           const content = (
-            <div className="group flex items-start gap-4 rounded-xl border border-border bg-card p-5 text-left shadow-sm transition-all hover:border-brand/40 hover:bg-surface/60">
+            <div className="group flex items-start gap-4 rounded-xl border border-border bg-card p-4 text-left shadow-sm transition-all hover:border-brand/40 hover:bg-surface/60 sm:p-5">
               <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-brand-light text-brand transition-colors group-hover:bg-brand group-hover:text-white">
                 {opt.icon}
               </div>
@@ -718,7 +718,7 @@ function AppearanceView({ onBack }: { onBack: () => void }) {
     <div key="settings-appearance" className="settings-view-anim w-full space-y-5 lg:space-y-6">
       <PageHeader section="Ajustes" page="Apariencia" actions={<BackButton onBack={onBack} />} />
 
-      <section className="rounded-xl border border-border bg-card p-5 shadow-sm">
+      <section className="rounded-xl border border-border bg-card p-4 shadow-sm sm:p-5">
         <p className="mb-3 text-xs font-semibold tracking-wider text-subtext uppercase">Modo</p>
         <div className="grid grid-cols-2 gap-3">
           {(['light', 'dark'] as const).map((mode) => {
@@ -937,7 +937,7 @@ function AccountView({ onBack }: { onBack: () => void }) {
       <PasswordCard currentEmail={currentEmail} />
       <MfaCard />
 
-      <div className="rounded-2xl border border-border bg-card p-5 shadow-sm">
+      <div className="rounded-2xl border border-border bg-card p-4 shadow-sm sm:p-5">
         <h3 className="text-sm font-semibold tracking-wider text-subtext uppercase">Sesión</h3>
         <p className="mt-3 text-sm text-subtext">
           Cierra la sesión activa. Te llevará a la pantalla de login.
@@ -952,7 +952,7 @@ function AccountView({ onBack }: { onBack: () => void }) {
         </form>
       </div>
 
-      <div className="rounded-2xl border border-border bg-card p-5 shadow-sm">
+      <div className="rounded-2xl border border-border bg-card p-4 shadow-sm sm:p-5">
         <h3 className="text-sm font-semibold tracking-wider text-subtext uppercase">
           Próximamente
         </h3>
@@ -995,7 +995,7 @@ function EmailCard({ currentEmail }: { currentEmail: string | null }) {
   }
 
   return (
-    <div className="rounded-2xl border border-border bg-card p-5 shadow-sm">
+    <div className="rounded-2xl border border-border bg-card p-4 shadow-sm sm:p-5">
       <h3 className="text-sm font-semibold tracking-wider text-subtext uppercase">Email</h3>
       <p className="mt-3 text-sm text-text">
         Email actual:{' '}
@@ -1154,7 +1154,7 @@ function MfaCard() {
   }
 
   return (
-    <div className="rounded-2xl border border-border bg-card p-5 shadow-sm">
+    <div className="rounded-2xl border border-border bg-card p-4 shadow-sm sm:p-5">
       <div className="flex items-baseline justify-between gap-2">
         <h3 className="text-sm font-semibold tracking-wider text-subtext uppercase">
           Autenticación en dos pasos (2FA)
@@ -1296,7 +1296,7 @@ function PasswordCard({ currentEmail }: { currentEmail: string | null }) {
   }
 
   return (
-    <div className="rounded-2xl border border-border bg-card p-5 shadow-sm">
+    <div className="rounded-2xl border border-border bg-card p-4 shadow-sm sm:p-5">
       <h3 className="text-sm font-semibold tracking-wider text-subtext uppercase">Contraseña</h3>
       <p className="mt-3 text-xs leading-relaxed text-subtext">
         Por seguridad, el cambio de contraseña se confirma por email. Te enviamos un enlace a{' '}
@@ -1544,7 +1544,7 @@ function ImportView({ onBack }: { onBack: () => void }) {
         </div>
       ) : (
         <div className="space-y-4">
-          <div className="rounded-2xl border border-border bg-card p-5 shadow-sm">
+          <div className="rounded-2xl border border-border bg-card p-4 shadow-sm sm:p-5">
             <div className="mb-4 flex items-baseline justify-between gap-3">
               <div>
                 <h3 className="text-sm font-semibold text-text">Mapping de columnas</h3>
@@ -1740,7 +1740,7 @@ function BackupView({ onBack }: { onBack: () => void }) {
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
         <TiltCard
           intensity={3}
-          className="card-anim space-y-4 rounded-2xl border border-border bg-card p-6 shadow-sm"
+          className="card-anim space-y-4 rounded-2xl border border-border bg-card p-4 shadow-sm sm:p-6"
         >
           <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-income-light text-income">
             <svg
@@ -1812,7 +1812,7 @@ function BackupView({ onBack }: { onBack: () => void }) {
 
         <TiltCard
           intensity={3}
-          className="card-anim space-y-4 rounded-2xl border border-border bg-card p-6 shadow-sm"
+          className="card-anim space-y-4 rounded-2xl border border-border bg-card p-4 shadow-sm sm:p-6"
         >
           <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-error-light text-error">
             <svg

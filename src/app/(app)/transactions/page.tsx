@@ -413,7 +413,7 @@ export default function TransactionsPage() {
               onClick={toggleRollover}
               aria-pressed={rolloverEnabled}
               title="Suma como disponible el balance no ahorrado de periodos anteriores"
-              className={`flex cursor-pointer items-center gap-1.5 rounded-lg border px-3 py-1.5 text-xs font-medium ${
+              className={`hidden cursor-pointer items-center gap-1.5 rounded-lg border px-3 py-1.5 text-xs font-medium sm:flex ${
                 rolloverEnabled
                   ? 'border-brand/30 bg-brand/10 text-brand'
                   : 'border-border bg-surface text-subtext hover:bg-border hover:text-text'
@@ -443,7 +443,7 @@ export default function TransactionsPage() {
                 setConfirmBulkDelete(true)
               }}
               disabled={filteredTransactions.length === 0}
-              className="flex cursor-pointer items-center gap-1.5 rounded-lg border border-expense/20 bg-expense-light px-3 py-1.5 text-xs font-medium text-expense hover:bg-expense/20 disabled:cursor-not-allowed disabled:opacity-40"
+              className="hidden cursor-pointer items-center gap-1.5 rounded-lg border border-expense/20 bg-expense-light px-3 py-1.5 text-xs font-medium text-expense hover:bg-expense/20 disabled:cursor-not-allowed disabled:opacity-40 sm:flex"
             >
               <svg
                 aria-hidden="true"
@@ -466,7 +466,7 @@ export default function TransactionsPage() {
             <button
               onClick={handleExportExcel}
               disabled={filteredTransactions.length === 0 || exporting}
-              className="flex cursor-pointer items-center gap-1.5 rounded-lg border border-border bg-surface px-3 py-1.5 text-xs font-medium text-subtext hover:bg-border disabled:cursor-not-allowed disabled:opacity-40"
+              className="hidden cursor-pointer items-center gap-1.5 rounded-lg border border-border bg-surface px-3 py-1.5 text-xs font-medium text-subtext hover:bg-border disabled:cursor-not-allowed disabled:opacity-40 sm:flex"
             >
               {exporting ? (
                 <>
@@ -561,7 +561,7 @@ export default function TransactionsPage() {
         showCarryover={showCarryover}
       />
 
-      <div className="flex flex-wrap items-center gap-2 rounded-xl border border-border bg-card px-3 py-3 shadow-sm lg:gap-3 lg:px-5">
+      <div className="flex flex-col gap-2 rounded-xl border border-border bg-card p-3 shadow-sm md:flex-row md:flex-wrap md:items-center md:gap-2 lg:gap-3 lg:px-5">
         <div className="flex items-center gap-2">
           {showNavigation && (
             <button
@@ -635,69 +635,73 @@ export default function TransactionsPage() {
           )}
         </div>
 
-        <div className="h-5 w-px shrink-0 bg-border" aria-hidden="true" />
+        <div className="hidden h-5 w-px shrink-0 bg-border md:block" aria-hidden="true" />
 
-        <Tabs
-          items={DATE_MODES}
-          activeId={dateMode}
-          onChange={handleDateModeChange}
-          ariaLabel="Periodo"
-        />
-
-        <div className="flex-1" />
-
-        <Tabs
-          items={TYPE_TABS}
-          activeId={filter}
-          onChange={handleFilterChange}
-          ariaLabel="Tipo de movimiento"
-        />
-
-        <Select
-          value={categoryFilter}
-          onChange={(v) => {
-            setCategoryFilter(v)
-            setPage(0)
-          }}
-          ariaLabel="Filtrar por categoría"
-          options={[
-            { value: 'all', label: 'Todas las categorías' },
-            ...categoryOptions.map((cat) => ({ value: cat, label: cat })),
-          ]}
-        />
-
-        <div className="relative">
-          <svg
-            className="pointer-events-none absolute left-2.5 top-1/2 -translate-y-1/2 text-subtext"
-            xmlns="http://www.w3.org/2000/svg"
-            width="13"
-            height="13"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="2"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-          >
-            <circle cx="11" cy="11" r="8" />
-            <path d="m21 21-4.35-4.35" />
-          </svg>
-          <input
-            type="text"
-            value={searchText}
-            onChange={(e) => {
-              setSearchText(e.target.value)
-              setPage(0)
-            }}
-            placeholder="Buscar..."
-            aria-label="Buscar por descripción"
-            className="w-36 rounded-lg border border-border bg-surface py-1.5 pl-7 pr-3 text-xs text-text"
+        <div className="-mx-1 overflow-x-auto px-1 md:m-0 md:overflow-visible md:px-0">
+          <Tabs
+            items={DATE_MODES}
+            activeId={dateMode}
+            onChange={handleDateModeChange}
+            ariaLabel="Periodo"
           />
         </div>
 
-        <span className="shrink-0 text-xs font-medium text-subtext">
-          {filteredTransactions.length} mov.
-        </span>
+        <div className="hidden md:block md:flex-1" />
+
+        <div className="flex flex-wrap items-center gap-2">
+          <Tabs
+            items={TYPE_TABS}
+            activeId={filter}
+            onChange={handleFilterChange}
+            ariaLabel="Tipo de movimiento"
+          />
+
+          <Select
+            value={categoryFilter}
+            onChange={(v) => {
+              setCategoryFilter(v)
+              setPage(0)
+            }}
+            ariaLabel="Filtrar por categoría"
+            options={[
+              { value: 'all', label: 'Todas las categorías' },
+              ...categoryOptions.map((cat) => ({ value: cat, label: cat })),
+            ]}
+          />
+
+          <div className="relative min-w-0 flex-1 md:flex-none">
+            <svg
+              className="pointer-events-none absolute left-2.5 top-1/2 -translate-y-1/2 text-subtext"
+              xmlns="http://www.w3.org/2000/svg"
+              width="13"
+              height="13"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            >
+              <circle cx="11" cy="11" r="8" />
+              <path d="m21 21-4.35-4.35" />
+            </svg>
+            <input
+              type="text"
+              value={searchText}
+              onChange={(e) => {
+                setSearchText(e.target.value)
+                setPage(0)
+              }}
+              placeholder="Buscar..."
+              aria-label="Buscar por descripción"
+              className="w-full rounded-lg border border-border bg-surface py-1.5 pl-7 pr-3 text-xs text-text md:w-36"
+            />
+          </div>
+
+          <span className="ml-auto shrink-0 text-xs font-medium text-subtext md:ml-0">
+            {filteredTransactions.length} mov.
+          </span>
+        </div>
       </div>
 
       <div
@@ -742,9 +746,9 @@ export default function TransactionsPage() {
       </div>
 
       {filteredTransactions.length > PAGE_SIZE && (
-        <nav aria-label="Paginación" className="flex items-center justify-between px-1">
+        <nav aria-label="Paginación" className="flex flex-wrap items-center justify-between gap-y-2 px-1">
           <div className="flex items-center gap-2">
-            <p className="text-sm text-subtext" aria-live="polite">
+            <p className="text-xs text-subtext sm:text-sm" aria-live="polite">
               {showAll
                 ? `${filteredTransactions.length} movimientos`
                 : `${page * PAGE_SIZE + 1}–${Math.min(
@@ -805,40 +809,49 @@ export default function TransactionsPage() {
               <button
                 onClick={() => setPage((p) => p - 1)}
                 disabled={page === 0}
-                className="cursor-pointer rounded-lg border border-border bg-card px-3 py-1.5 text-sm font-medium text-subtext transition-colors hover:bg-surface disabled:cursor-not-allowed disabled:opacity-40"
+                aria-label="Página anterior"
+                className="cursor-pointer rounded-lg border border-border bg-card px-2.5 py-1.5 text-sm font-medium text-subtext transition-colors hover:bg-surface disabled:cursor-not-allowed disabled:opacity-40 sm:px-3"
               >
-                ← Anterior
+                <span aria-hidden="true">←</span>
+                <span className="ml-1 hidden sm:inline">Anterior</span>
               </button>
-              {getPageNumbers(page, totalPages).map((item, idx) =>
-                item === '...' ? (
-                  <span
-                    key={`ellipsis-${idx}`}
-                    className="flex h-8 w-8 select-none items-center justify-center text-sm text-subtext"
-                  >
-                    ...
-                  </span>
-                ) : (
-                  <button
-                    key={item}
-                    onClick={() => setPage(item)}
-                    aria-label={`Página ${item + 1}`}
-                    aria-current={item === page ? 'page' : undefined}
-                    className={`h-8 w-8 cursor-pointer rounded-lg text-sm font-medium transition-colors ${
-                      item === page
-                        ? 'bg-brand text-white'
-                        : 'border border-border bg-card text-subtext hover:bg-surface'
-                    }`}
-                  >
-                    {item + 1}
-                  </button>
-                )
-              )}
+              <span className="px-2 text-xs font-medium tabular-nums text-subtext sm:hidden">
+                {page + 1} / {totalPages}
+              </span>
+              <div className="hidden items-center gap-1 sm:flex">
+                {getPageNumbers(page, totalPages).map((item, idx) =>
+                  item === '...' ? (
+                    <span
+                      key={`ellipsis-${idx}`}
+                      className="flex h-8 w-8 select-none items-center justify-center text-sm text-subtext"
+                    >
+                      ...
+                    </span>
+                  ) : (
+                    <button
+                      key={item}
+                      onClick={() => setPage(item)}
+                      aria-label={`Página ${item + 1}`}
+                      aria-current={item === page ? 'page' : undefined}
+                      className={`h-8 w-8 cursor-pointer rounded-lg text-sm font-medium transition-colors ${
+                        item === page
+                          ? 'bg-brand text-white'
+                          : 'border border-border bg-card text-subtext hover:bg-surface'
+                      }`}
+                    >
+                      {item + 1}
+                    </button>
+                  )
+                )}
+              </div>
               <button
                 onClick={() => setPage((p) => p + 1)}
                 disabled={page === totalPages - 1}
-                className="cursor-pointer rounded-lg border border-border bg-card px-3 py-1.5 text-sm font-medium text-subtext transition-colors hover:bg-surface disabled:cursor-not-allowed disabled:opacity-40"
+                aria-label="Página siguiente"
+                className="cursor-pointer rounded-lg border border-border bg-card px-2.5 py-1.5 text-sm font-medium text-subtext transition-colors hover:bg-surface disabled:cursor-not-allowed disabled:opacity-40 sm:px-3"
               >
-                Siguiente →
+                <span className="mr-1 hidden sm:inline">Siguiente</span>
+                <span aria-hidden="true">→</span>
               </button>
               <form
                 onSubmit={(e) => {
@@ -847,7 +860,7 @@ export default function TransactionsPage() {
                   if (n >= 1 && n <= totalPages) setPage(n - 1)
                   setGoToPage('')
                 }}
-                className="ml-2 flex items-center gap-1"
+                className="ml-2 hidden items-center gap-1 lg:flex"
               >
                 <input
                   type="number"

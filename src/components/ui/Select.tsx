@@ -46,10 +46,17 @@ export function Select({
     if (!open || !triggerRef.current) return
     const rect = triggerRef.current.getBoundingClientRect()
     const popoverHeight = Math.min(options.length * 36 + 16, 320)
+    const margin = 8
     const wouldOverflow = rect.bottom + popoverHeight + 12 > window.innerHeight
+    // Clamp horizontal: si el trigger está cerca del borde derecho, alinea
+    // el popover por la derecha en lugar de salirse del viewport.
+    const left = Math.max(
+      margin,
+      Math.min(rect.left, window.innerWidth - rect.width - margin)
+    )
     setPopoverPos({
       top: wouldOverflow ? rect.top - popoverHeight - 6 : rect.bottom + 6,
-      left: rect.left,
+      left,
       width: rect.width,
       alignBottom: wouldOverflow,
     })
@@ -120,6 +127,7 @@ export function Select({
               top: popoverPos.top,
               left: popoverPos.left,
               minWidth: popoverPos.width,
+              maxWidth: 'calc(100vw - 16px)',
               maxHeight: 320,
               background: 'var(--color-card)',
               borderColor: 'var(--color-border)',
