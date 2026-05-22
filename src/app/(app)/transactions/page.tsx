@@ -132,6 +132,7 @@ export default function TransactionsPage() {
   const [confirmBulkDelete, setConfirmBulkDelete] = useState(false)
   const [bulkDeleting, setBulkDeleting] = useState(false)
   const [fabOpen, setFabOpen] = useState(false)
+  const [filterSheetOpen, setFilterSheetOpen] = useState(false)
 
   const { fromDate, toDate, periodLabel } = useMemo(() => {
     const y = refDate.getFullYear()
@@ -169,6 +170,11 @@ export default function TransactionsPage() {
   }, [dateMode, refDate, customFrom, customTo])
 
   const showNavigation = dateMode === 'month' || dateMode === 'quarter' || dateMode === 'year'
+
+  const activeFiltersCount =
+    (filter !== 'all' ? 1 : 0) +
+    (categoryFilter !== 'all' ? 1 : 0) +
+    (searchText.trim() ? 1 : 0)
 
   function navigatePrev() {
     setRefDate((d) => {
@@ -563,7 +569,7 @@ export default function TransactionsPage() {
       />
 
       <div className="flex flex-col gap-2 rounded-xl border border-border bg-card p-3 shadow-sm md:flex-row md:flex-wrap md:items-center md:gap-2 lg:gap-3 lg:px-5">
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 max-md:flex-wrap">
           {showNavigation && (
             <button
               onClick={navigatePrev}
@@ -634,6 +640,41 @@ export default function TransactionsPage() {
               />
             </div>
           )}
+
+          {/* Mobile-only: trigger del sheet de filtros + counter compacto */}
+          <button
+            type="button"
+            onClick={() => setFilterSheetOpen(true)}
+            aria-label={
+              activeFiltersCount > 0
+                ? `Abrir filtros (${activeFiltersCount} activos)`
+                : 'Abrir filtros'
+            }
+            className="ml-auto inline-flex shrink-0 cursor-pointer items-center gap-1.5 rounded-lg border border-border bg-surface px-2.5 py-1.5 text-xs font-medium text-text transition-colors hover:bg-border md:hidden"
+          >
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              width="13"
+              height="13"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            >
+              <polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3" />
+            </svg>
+            Filtros
+            {activeFiltersCount > 0 && (
+              <span className="flex h-4 min-w-4 items-center justify-center rounded-full bg-brand px-1 text-[10px] font-bold leading-none text-white tabular-nums">
+                {activeFiltersCount}
+              </span>
+            )}
+          </button>
+          <span className="shrink-0 text-xs font-medium text-subtext tabular-nums md:hidden">
+            {filteredTransactions.length} mov.
+          </span>
         </div>
 
         <div className="hidden h-5 w-px shrink-0 bg-border md:block" aria-hidden="true" />
@@ -649,7 +690,7 @@ export default function TransactionsPage() {
 
         <div className="hidden md:block md:flex-1" />
 
-        <div className="flex flex-wrap items-center gap-2">
+        <div className="hidden flex-wrap items-center gap-2 md:flex">
           <Tabs
             items={TYPE_TABS}
             activeId={filter}
@@ -699,7 +740,7 @@ export default function TransactionsPage() {
             />
           </div>
 
-          <span className="ml-auto shrink-0 text-xs font-medium text-subtext md:ml-0">
+          <span className="shrink-0 text-xs font-medium text-subtext">
             {filteredTransactions.length} mov.
           </span>
         </div>
@@ -1001,6 +1042,162 @@ export default function TransactionsPage() {
                 <span className="h-4 w-4 animate-spin rounded-full border-2 border-white/40 border-t-white" />
               )}
               {bulkDeleting ? 'Eliminando…' : 'Eliminar todos'}
+            </button>
+          </div>
+        </div>
+      </Modal>
+
+      {/* ─── Sheet de filtros (móvil) ─── */}
+      <Modal
+        isOpen={filterSheetOpen}
+        onClose={() => setFilterSheetOpen(false)}
+        title="Filtros"
+      >
+        <div className="space-y-5">
+          <div>
+            <p className="mb-2 text-[11px] font-semibold tracking-wider text-subtext uppercase">
+              Tipo de movimiento
+            </p>
+            <Tabs
+              items={TYPE_TABS}
+              activeId={filter}
+              onChange={handleFilterChange}
+              ariaLabel="Tipo de movimiento"
+              size="md"
+            />
+          </div>
+
+          <div>
+            <p className="mb-2 text-[11px] font-semibold tracking-wider text-subtext uppercase">
+              Categoría
+            </p>
+            <Select
+              value={categoryFilter}
+              onChange={(v) => {
+                setCategoryFilter(v)
+                setPage(0)
+              }}
+              ariaLabel="Filtrar por categoría"
+              size="md"
+              className="w-full"
+              options={[
+                { value: 'all', label: 'Todas las categorías' },
+                ...categoryOptions.map((cat) => ({ value: cat, label: cat })),
+              ]}
+            />
+          </div>
+
+          <div>
+            <p className="mb-2 text-[11px] font-semibold tracking-wider text-subtext uppercase">
+              Buscar por descripción
+            </p>
+            <div className="relative">
+              <svg
+                aria-hidden="true"
+                className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-subtext"
+                xmlns="http://www.w3.org/2000/svg"
+                width="14"
+                height="14"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              >
+                <circle cx="11" cy="11" r="8" />
+                <path d="m21 21-4.35-4.35" />
+              </svg>
+              <input
+                type="text"
+                value={searchText}
+                onChange={(e) => {
+                  setSearchText(e.target.value)
+                  setPage(0)
+                }}
+                placeholder="Ej: nómina, alquiler…"
+                aria-label="Buscar por descripción"
+                className="w-full rounded-xl border border-border bg-surface py-2.5 pl-9 pr-3 text-sm text-text"
+              />
+              {searchText && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setSearchText('')
+                    setPage(0)
+                  }}
+                  aria-label="Limpiar búsqueda"
+                  className="absolute right-2 top-1/2 -translate-y-1/2 cursor-pointer rounded-full p-1 text-subtext hover:bg-border hover:text-text"
+                >
+                  <svg
+                    xmlns="http://www.w3.org/2000/svg"
+                    width="12"
+                    height="12"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="2.5"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                  >
+                    <path d="M18 6 6 18" />
+                    <path d="m6 6 12 12" />
+                  </svg>
+                </button>
+              )}
+            </div>
+          </div>
+
+          <div className="flex items-start justify-between gap-3 rounded-xl bg-surface p-3">
+            <div className="min-w-0">
+              <p className="text-sm font-semibold text-text">Acumular meses</p>
+              <p className="mt-0.5 text-xs leading-relaxed text-subtext">
+                Suma como disponible el balance no ahorrado de periodos anteriores.
+              </p>
+            </div>
+            <button
+              type="button"
+              role="switch"
+              aria-checked={rolloverEnabled}
+              aria-label="Acumular meses"
+              onClick={toggleRollover}
+              className={`toggle-switch relative inline-flex h-6 w-10 shrink-0 cursor-pointer items-center rounded-full ${
+                rolloverEnabled
+                  ? 'toggle-on'
+                  : 'border border-border bg-card'
+              }`}
+              style={{
+                background: rolloverEnabled ? 'var(--color-brand)' : undefined,
+              }}
+            >
+              <span
+                className={`toggle-thumb absolute left-0.5 h-5 w-5 rounded-full bg-white shadow-sm ${
+                  rolloverEnabled ? 'toggle-thumb-on' : ''
+                }`}
+              />
+            </button>
+          </div>
+
+          <div className="flex gap-2 border-t border-border pt-4">
+            <button
+              type="button"
+              onClick={() => {
+                setFilter('all')
+                setCategoryFilter('all')
+                setSearchText('')
+                setPage(0)
+              }}
+              disabled={activeFiltersCount === 0}
+              className="flex-1 cursor-pointer rounded-xl border border-border bg-surface py-2.5 text-sm font-semibold text-subtext transition-colors hover:bg-border hover:text-text disabled:cursor-not-allowed disabled:opacity-40"
+            >
+              Limpiar
+            </button>
+            <button
+              type="button"
+              onClick={() => setFilterSheetOpen(false)}
+              className="flex-1 cursor-pointer rounded-xl bg-brand py-2.5 text-sm font-semibold text-white transition-colors hover:bg-brand-hover"
+            >
+              Hecho
             </button>
           </div>
         </div>

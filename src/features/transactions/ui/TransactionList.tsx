@@ -281,7 +281,7 @@ export function TransactionList({
                 onClick={(e) => onEdit(transaction, originFromElement(e.currentTarget))}
                 aria-label={`Editar ${transaction.description || (isIncome ? 'ingreso' : 'gasto')}`}
                 title="Editar"
-                className="flex h-8 w-8 cursor-pointer items-center justify-center rounded-lg bg-surface/60 text-subtext transition-colors hover:bg-brand-light hover:text-brand"
+                className="flex h-9 w-9 cursor-pointer items-center justify-center rounded-lg bg-surface/60 text-subtext transition-colors hover:bg-brand-light hover:text-brand sm:h-8 sm:w-8"
               >
                 <svg
                   aria-hidden="true"
@@ -303,7 +303,7 @@ export function TransactionList({
                 onClick={(e) => onDelete(transaction.id, originFromElement(e.currentTarget))}
                 aria-label={`Eliminar ${transaction.description || (isIncome ? 'ingreso' : 'gasto')}`}
                 title="Eliminar"
-                className="flex h-8 w-8 cursor-pointer items-center justify-center rounded-lg bg-surface/60 text-subtext transition-colors hover:bg-expense-light hover:text-expense"
+                className="flex h-9 w-9 cursor-pointer items-center justify-center rounded-lg bg-surface/60 text-subtext transition-colors hover:bg-expense-light hover:text-expense sm:h-8 sm:w-8"
               >
                 <svg
                   aria-hidden="true"
