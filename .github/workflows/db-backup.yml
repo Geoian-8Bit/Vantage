@@ -1,16 +1,26 @@
 name: DB Backup
 
-# Backup semanal de la DB Supabase con pg_dump. El dump comprimido se sube
-# como artifact del run y se conserva 90 dias. Para descargar uno: pestaña
-# Actions del repo → este workflow → run → "Artifacts" abajo.
+# Backup semanal de la DB Supabase con pg_dump, cifrado con GPG (AES256)
+# antes de subirse como artifact. El repo es publico → el artifact tambien
+# lo es para quien tenga acceso de lectura al repo, por eso ciframos.
 #
-# Requisitos:
-# - Secret DATABASE_URL en Settings → Secrets and variables → Actions.
-#   Usar el connection string Modo Session (puerto 5432) de Supabase →
-#   Project Settings → Database → Connection string → URI.
+# Retencion del artifact: 90 dias.
 #
-# Trigger manual disponible (workflow_dispatch) para probar sin esperar al
-# domingo.
+# Requisitos (secrets):
+# - DATABASE_URL: connection string Modo Session (puerto 5432) de Supabase.
+# - BACKUP_PASSPHRASE: passphrase para cifrar/descifrar el dump.
+#
+# Trigger manual disponible (workflow_dispatch) para probar.
+#
+# COMO RESTAURAR UN BACKUP:
+# 1. Descarga el .zip del artifact desde Actions → run → Artifacts.
+# 2. Extrae el .sql.gz.gpg.
+# 3. Descifrar (necesitas la BACKUP_PASSPHRASE de .env.local):
+#      gpg --batch --passphrase "$BACKUP_PASSPHRASE" \
+#          --output backup.sql.gz vantage_backup_YYYY-MM-DD.sql.gz.gpg
+#      gunzip backup.sql.gz
+# 4. Restaurar contra un proyecto Supabase (cuidado: borra el schema public):
+#      psql "$DATABASE_URL" < backup.sql
 
 on:
   schedule:
@@ -20,14 +30,13 @@ on:
 
 jobs:
   backup:
-    name: pg_dump del schema public
+    name: pg_dump + cifrar con GPG
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
       - name: Install PostgreSQL 17 client
         # Supabase corre Postgres 17. El cliente por defecto de Ubuntu es
-        # mas antiguo y daria warnings de version mismatch. Anadimos el
-        # repo apt oficial de PostgreSQL y solo el cliente.
+        # mas antiguo. Anadimos el repo apt oficial de PostgreSQL.
         run: |
           sudo install -d /usr/share/postgresql-common/pgdg
           sudo curl -o /usr/share/postgresql-common/pgdg/apt.postgresql.org.asc \
@@ -37,28 +46,52 @@ jobs:
           sudo apt-get update -qq
           sudo apt-get install -y -qq postgresql-client-17
 
-      - name: Backup database
+      - name: Backup and encrypt database
         env:
           DATABASE_URL: ${{ secrets.DATABASE_URL }}
+          BACKUP_PASSPHRASE: ${{ secrets.BACKUP_PASSPHRASE }}
         run: |
           if [ -z "$DATABASE_URL" ]; then
             echo "::error::DATABASE_URL secret no esta configurado"
             exit 1
           fi
-          FILENAME="vantage_backup_$(date -u +%Y-%m-%d).sql"
+          if [ -z "$BACKUP_PASSPHRASE" ]; then
+            echo "::error::BACKUP_PASSPHRASE secret no esta configurado"
+            exit 1
+          fi
+
+          STAMP=$(date -u +%Y-%m-%d)
+          SQL_FILE="vantage_backup_${STAMP}.sql"
+          GZ_FILE="${SQL_FILE}.gz"
+          ENC_FILE="${GZ_FILE}.gpg"
+
+          # Dump del schema public, sin owners ni privileges (portable).
           pg_dump \
             --schema=public \
             --clean --if-exists \
             --quote-all-identifiers \
             --no-owner --no-privileges \
-            "$DATABASE_URL" > "$FILENAME"
-          gzip "$FILENAME"
-          ls -lh "${FILENAME}.gz"
+            "$DATABASE_URL" > "$SQL_FILE"
 
-      - name: Upload backup as artifact
+          gzip "$SQL_FILE"
+
+          # Cifrar simetricamente con AES256. --batch + --yes para no
+          # preguntar nada. La passphrase nunca toca disco.
+          gpg --batch --yes --symmetric --cipher-algo AES256 \
+              --passphrase "$BACKUP_PASSPHRASE" \
+              --output "$ENC_FILE" \
+              "$GZ_FILE"
+
+          # Borrar el dump sin cifrar antes del upload — el artifact solo
+          # contiene el .gpg.
+          rm -f "$GZ_FILE"
+
+          ls -lh "$ENC_FILE"
+
+      - name: Upload encrypted backup as artifact
         uses: actions/upload-artifact@v4
         with:
           name: vantage-backup-${{ github.run_id }}
-          path: vantage_backup_*.sql.gz
+          path: vantage_backup_*.sql.gz.gpg
           retention-days: 90
           if-no-files-found: error
