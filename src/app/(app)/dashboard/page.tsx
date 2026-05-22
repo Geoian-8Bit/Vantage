@@ -174,9 +174,12 @@ export default function DashboardPage() {
     <div className="w-full space-y-4 lg:space-y-5">
       <PageHeader section="Inicio" page="Panel" />
 
-      {/* ─── HERO MÓVIL: balance líquido sin card + strip de stats ─── */}
-      <section aria-label="Resumen rápido" className="md:hidden">
-        <div className="pt-1 pb-1">
+      {/* ─── HERO MÓVIL: balance líquido + strip de stats dentro de una sola card ─── */}
+      <section
+        aria-label="Resumen rápido"
+        className="card-anim rounded-xl border border-border bg-card p-4 shadow-sm md:hidden"
+      >
+        <div>
           <p className="text-[11px] font-semibold tracking-wider text-subtext uppercase">
             Balance líquido
           </p>
@@ -185,7 +188,7 @@ export default function DashboardPage() {
               stats.balance >= 0 ? 'text-text' : 'text-expense'
             }`}
             style={{
-              fontSize: 'clamp(2.25rem, 11vw, 3rem)',
+              fontSize: 'clamp(2rem, 10vw, 2.5rem)',
               lineHeight: 1,
               fontFamily: 'var(--font-display)',
               letterSpacing: 'var(--letter-spacing-display)',
@@ -206,8 +209,8 @@ export default function DashboardPage() {
           </p>
         </div>
 
-        <div className="mt-3 flex items-stretch divide-x divide-border/60 overflow-hidden rounded-xl border border-border bg-card">
-          <div className="min-w-0 flex-1 px-3 py-2.5">
+        <div className="mt-4 flex items-stretch divide-x divide-border/60 border-t border-border pt-3">
+          <div className="min-w-0 flex-1 pr-3">
             <p className="flex items-center gap-1 text-[10px] font-semibold tracking-wider text-subtext uppercase">
               <span className="h-1 w-1 rounded-full bg-expense" aria-hidden="true" />
               Deudas
@@ -221,7 +224,7 @@ export default function DashboardPage() {
               {formatCurrency(animTotalDebt)}
             </p>
           </div>
-          <div className="min-w-0 flex-1 px-3 py-2.5">
+          <div className="min-w-0 flex-1 px-3">
             <p className="flex items-center gap-1 text-[10px] font-semibold tracking-wider text-subtext uppercase">
               <span className="h-1 w-1 rounded-full bg-brand" aria-hidden="true" />
               Ahorrado
@@ -233,7 +236,7 @@ export default function DashboardPage() {
               {formatCurrency(animSavings)}
             </p>
           </div>
-          <div className="min-w-0 flex-1 px-3 py-2.5">
+          <div className="min-w-0 flex-1 pl-3">
             <p className="text-[10px] font-semibold tracking-wider text-subtext uppercase">
               Gastos mes
             </p>
@@ -257,7 +260,7 @@ export default function DashboardPage() {
       </section>
 
       {/* ─── DESKTOP: las dos cards originales (3-col + asimétrico) ─── */}
-      <div className="hidden md:contents">
+      <div className="hidden space-y-4 md:block lg:space-y-5">
 
       {/* Tres columnas: Total deudas / Balance / Ahorrado */}
       <TiltCard
@@ -412,9 +415,9 @@ export default function DashboardPage() {
 
       </div>{/* fin desktop-only */}
 
-      {/* Trend chart — sin card en móvil, con card en desktop */}
+      {/* Trend chart */}
       <div
-        className="card-anim rounded-xl border border-border bg-card p-4 shadow-sm max-md:border-0 max-md:bg-transparent max-md:p-0 max-md:shadow-none sm:p-5"
+        className="card-anim rounded-xl border border-border bg-card p-4 shadow-sm sm:p-5"
         style={{ animationDelay: '180ms' }}
       >
         <p className="mb-3 text-xs font-semibold tracking-wider text-subtext uppercase sm:mb-4">
@@ -477,12 +480,12 @@ export default function DashboardPage() {
         </div>
       </div>
 
-      {/* Próximos recurrentes — sin card en móvil */}
+      {/* Próximos recurrentes */}
       <div
-        className="card-anim overflow-hidden rounded-xl border border-border bg-card shadow-sm max-md:border-0 max-md:bg-transparent max-md:shadow-none"
+        className="card-anim overflow-hidden rounded-xl border border-border bg-card shadow-sm"
         style={{ animationDelay: '240ms' }}
       >
-        <div className="border-b border-border bg-surface px-4 py-3 max-md:border-0 max-md:bg-transparent max-md:px-0 max-md:py-2 sm:px-5">
+        <div className="border-b border-border bg-surface px-4 py-3 sm:px-5">
           <p className="text-xs font-semibold tracking-wider text-subtext uppercase">
             Próximos recurrentes
           </p>

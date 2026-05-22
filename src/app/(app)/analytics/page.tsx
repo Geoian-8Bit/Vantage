@@ -480,7 +480,7 @@ export default function AnalyticsPage() {
         }
       />
 
-      <div className="space-y-3 rounded-xl border border-border bg-card px-3 py-3.5 shadow-sm max-md:border-0 max-md:bg-transparent max-md:px-0 max-md:py-2 max-md:shadow-none lg:px-5">
+      <div className="space-y-3 rounded-xl border border-border bg-card px-3 py-3.5 shadow-sm lg:px-5">
         <div className="flex flex-wrap items-center gap-2 lg:gap-4">
           <Tabs
             items={DATE_MODES}
@@ -673,7 +673,7 @@ export default function AnalyticsPage() {
       </TiltCard>
 
       <div className="flex flex-col gap-4 lg:grid lg:grid-cols-[1fr_300px]">
-        <div className="rounded-xl border border-border bg-card p-4 shadow-sm max-md:border-0 max-md:bg-transparent max-md:p-0 max-md:shadow-none sm:p-5">
+        <div className="rounded-xl border border-border bg-card p-4 shadow-sm sm:p-5">
           <h3 className="mb-1 text-sm font-semibold text-text">{barChartTitle}</h3>
           <p className="mb-4 text-[11px] text-subtext">
             La parte coral de cada gasto es lo que fuiste a apartados de ahorro.
@@ -772,7 +772,7 @@ export default function AnalyticsPage() {
           )}
         </div>
 
-        <div className="rounded-xl border border-border bg-card p-4 shadow-sm max-md:border-0 max-md:bg-transparent max-md:p-0 max-md:shadow-none sm:p-5 lg:min-w-0">
+        <div className="rounded-xl border border-border bg-card p-4 shadow-sm sm:p-5 lg:min-w-0">
           <h3 className="mb-4 text-sm font-semibold text-text">Gastos por categoría</h3>
           {categoryData.length === 0 ? (
             <EmptyState
@@ -865,7 +865,7 @@ export default function AnalyticsPage() {
       </div>
 
       {(hasEvolutionData || hasSavingsData) && (
-        <div className="rounded-xl border border-border bg-card p-4 shadow-sm max-md:border-0 max-md:bg-transparent max-md:p-0 max-md:shadow-none sm:p-5">
+        <div className="rounded-xl border border-border bg-card p-4 shadow-sm sm:p-5">
           <div className="mb-4 flex flex-wrap items-baseline justify-between gap-3">
             <div>
               <h3 className="text-sm font-semibold text-text">Tendencia del periodo</h3>
@@ -1078,7 +1078,7 @@ export default function AnalyticsPage() {
           )}
 
           {weekdayData.some((d) => d.total > 0) && (
-            <div className="rounded-xl border border-border bg-card p-4 shadow-sm max-md:border-0 max-md:bg-transparent max-md:p-0 max-md:shadow-none sm:p-5">
+            <div className="rounded-xl border border-border bg-card p-4 shadow-sm sm:p-5">
               <h3 className="mb-4 text-sm font-semibold text-text">
                 Gasto promedio por día de la semana
               </h3>

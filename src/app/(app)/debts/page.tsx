@@ -139,7 +139,7 @@ export default function DebtsPage() {
 
       <TiltCard
         intensity={1.2}
-        className="card-anim min-w-0 rounded-xl border border-border bg-card p-4 shadow-sm max-md:border-0 max-md:bg-transparent max-md:p-0 max-md:shadow-none sm:p-6"
+        className="card-anim min-w-0 rounded-xl border border-border bg-card p-4 shadow-sm sm:p-6"
         style={{ animationDelay: '0ms' }}
       >
         <div className="flex min-w-0 flex-wrap items-start justify-between gap-4 max-md:flex-col max-md:items-stretch max-md:gap-3">
