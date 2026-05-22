@@ -238,6 +238,7 @@ export const transactions = pgTable(
       onDelete: 'set null',
     }),
     debtId: uuid('debt_id').references(() => debts.id, { onDelete: 'set null' }),
+    attachmentPath: text('attachment_path'),
     createdBy: uuid('created_by').references(() => authUsers.id, { onDelete: 'set null' }),
     createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
     updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),

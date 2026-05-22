@@ -15,6 +15,13 @@
       "when": 1779375770840,
       "tag": "0001_fair_tigra",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1779479670406,
+      "tag": "0002_tearful_sally_floyd",
+      "breakpoints": true
     }
   ]
 }

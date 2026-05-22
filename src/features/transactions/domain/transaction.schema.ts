@@ -20,6 +20,7 @@ export const transactionSchema = z.object({
   categoryId: z.string().uuid().nullable(),
   savingsAccountId: z.string().uuid().nullable(),
   debtId: z.string().uuid().nullable(),
+  attachmentPath: z.string().nullable(),
   createdBy: z.string().uuid().nullable(),
   createdAt: z.string(),
   updatedAt: z.string(),
@@ -50,6 +51,7 @@ export const createTransactionInputSchema = z.object({
   categoryId: z.string().uuid().nullable().optional(),
   savingsAccountId: z.string().uuid().nullable().optional(),
   debtId: z.string().uuid().nullable().optional(),
+  attachmentPath: z.string().max(500).nullable().optional(),
 })
 export type CreateTransactionInput = z.infer<typeof createTransactionInputSchema>
 

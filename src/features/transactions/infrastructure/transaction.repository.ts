@@ -25,6 +25,7 @@ function toDomain(row: typeof transactions.$inferSelect): Transaction {
     categoryId: row.categoryId,
     savingsAccountId: row.savingsAccountId,
     debtId: row.debtId,
+    attachmentPath: row.attachmentPath,
     createdBy: row.createdBy,
     createdAt: row.createdAt.toISOString(),
     updatedAt: row.updatedAt.toISOString(),
@@ -80,6 +81,7 @@ export const transactionRepository = {
         categoryId: input.categoryId ?? null,
         savingsAccountId: input.savingsAccountId ?? null,
         debtId: input.debtId ?? null,
+        attachmentPath: input.attachmentPath ?? null,
       })
       .returning()
     return toDomain(rows[0]!)

@@ -40,6 +40,18 @@ export async function DELETE(_request: NextRequest, { params }: Context) {
   try {
     const space = await getActiveSpace()
     const { id } = idParamSchema.parse(await params)
+
+    // Si la tx tiene una foto adjunta, borramos primero el archivo de
+    // Storage en best-effort. Un fallo aquí (red, RLS) no debe bloquear el
+    // borrado lógico: las RLS garantizan que el archivo huérfano no es
+    // visible a nadie ajeno al space.
+    const tx = await transactionService.get(space.id, id)
+    if (tx.attachmentPath) {
+      const { createClient } = await import('@/lib/supabase/server')
+      const supabase = await createClient()
+      await supabase.storage.from('receipts').remove([tx.attachmentPath])
+    }
+
     await transactionService.remove(space.id, id)
     return jsonOk({ ok: true })
   } catch (err) {

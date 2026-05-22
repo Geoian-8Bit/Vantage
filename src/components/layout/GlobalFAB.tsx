@@ -5,6 +5,7 @@ import { useEffect, useState } from 'react'
 
 import { Modal } from '@/components/ui/Modal'
 import { useToast } from '@/components/ui/Toast'
+import { ScanReceiptModal } from '@/features/transactions/ui/ScanReceiptModal'
 import { TransactionForm } from '@/features/transactions/ui/TransactionForm'
 import { useCreateTransaction } from '@/features/transactions/ui/useTransactions'
 
@@ -16,6 +17,7 @@ export function GlobalFAB() {
   const pathname = usePathname()
   const [fabOpen, setFabOpen] = useState(false)
   const [modalType, setModalType] = useState<ModalType>(null)
+  const [scanOpen, setScanOpen] = useState(false)
   const [dirty, setDirty] = useState(false)
   const create = useCreateTransaction()
   const toast = useToast()
@@ -127,6 +129,34 @@ export function GlobalFAB() {
               </span>
               Gasto
             </button>
+            <button
+              type="button"
+              onClick={() => {
+                setFabOpen(false)
+                setScanOpen(true)
+              }}
+              aria-label="Nuevo gasto desde foto"
+              className="flex items-center gap-2.5 rounded-full bg-brand pl-3 pr-4 text-sm font-semibold text-white shadow-lg"
+              style={{ animation: 'fab-pop 220ms cubic-bezier(0.16, 1, 0.3, 1) 80ms both' }}
+            >
+              <span className="flex h-9 w-9 items-center justify-center rounded-full bg-white/15">
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  width="18"
+                  height="18"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2.5"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                >
+                  <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z" />
+                  <circle cx="12" cy="13" r="4" />
+                </svg>
+              </span>
+              Desde foto
+            </button>
           </>
         )}
         <button
@@ -174,6 +204,8 @@ export function GlobalFAB() {
           />
         )}
       </Modal>
+
+      <ScanReceiptModal isOpen={scanOpen} onClose={() => setScanOpen(false)} />
     </>
   )
 }
