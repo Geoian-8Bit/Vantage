@@ -1,54 +1,224 @@
 name: CI/CD
 
+# Ejecuta calidad de código, tests y build en paralelo. Si todo pasa y es
+# push a main, despliega a Vercel en producción.
+#
+# Diseño:
+# - Un job `install` instala dependencias y cachea node_modules. Los demás
+#   jobs reutilizan ese cache, así npm ci se ejecuta una sola vez.
+# - Jobs de calidad y tests corren en paralelo.
+# - `e2e` y `build` reciben variables públicas de Supabase con valores dummy:
+#   los tests de Playwright solo cubren rutas públicas (landing, login,
+#   signup, redirect del middleware) y el build de Next.js compila aunque
+#   las env vars no apunten a un proyecto real (cliente lazy).
+# - `deploy` solo se lanza tras CI verde en push a main, manteniendo la
+#   integración con Vercel CLI ya existente.
+#
+# Concurrency: cancela runs anteriores de la misma rama/PR cuando llega un
+# push nuevo, para no quemar minutos en commits intermedios.
+
 on:
   push:
-    branches:
-      - main
+    branches: [main]
   pull_request:
+  workflow_dispatch:
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}
+
+permissions:
+  contents: read
 
 env:
-  VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
-  VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
+  NODE_VERSION: '22'
+  # Variables públicas dummy para que build y E2E no rompan por env faltante.
+  # El E2E solo toca rutas públicas; el cliente real de Supabase solo se
+  # contacta en endpoints autenticados, que aquí no se ejercitan.
+  NEXT_PUBLIC_SUPABASE_URL: https://dummy.supabase.co
+  NEXT_PUBLIC_SUPABASE_ANON_KEY: sb_publishable_dummy_key_for_ci_builds_only
 
 jobs:
-  ci:
-    name: CI (lint + typecheck + test + build)
+  # ─── Setup: instala deps una sola vez y las cachea ─────────────────────
+  install:
+    name: Install dependencies
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     steps:
       - uses: actions/checkout@v4
 
-      - uses: actions/setup-node@v4
+      - name: Setup Node ${{ env.NODE_VERSION }}
+        uses: actions/setup-node@v4
         with:
-          node-version: '22'
+          node-version: ${{ env.NODE_VERSION }}
           cache: 'npm'
 
-      - name: Install dependencies
-        run: npm ci
+      - name: Cache node_modules
+        id: cache-node-modules
+        uses: actions/cache@v4
+        with:
+          path: node_modules
+          key: node-modules-${{ runner.os }}-${{ env.NODE_VERSION }}-${{ hashFiles('package-lock.json') }}
 
-      - name: Lint
-        run: npm run lint
+      - name: npm ci
+        if: steps.cache-node-modules.outputs.cache-hit != 'true'
+        run: npm ci --no-audit --no-fund
 
-      - name: Typecheck
-        run: npm run typecheck
-
-      - name: Unit tests
-        run: npm run test:unit
-
-      - name: Build
-        run: npm run build
-
-  deploy:
-    name: Deploy to Vercel
-    needs: ci
+  # ─── Calidad: lint + typecheck ─────────────────────────────────────────
+  # Prettier no entra todavía en el gate: el repo tiene drift de EOL
+  # (CRLF↔LF) heredado de Windows que se normalizará en un commit aparte.
+  quality:
+    name: Lint + typecheck
+    needs: install
     runs-on: ubuntu-latest
-    if: |
-      github.event_name == 'push' && github.ref == 'refs/heads/main'
+    timeout-minutes: 10
     steps:
       - uses: actions/checkout@v4
 
       - uses: actions/setup-node@v4
         with:
-          node-version: '22'
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+
+      - name: Restore node_modules
+        uses: actions/cache@v4
+        with:
+          path: node_modules
+          key: node-modules-${{ runner.os }}-${{ env.NODE_VERSION }}-${{ hashFiles('package-lock.json') }}
+
+      - name: ESLint
+        run: npm run lint
+
+      - name: TypeScript
+        run: npm run typecheck
+
+  # ─── Tests unitarios con cobertura ─────────────────────────────────────
+  unit:
+    name: Unit tests
+    needs: install
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+
+      - name: Restore node_modules
+        uses: actions/cache@v4
+        with:
+          path: node_modules
+          key: node-modules-${{ runner.os }}-${{ env.NODE_VERSION }}-${{ hashFiles('package-lock.json') }}
+
+      - name: Run Vitest with coverage
+        run: npm run test:coverage
+
+      - name: Upload coverage report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage-${{ github.run_id }}
+          path: coverage/
+          retention-days: 14
+          if-no-files-found: ignore
+
+  # ─── Build de Next.js ──────────────────────────────────────────────────
+  build:
+    name: Next build
+    needs: install
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+
+      - name: Restore node_modules
+        uses: actions/cache@v4
+        with:
+          path: node_modules
+          key: node-modules-${{ runner.os }}-${{ env.NODE_VERSION }}-${{ hashFiles('package-lock.json') }}
+
+      - name: Cache .next
+        uses: actions/cache@v4
+        with:
+          path: .next/cache
+          key: nextjs-${{ runner.os }}-${{ hashFiles('package-lock.json') }}-${{ hashFiles('**/*.ts', '**/*.tsx') }}
+          restore-keys: |
+            nextjs-${{ runner.os }}-${{ hashFiles('package-lock.json') }}-
+
+      - name: next build
+        run: npm run build
+
+  # ─── E2E Playwright contra rutas públicas ──────────────────────────────
+  e2e:
+    name: E2E (Playwright)
+    needs: install
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+
+      - name: Restore node_modules
+        uses: actions/cache@v4
+        with:
+          path: node_modules
+          key: node-modules-${{ runner.os }}-${{ env.NODE_VERSION }}-${{ hashFiles('package-lock.json') }}
+
+      - name: Cache Playwright browsers
+        id: cache-playwright
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/ms-playwright
+          key: playwright-${{ runner.os }}-${{ hashFiles('package-lock.json') }}
+
+      - name: Install Playwright browsers
+        if: steps.cache-playwright.outputs.cache-hit != 'true'
+        run: npx playwright install --with-deps chromium
+
+      - name: Install Playwright system deps (cached browsers)
+        if: steps.cache-playwright.outputs.cache-hit == 'true'
+        run: npx playwright install-deps chromium
+
+      - name: Run Playwright tests
+        run: npm run test:e2e
+
+      - name: Upload Playwright report
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-report-${{ github.run_id }}
+          path: playwright-report/
+          retention-days: 14
+          if-no-files-found: ignore
+
+  # ─── Deploy a Vercel (solo push a main + todo verde) ───────────────────
+  deploy:
+    name: Deploy to Vercel
+    needs: [quality, unit, build, e2e]
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    env:
+      VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
+      VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
 
       - name: Install Vercel CLI
         run: npm install --global vercel@latest
