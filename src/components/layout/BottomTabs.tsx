@@ -32,7 +32,7 @@ const debtsIcon = (
 )
 
 const transactionsIcon = (
-  <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+  <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
     <line x1="12" y1="1" x2="12" y2="23" />
     <path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6" />
   </svg>
@@ -138,16 +138,16 @@ export function BottomTabs() {
                   style={{ color: active ? 'var(--color-brand)' : 'var(--color-subtext)' }}
                 >
                   <span
-                    className="flex h-14 w-14 -translate-y-3 items-center justify-center rounded-full bg-brand text-white shadow-lg transition-all"
+                    className="flex h-10 w-10 -translate-y-1.5 items-center justify-center rounded-full bg-brand text-white transition-all"
                     style={{
                       boxShadow: active
-                        ? '0 10px 24px color-mix(in srgb, var(--color-brand) 45%, transparent), 0 0 0 4px var(--color-brand-light)'
-                        : '0 6px 16px color-mix(in srgb, var(--color-brand) 35%, transparent)',
+                        ? '0 4px 12px color-mix(in srgb, var(--color-brand) 38%, transparent), 0 0 0 3px var(--color-brand-light)'
+                        : '0 3px 8px color-mix(in srgb, var(--color-brand) 28%, transparent)',
                     }}
                   >
                     {tab.icon}
                   </span>
-                  <span className="-mt-2 leading-none">{tab.label}</span>
+                  <span className="-mt-1 leading-none">{tab.label}</span>
                 </Link>
               )
             }

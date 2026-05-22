@@ -26,6 +26,9 @@ export function Modal({ isOpen, onClose, title, children, dirty }: ModalProps) {
   const confirmDescId = useId()
   const [confirmingClose, setConfirmingClose] = useState(false)
   const [prevIsOpen, setPrevIsOpen] = useState(isOpen)
+  const [dragY, setDragY] = useState(0)
+  const [isDragging, setIsDragging] = useState(false)
+  const dragStartRef = useRef<number | null>(null)
   const isClient = useIsClient()
   const onCloseRef = useRef(onClose)
   const dirtyRef = useRef(dirty)
@@ -59,6 +62,35 @@ export function Modal({ isOpen, onClose, title, children, dirty }: ModalProps) {
       setConfirmingClose(true)
     } else {
       onCloseRef.current()
+    }
+  }
+
+  // Swipe-down para cerrar en móvil. Solo activa drag si el touch arrancó
+  // sobre un elemento con [data-modal-drag] (handle visual o header),
+  // para no interferir con el scroll vertical del cuerpo del modal.
+  const SWIPE_CLOSE_THRESHOLD = 80
+  const handleTouchStart = (e: React.TouchEvent<HTMLDivElement>) => {
+    if (typeof window === 'undefined' || window.innerWidth >= 768) return
+    const target = e.target as HTMLElement | null
+    if (!target?.closest('[data-modal-drag]')) return
+    const startY = e.touches[0]?.clientY
+    if (startY === undefined) return
+    dragStartRef.current = startY
+    setIsDragging(true)
+  }
+  const handleTouchMove = (e: React.TouchEvent<HTMLDivElement>) => {
+    if (dragStartRef.current === null) return
+    const delta = (e.touches[0]?.clientY ?? dragStartRef.current) - dragStartRef.current
+    setDragY(delta > 0 ? delta : 0)
+  }
+  const handleTouchEnd = () => {
+    if (dragStartRef.current === null) return
+    const finalDrag = dragY
+    setDragY(0)
+    setIsDragging(false)
+    dragStartRef.current = null
+    if (finalDrag > SWIPE_CLOSE_THRESHOLD) {
+      requestClose()
     }
   }
   const confirmDiscard = () => {
@@ -128,22 +160,36 @@ export function Modal({ isOpen, onClose, title, children, dirty }: ModalProps) {
         aria-modal="true"
         aria-labelledby={titleId}
         aria-hidden={confirmingClose || undefined}
+        onTouchStart={handleTouchStart}
+        onTouchMove={handleTouchMove}
+        onTouchEnd={handleTouchEnd}
+        onTouchCancel={handleTouchEnd}
         style={{
           maxHeight: 'min(90dvh, 90vh)',
           paddingBottom: 'var(--safe-bottom)',
+          transform: dragY > 0 ? `translateY(${dragY}px)` : undefined,
+          transition: isDragging
+            ? 'none'
+            : 'transform 260ms cubic-bezier(0.16, 1, 0.3, 1)',
         }}
         className="modal-panel relative flex w-full max-w-md flex-col overflow-hidden rounded-t-2xl border border-border bg-card shadow-2xl md:rounded-2xl"
       >
         <div
+          data-modal-drag
           aria-hidden="true"
-          className="flex justify-center pb-1 pt-2.5 md:hidden"
+          className="flex cursor-grab justify-center pb-1 pt-2.5 active:cursor-grabbing md:hidden"
+          style={{ touchAction: 'pan-y' }}
         >
           <span
             className="h-1 w-10 rounded-full"
             style={{ background: 'var(--color-border)' }}
           />
         </div>
-        <div className="flex shrink-0 items-center justify-between border-b border-border px-4 py-3 sm:px-6 sm:py-4">
+        <div
+          data-modal-drag
+          style={{ touchAction: 'pan-y' }}
+          className="flex shrink-0 items-center justify-between border-b border-border px-4 py-3 sm:px-6 sm:py-4"
+        >
           <h2 id={titleId} className="text-base font-semibold text-text sm:text-lg">
             {title}
           </h2>
