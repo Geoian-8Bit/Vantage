@@ -174,6 +174,91 @@ export default function DashboardPage() {
     <div className="w-full space-y-4 lg:space-y-5">
       <PageHeader section="Inicio" page="Panel" />
 
+      {/* ─── HERO MÓVIL: balance líquido sin card + strip de stats ─── */}
+      <section aria-label="Resumen rápido" className="md:hidden">
+        <div className="pt-1 pb-1">
+          <p className="text-[11px] font-semibold tracking-wider text-subtext uppercase">
+            Balance líquido
+          </p>
+          <p
+            className={`mt-1 tabular-nums font-bold ${
+              stats.balance >= 0 ? 'text-text' : 'text-expense'
+            }`}
+            style={{
+              fontSize: 'clamp(2.25rem, 11vw, 3rem)',
+              lineHeight: 1,
+              fontFamily: 'var(--font-display)',
+              letterSpacing: 'var(--letter-spacing-display)',
+            }}
+            title={`${stats.balance < 0 ? '−' : ''}${formatCurrency(Math.abs(stats.balance))}`}
+          >
+            {stats.balance < 0 ? '−' : ''}
+            {formatCurrency(Math.abs(animBalance))}
+          </p>
+          <p className="mt-1.5 text-xs text-subtext">
+            {stats.balance >= 0 ? 'Disponible para gastar' : 'En negativo este periodo'}
+            {stats.topCategory && (
+              <>
+                <span className="mx-1.5 text-subtext/50">·</span>
+                top: <span className="font-semibold text-text">{stats.topCategory.name}</span>
+              </>
+            )}
+          </p>
+        </div>
+
+        <div className="mt-3 flex items-stretch divide-x divide-border/60 overflow-hidden rounded-xl border border-border bg-card">
+          <div className="min-w-0 flex-1 px-3 py-2.5">
+            <p className="flex items-center gap-1 text-[10px] font-semibold tracking-wider text-subtext uppercase">
+              <span className="h-1 w-1 rounded-full bg-expense" aria-hidden="true" />
+              Deudas
+            </p>
+            <p
+              className={`mt-0.5 truncate text-sm font-bold tabular-nums ${
+                activeDebts.length > 0 ? 'text-expense' : 'text-subtext'
+              }`}
+              title={formatCurrency(totalDebt)}
+            >
+              {formatCurrency(animTotalDebt)}
+            </p>
+          </div>
+          <div className="min-w-0 flex-1 px-3 py-2.5">
+            <p className="flex items-center gap-1 text-[10px] font-semibold tracking-wider text-subtext uppercase">
+              <span className="h-1 w-1 rounded-full bg-brand" aria-hidden="true" />
+              Ahorrado
+            </p>
+            <p
+              className="mt-0.5 truncate text-sm font-bold tabular-nums text-brand"
+              title={formatCurrency(stats.totalSavings)}
+            >
+              {formatCurrency(animSavings)}
+            </p>
+          </div>
+          <div className="min-w-0 flex-1 px-3 py-2.5">
+            <p className="text-[10px] font-semibold tracking-wider text-subtext uppercase">
+              Gastos mes
+            </p>
+            <p
+              className="mt-0.5 truncate text-sm font-bold tabular-nums text-text"
+              title={formatCurrency(stats.monthExpenses)}
+            >
+              {formatCurrency(animMonthExpenses)}
+            </p>
+            {stats.prevMonthExpenses > 0 && (
+              <p
+                className={`text-[10px] font-semibold tabular-nums ${
+                  changeIsPositive ? 'text-expense' : 'text-income'
+                }`}
+              >
+                {changeArrow} {Math.abs(stats.monthExpenseChange).toFixed(0)}%
+              </p>
+            )}
+          </div>
+        </div>
+      </section>
+
+      {/* ─── DESKTOP: las dos cards originales (3-col + asimétrico) ─── */}
+      <div className="hidden md:contents">
+
       {/* Tres columnas: Total deudas / Balance / Ahorrado */}
       <TiltCard
         intensity={1.2}
@@ -325,15 +410,17 @@ export default function DashboardPage() {
         </TiltCard>
       </div>
 
-      {/* Trend chart */}
+      </div>{/* fin desktop-only */}
+
+      {/* Trend chart — sin card en móvil, con card en desktop */}
       <div
-        className="card-anim rounded-xl border border-border bg-card p-4 shadow-sm sm:p-5"
+        className="card-anim rounded-xl border border-border bg-card p-4 shadow-sm max-md:border-0 max-md:bg-transparent max-md:p-0 max-md:shadow-none sm:p-5"
         style={{ animationDelay: '180ms' }}
       >
-        <p className="mb-4 text-xs font-semibold tracking-wider text-subtext uppercase">
+        <p className="mb-3 text-xs font-semibold tracking-wider text-subtext uppercase sm:mb-4">
           Tendencia (6 meses)
         </p>
-        <div className="h-52">
+        <div className="h-48 sm:h-52">
           <ResponsiveContainer width="100%" height="100%">
             <AreaChart data={stats.monthlyTrend}>
               <defs>
@@ -390,12 +477,12 @@ export default function DashboardPage() {
         </div>
       </div>
 
-      {/* Próximos recurrentes */}
+      {/* Próximos recurrentes — sin card en móvil */}
       <div
-        className="card-anim overflow-hidden rounded-xl border border-border bg-card shadow-sm"
+        className="card-anim overflow-hidden rounded-xl border border-border bg-card shadow-sm max-md:border-0 max-md:bg-transparent max-md:shadow-none"
         style={{ animationDelay: '240ms' }}
       >
-        <div className="border-b border-border bg-surface px-4 py-3 sm:px-5">
+        <div className="border-b border-border bg-surface px-4 py-3 max-md:border-0 max-md:bg-transparent max-md:px-0 max-md:py-2 sm:px-5">
           <p className="text-xs font-semibold tracking-wider text-subtext uppercase">
             Próximos recurrentes
           </p>

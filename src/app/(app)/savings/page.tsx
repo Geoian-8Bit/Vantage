@@ -99,7 +99,7 @@ export default function SavingsPage() {
               setModal({ mode: 'create' })
               setCreateDirty(false)
             }}
-            className="flex cursor-pointer items-center gap-2 rounded-xl bg-brand px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-brand-hover"
+            className="flex cursor-pointer items-center gap-1.5 rounded-xl bg-brand px-3 py-2 text-xs font-semibold text-white transition-colors hover:bg-brand-hover sm:gap-2 sm:px-4 sm:text-sm"
           >
             <svg
               aria-hidden="true"
@@ -122,17 +122,17 @@ export default function SavingsPage() {
 
       <TiltCard
         intensity={1.2}
-        className="card-anim min-w-0 rounded-xl border border-border bg-card p-4 shadow-sm sm:p-6"
+        className="card-anim min-w-0 rounded-xl border border-border bg-card p-4 shadow-sm max-md:border-0 max-md:bg-transparent max-md:p-0 max-md:shadow-none sm:p-6"
         style={{ animationDelay: '0ms' }}
       >
-        <div className="flex min-w-0 items-start justify-between gap-4">
+        <div className="flex min-w-0 items-start justify-between gap-4 max-md:flex-col max-md:items-stretch max-md:gap-3">
           <div className="min-w-0">
-            <p className="mb-1 text-xs font-semibold tracking-wider text-subtext uppercase">
+            <p className="text-[11px] font-semibold tracking-wider text-subtext uppercase sm:mb-1 sm:text-xs">
               Total guardado en apartados
             </p>
             <p
               className="truncate font-bold tabular-nums text-brand"
-              style={{ fontSize: 'clamp(1.5rem, 3vw, 2rem)', lineHeight: 1.15 }}
+              style={{ fontSize: 'clamp(2rem, 10vw, 2rem)', lineHeight: 1.1 }}
               title={formatCurrency(totalSavings)}
             >
               {formatCurrency(animTotal)}
@@ -140,7 +140,7 @@ export default function SavingsPage() {
             <p className="mt-1 text-xs text-subtext">Reservado fuera del balance líquido.</p>
           </div>
           {accountsCount > 0 && (
-            <div className="flex shrink-0 flex-col items-end gap-1.5">
+            <div className="flex shrink-0 flex-wrap gap-1.5 sm:flex-col sm:items-end">
               <span className="inline-flex items-center gap-1.5 rounded-full border border-border bg-surface px-2.5 py-1 text-[11px] font-semibold text-subtext">
                 <span className="h-1.5 w-1.5 rounded-full bg-brand" />
                 {accountsCount} {accountsCount === 1 ? 'apartado' : 'apartados'}
@@ -463,7 +463,7 @@ function SavingsCard({
             )}
           </div>
         </div>
-        <div className="flex gap-1 opacity-0 transition-opacity group-hover:opacity-100">
+        <div className="flex gap-1 opacity-100 transition-opacity sm:opacity-0 sm:group-hover:opacity-100">
           <button
             onClick={onEdit}
             aria-label="Editar"

@@ -135,7 +135,7 @@ export default function CalendarPage() {
     <div className="w-full space-y-4 lg:space-y-5">
       <PageHeader section="Calendario" page="Vista mensual" />
 
-      <div className="flex items-center justify-between rounded-xl border border-border bg-card px-3 py-3 shadow-sm sm:px-5">
+      <div className="flex items-center justify-between rounded-xl border border-border bg-card px-3 py-3 shadow-sm max-md:rounded-none max-md:border-0 max-md:bg-transparent max-md:px-0 max-md:py-2 max-md:shadow-none sm:px-5">
         <button
           onClick={navigatePrev}
           aria-label="Mes anterior"

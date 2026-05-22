@@ -217,10 +217,10 @@ function SettingsHub({ onPick, isDemo }: { onPick: (v: SettingsView) => void; is
   return (
     <div key="settings-menu" className="settings-view-anim w-full space-y-4 lg:space-y-5">
       <PageHeader section="Ajustes" page="Ajustes" />
-      <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
+      <div className="grid grid-cols-1 gap-4 max-md:gap-0 max-md:divide-y max-md:divide-border/60 max-md:overflow-hidden max-md:rounded-xl max-md:border max-md:border-border max-md:bg-card max-md:shadow-sm lg:grid-cols-2">
         {visibleOptions.map((opt) => {
           const content = (
-            <div className="group flex items-start gap-4 rounded-xl border border-border bg-card p-4 text-left shadow-sm transition-all hover:border-brand/40 hover:bg-surface/60 sm:p-5">
+            <div className="group flex items-start gap-4 rounded-xl border border-border bg-card p-4 text-left shadow-sm transition-all hover:border-brand/40 hover:bg-surface/60 max-md:rounded-none max-md:border-0 max-md:bg-transparent max-md:shadow-none max-md:hover:bg-surface/60 sm:p-5">
               <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-brand-light text-brand transition-colors group-hover:bg-brand group-hover:text-white">
                 {opt.icon}
               </div>

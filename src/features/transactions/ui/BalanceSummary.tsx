@@ -25,19 +25,20 @@ export function BalanceSummary({
   const animCarryover = useAnimatedNumber(carryover)
 
   const balanceLabel = showCarryover ? 'Disponible total' : 'Balance'
+  const balanceLabelShort = showCarryover ? 'Disponible' : 'Balance'
   const carryoverPositive = carryover >= 0
 
   const gridCols = showCarryover
-    ? 'grid grid-cols-2 lg:grid-cols-4 gap-3 lg:gap-4'
-    : 'grid grid-cols-3 gap-3 lg:gap-4'
+    ? 'grid grid-cols-2 gap-2 sm:gap-3 lg:grid-cols-4 lg:gap-4'
+    : 'grid grid-cols-3 gap-2 sm:gap-3 lg:gap-4'
 
   return (
     <div className={gridCols}>
       <div
-        className="card-anim rounded-xl border border-border bg-card p-5 shadow-sm"
+        className="card-anim rounded-xl border border-border bg-card p-3 shadow-sm sm:p-5"
         style={{ animationDelay: '0ms' }}
       >
-        <div className="mb-2 flex items-center gap-2">
+        <div className="hidden items-center gap-2 sm:mb-2 sm:flex">
           <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-income-light">
             <svg
               xmlns="http://www.w3.org/2000/svg"
@@ -56,9 +57,12 @@ export function BalanceSummary({
           </div>
           <p className="text-sm font-medium text-subtext">Ingresos</p>
         </div>
+        <p className="mb-0.5 text-[10px] font-semibold tracking-wider text-subtext uppercase sm:hidden">
+          Ingresos
+        </p>
         <p
           className="truncate font-bold tabular-nums text-income"
-          style={{ fontSize: 'clamp(1.125rem, 2vw, 1.5rem)', lineHeight: 1.2 }}
+          style={{ fontSize: 'clamp(0.95rem, 4.5vw, 1.5rem)', lineHeight: 1.2 }}
           title={formatCurrency(totalIncome)}
         >
           {formatCurrency(animIncome)}
@@ -66,10 +70,10 @@ export function BalanceSummary({
       </div>
 
       <div
-        className="card-anim rounded-xl border border-border bg-card p-5 shadow-sm"
+        className="card-anim rounded-xl border border-border bg-card p-3 shadow-sm sm:p-5"
         style={{ animationDelay: '60ms' }}
       >
-        <div className="mb-2 flex items-center gap-2">
+        <div className="hidden items-center gap-2 sm:mb-2 sm:flex">
           <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-expense-light">
             <svg
               xmlns="http://www.w3.org/2000/svg"
@@ -88,9 +92,12 @@ export function BalanceSummary({
           </div>
           <p className="text-sm font-medium text-subtext">Gastos</p>
         </div>
+        <p className="mb-0.5 text-[10px] font-semibold tracking-wider text-subtext uppercase sm:hidden">
+          Gastos
+        </p>
         <p
           className="truncate font-bold tabular-nums text-expense"
-          style={{ fontSize: 'clamp(1.125rem, 2vw, 1.5rem)', lineHeight: 1.2 }}
+          style={{ fontSize: 'clamp(0.95rem, 4.5vw, 1.5rem)', lineHeight: 1.2 }}
           title={formatCurrency(totalExpenses)}
         >
           {formatCurrency(animExpenses)}
@@ -99,12 +106,12 @@ export function BalanceSummary({
 
       {showCarryover && (
         <div
-          className={`card-anim rounded-xl border p-5 shadow-sm ${
+          className={`card-anim rounded-xl border p-3 shadow-sm sm:p-5 ${
             carryoverPositive ? 'border-border bg-surface' : 'border-expense/20 bg-expense-light/60'
           }`}
           style={{ animationDelay: '90ms' }}
         >
-          <div className="mb-2 flex items-center gap-2">
+          <div className="hidden items-center gap-2 sm:mb-2 sm:flex">
             <div
               className={`flex h-7 w-7 items-center justify-center rounded-lg ${
                 carryoverPositive ? 'border border-border bg-card' : 'bg-expense/15'
@@ -129,9 +136,12 @@ export function BalanceSummary({
             </div>
             <p className="text-sm font-medium text-subtext">De meses anteriores</p>
           </div>
+          <p className="mb-0.5 text-[10px] font-semibold tracking-wider text-subtext uppercase sm:hidden">
+            Acarreado
+          </p>
           <p
             className={`truncate font-bold tabular-nums ${carryoverPositive ? 'text-income' : 'text-expense'}`}
-            style={{ fontSize: 'clamp(1.125rem, 2vw, 1.5rem)', lineHeight: 1.2 }}
+            style={{ fontSize: 'clamp(0.95rem, 4.5vw, 1.5rem)', lineHeight: 1.2 }}
             title={`${carryoverPositive ? '+' : ''}${formatCurrency(carryover)}`}
           >
             {carryoverPositive ? '+' : ''}
@@ -141,12 +151,12 @@ export function BalanceSummary({
       )}
 
       <div
-        className={`card-anim rounded-xl border p-5 shadow-sm ${
+        className={`card-anim rounded-xl border p-3 shadow-sm sm:p-5 ${
           totalAvailable >= 0 ? 'border-income/20 bg-income-light' : 'border-expense/20 bg-expense-light'
         }`}
         style={{ animationDelay: '120ms' }}
       >
-        <div className="mb-2 flex items-center gap-2">
+        <div className="hidden items-center gap-2 sm:mb-2 sm:flex">
           <div
             className={`flex h-7 w-7 items-center justify-center rounded-lg ${
               totalAvailable >= 0 ? 'bg-income/15' : 'bg-expense/15'
@@ -170,9 +180,12 @@ export function BalanceSummary({
           </div>
           <p className="text-sm font-medium text-subtext">{balanceLabel}</p>
         </div>
+        <p className="mb-0.5 text-[10px] font-semibold tracking-wider text-subtext uppercase sm:hidden">
+          {balanceLabelShort}
+        </p>
         <p
           className={`truncate font-bold tabular-nums ${totalAvailable >= 0 ? 'text-income' : 'text-expense'}`}
-          style={{ fontSize: 'clamp(1.125rem, 2vw, 1.5rem)', lineHeight: 1.2 }}
+          style={{ fontSize: 'clamp(0.95rem, 4.5vw, 1.5rem)', lineHeight: 1.2 }}
           title={`${totalAvailable >= 0 ? '+' : ''}${formatCurrency(totalAvailable)}`}
         >
           {totalAvailable >= 0 ? '+' : ''}

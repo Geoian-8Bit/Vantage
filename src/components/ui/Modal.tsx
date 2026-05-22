@@ -115,7 +115,7 @@ export function Modal({ isOpen, onClose, title, children, dirty }: ModalProps) {
   if (!isOpen || !isClient) return null
 
   return createPortal(
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-2 sm:p-4">
+    <div className="fixed inset-0 z-50 flex items-end justify-center md:items-center md:p-4">
       <div
         className="modal-overlay absolute inset-0 bg-black/40 backdrop-blur-sm"
         onClick={requestClose}
@@ -128,9 +128,21 @@ export function Modal({ isOpen, onClose, title, children, dirty }: ModalProps) {
         aria-modal="true"
         aria-labelledby={titleId}
         aria-hidden={confirmingClose || undefined}
-        style={{ maxHeight: 'min(90dvh, 90vh)' }}
-        className="modal-panel relative flex w-full max-w-md flex-col overflow-hidden rounded-2xl border border-border bg-card shadow-2xl"
+        style={{
+          maxHeight: 'min(90dvh, 90vh)',
+          paddingBottom: 'var(--safe-bottom)',
+        }}
+        className="modal-panel relative flex w-full max-w-md flex-col overflow-hidden rounded-t-2xl border border-border bg-card shadow-2xl md:rounded-2xl"
       >
+        <div
+          aria-hidden="true"
+          className="flex justify-center pb-1 pt-2.5 md:hidden"
+        >
+          <span
+            className="h-1 w-10 rounded-full"
+            style={{ background: 'var(--color-border)' }}
+          />
+        </div>
         <div className="flex shrink-0 items-center justify-between border-b border-border px-4 py-3 sm:px-6 sm:py-4">
           <h2 id={titleId} className="text-base font-semibold text-text sm:text-lg">
             {title}
