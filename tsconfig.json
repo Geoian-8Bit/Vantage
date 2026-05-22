@@ -32,6 +32,7 @@
     "drizzle.config.ts",
     "next.config.ts",
     "vitest.config.ts",
+    "vitest.setup.ts",
     "playwright.config.ts",
     ".next/types/**/*.ts"
   ],
