@@ -9,7 +9,7 @@ export default defineConfig({
     setupFiles: ['./vitest.setup.ts'],
     globals: true,
     include: ['tests/unit/**/*.{test,spec}.{ts,tsx}'],
-    exclude: ['tests/e2e/**', 'node_modules/**', 'legacy/**', '.next/**'],
+    exclude: ['tests/e2e/**', 'node_modules/**', '.next/**'],
     coverage: {
       reporter: ['text', 'html'],
       include: ['src/**/*.{ts,tsx}'],

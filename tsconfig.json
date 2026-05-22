@@ -35,12 +35,5 @@
     "playwright.config.ts",
     ".next/types/**/*.ts"
   ],
-  "exclude": [
-    "node_modules",
-    "legacy",
-    "tests/e2e",
-    ".next",
-    "out",
-    "dist-electron"
-  ]
+  "exclude": ["node_modules", "tests/e2e", ".next", "out"]
 }

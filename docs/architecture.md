@@ -34,6 +34,8 @@ docs/
   legacy/                    Documentación pre-migración (referencia histórica)
 ```
 
+`docs/legacy/` se conserva como contexto del producto pre-migración; el código Electron ya no vive en este repo.
+
 ## Reglas de capa
 
 Flujo único: **UI → hook → API route → service → repository → DB**. Nada salta capas.
@@ -49,14 +51,9 @@ Flujo único: **UI → hook → API route → service → repository → DB**. N
 | Comando | Para qué |
 | --- | --- |
 | `npm run dev` | Next.js en local |
-| `npm run dev:electron` | Electron legacy desde `legacy/electron/` |
 | `npm run build` | Build de producción |
 | `npm run lint` | ESLint |
 | `npm run typecheck` | `tsc --noEmit` |
-| `npm run test` | Vitest |
-| `npm run test:e2e` | Playwright |
+| `npm run test` | Vitest (unit) |
+| `npm run test:e2e` | Playwright (E2E) |
 | `npm run format` | Prettier |
-
-## Legacy
-
-La app Electron original vive en `legacy/electron/` mientras dura la migración. Se elimina en la Fase 13 del plan, cuando la web esté consolidada en producción.

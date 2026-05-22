@@ -11,11 +11,6 @@ dist
 .DS_Store
 *.tsbuildinfo
 
-# Electron legacy
-legacy/electron/out/
-legacy/electron/dist-electron/
-dist-electron/
-
 # DBs
 *.db
 

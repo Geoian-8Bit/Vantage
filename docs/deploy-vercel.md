@@ -103,6 +103,4 @@ Cuando lo tengas funcionando, dime:
 
 **Login en Vercel falla con "missing_code" o similar**: la URL de Vercel no está en **Redirect URLs** de Supabase. Añádela.
 
-**Vercel construye el repo entero incluyendo legacy/electron/**: el build de Next.js solo compila `src/`, `legacy/` no entra al output. Si quieres que ni siquiera se descargue, en el futuro lo movemos a otro repo o lo borramos en Fase 13.
-
 **Tarda mucho en arrancar tras inactividad**: el plan Free de Vercel no duerme funciones, pero Supabase Free sí pausa proyectos tras 7 días sin actividad. Esto se resuelve en Fase 11 con un cron keep-alive.

@@ -20,15 +20,7 @@ const config = [
     },
   },
   {
-    ignores: [
-      '.next/**',
-      'out/**',
-      'node_modules/**',
-      'legacy/**',
-      'dist-electron/**',
-      'build/**',
-      'next-env.d.ts',
-    ],
+    ignores: ['.next/**', 'out/**', 'node_modules/**', 'build/**', 'next-env.d.ts'],
   },
 ]
 
