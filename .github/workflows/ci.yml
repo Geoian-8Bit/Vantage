@@ -4,7 +4,6 @@ on:
   push:
     branches:
       - main
-      - 'migration/**'
   pull_request:
 
 env:
@@ -43,8 +42,7 @@ jobs:
     needs: ci
     runs-on: ubuntu-latest
     if: |
-      github.event_name == 'push' &&
-      (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/migration/web-rewrite')
+      github.event_name == 'push' && github.ref == 'refs/heads/main'
     steps:
       - uses: actions/checkout@v4
 
