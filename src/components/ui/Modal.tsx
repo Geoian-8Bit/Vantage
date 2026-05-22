@@ -28,6 +28,7 @@ export function Modal({ isOpen, onClose, title, children, dirty }: ModalProps) {
   const [prevIsOpen, setPrevIsOpen] = useState(isOpen)
   const [dragY, setDragY] = useState(0)
   const [isDragging, setIsDragging] = useState(false)
+  const [animationCancelled, setAnimationCancelled] = useState(false)
   const dragStartRef = useRef<number | null>(null)
   const isClient = useIsClient()
   const onCloseRef = useRef(onClose)
@@ -39,6 +40,7 @@ export function Modal({ isOpen, onClose, title, children, dirty }: ModalProps) {
   if (prevIsOpen !== isOpen) {
     setPrevIsOpen(isOpen)
     if (!isOpen && confirmingClose) setConfirmingClose(false)
+    if (!isOpen && animationCancelled) setAnimationCancelled(false)
   }
 
   useEffect(() => {
@@ -77,6 +79,9 @@ export function Modal({ isOpen, onClose, title, children, dirty }: ModalProps) {
     if (startY === undefined) return
     dragStartRef.current = startY
     setIsDragging(true)
+    // Cancela la animación CSS de entrada (sheet-up) que mantiene el último
+    // keyframe vía animation-fill-mode:both y sobrescribe transforms inline.
+    setAnimationCancelled(true)
   }
   const handleTouchMove = (e: React.TouchEvent<HTMLDivElement>) => {
     if (dragStartRef.current === null) return
@@ -167,6 +172,7 @@ export function Modal({ isOpen, onClose, title, children, dirty }: ModalProps) {
         style={{
           maxHeight: 'min(90dvh, 90vh)',
           paddingBottom: 'var(--safe-bottom)',
+          animation: animationCancelled ? 'none' : undefined,
           transform: dragY > 0 ? `translateY(${dragY}px)` : undefined,
           transition: isDragging
             ? 'none'
@@ -178,7 +184,7 @@ export function Modal({ isOpen, onClose, title, children, dirty }: ModalProps) {
           data-modal-drag
           aria-hidden="true"
           className="flex cursor-grab justify-center pb-1 pt-2.5 active:cursor-grabbing md:hidden"
-          style={{ touchAction: 'pan-y' }}
+          style={{ touchAction: 'none' }}
         >
           <span
             className="h-1 w-10 rounded-full"
@@ -187,7 +193,7 @@ export function Modal({ isOpen, onClose, title, children, dirty }: ModalProps) {
         </div>
         <div
           data-modal-drag
-          style={{ touchAction: 'pan-y' }}
+          style={{ touchAction: 'none' }}
           className="flex shrink-0 items-center justify-between border-b border-border px-4 py-3 sm:px-6 sm:py-4"
         >
           <h2 id={titleId} className="text-base font-semibold text-text sm:text-lg">
