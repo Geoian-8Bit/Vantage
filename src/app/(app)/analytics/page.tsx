@@ -482,67 +482,68 @@ export default function AnalyticsPage() {
         }
       />
 
-      <div className="space-y-3 rounded-xl border border-border bg-card px-3 py-3.5 shadow-sm lg:px-5">
-        <div className="flex flex-wrap items-center gap-2 lg:gap-4">
+      <div className="flex flex-col gap-2 rounded-xl border border-border bg-card p-3 shadow-sm md:flex-row md:flex-wrap md:items-center md:gap-2 lg:gap-4 lg:px-5">
+        <div className="flex items-center gap-2 max-md:flex-wrap">
+          {showNavigation && (
+            <button
+              onClick={navigatePrev}
+              aria-label="Periodo anterior"
+              className="cursor-pointer rounded-lg p-1.5 text-subtext transition-colors hover:bg-surface hover:text-text"
+            >
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                width="16"
+                height="16"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              >
+                <path d="M15 18l-6-6 6-6" />
+              </svg>
+            </button>
+          )}
+          <span className="min-w-[130px] text-center text-sm font-bold text-text">
+            {periodLabel}
+          </span>
+          {showNavigation && (
+            <button
+              onClick={navigateNext}
+              aria-label="Periodo siguiente"
+              className="cursor-pointer rounded-lg p-1.5 text-subtext transition-colors hover:bg-surface hover:text-text"
+            >
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                width="16"
+                height="16"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              >
+                <path d="M9 18l6-6-6-6" />
+              </svg>
+            </button>
+          )}
+        </div>
+
+        <div className="hidden h-5 w-px shrink-0 bg-border md:block" aria-hidden="true" />
+
+        <div className="-mx-1 overflow-x-auto px-1 md:m-0 md:overflow-visible md:px-0">
           <Tabs
             items={DATE_MODES}
             activeId={dateMode}
             onChange={setDateMode}
             ariaLabel="Modo de periodo"
           />
-
-          {showNavigation && (
-            <>
-              <div className="h-5 w-px shrink-0 bg-border" />
-              <div className="flex items-center gap-2">
-                <button
-                  onClick={navigatePrev}
-                  aria-label="Anterior"
-                  className="cursor-pointer rounded-lg p-1.5 text-subtext transition-colors hover:bg-surface hover:text-text"
-                >
-                  <svg
-                    xmlns="http://www.w3.org/2000/svg"
-                    width="16"
-                    height="16"
-                    viewBox="0 0 24 24"
-                    fill="none"
-                    stroke="currentColor"
-                    strokeWidth="2"
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                  >
-                    <path d="M15 18l-6-6 6-6" />
-                  </svg>
-                </button>
-                <span className="min-w-[120px] text-center text-sm font-bold text-text">
-                  {periodLabel}
-                </span>
-                <button
-                  onClick={navigateNext}
-                  aria-label="Siguiente"
-                  className="cursor-pointer rounded-lg p-1.5 text-subtext transition-colors hover:bg-surface hover:text-text"
-                >
-                  <svg
-                    xmlns="http://www.w3.org/2000/svg"
-                    width="16"
-                    height="16"
-                    viewBox="0 0 24 24"
-                    fill="none"
-                    stroke="currentColor"
-                    strokeWidth="2"
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                  >
-                    <path d="M9 18l6-6-6-6" />
-                  </svg>
-                </button>
-              </div>
-            </>
-          )}
         </div>
 
         {dateMode === 'compare' && (
-          <div className="flex flex-wrap items-center gap-2">
+          <div className="flex flex-wrap items-center gap-2 md:basis-full">
             {compareMonths.map((key) => {
               const [y, m] = key.split('-').map(Number)
               return (
@@ -576,7 +577,7 @@ export default function AnalyticsPage() {
         )}
 
         {dateMode === 'custom' && (
-          <div className="flex flex-wrap items-center gap-3">
+          <div className="flex flex-wrap items-center gap-3 md:basis-full">
             <div className="flex items-center gap-2">
               <label className="text-xs font-medium text-subtext">Desde</label>
               <input
@@ -596,9 +597,6 @@ export default function AnalyticsPage() {
                 className="rounded-lg border border-border bg-surface px-3 py-1.5 text-sm text-text focus:ring-2 focus:ring-brand focus:outline-none"
               />
             </div>
-            {rangeFrom && rangeTo && (
-              <span className="ml-2 text-xs font-semibold text-text">{periodLabel}</span>
-            )}
           </div>
         )}
       </div>
