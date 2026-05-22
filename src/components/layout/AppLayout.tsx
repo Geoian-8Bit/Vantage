@@ -1,4 +1,5 @@
 import { BottomTabs } from './BottomTabs'
+import { GlobalFAB } from './GlobalFAB'
 import { Sidebar } from './Sidebar'
 import { ThemeBackground } from './ThemeBackground'
 
@@ -26,6 +27,7 @@ export function AppLayout({ children, banner }: AppLayoutProps) {
         </div>
       </div>
       <BottomTabs />
+      <GlobalFAB />
     </div>
   )
 }

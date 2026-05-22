@@ -131,7 +131,6 @@ export default function TransactionsPage() {
   const [exporting, setExporting] = useState(false)
   const [confirmBulkDelete, setConfirmBulkDelete] = useState(false)
   const [bulkDeleting, setBulkDeleting] = useState(false)
-  const [fabOpen, setFabOpen] = useState(false)
   const [filterSheetOpen, setFilterSheetOpen] = useState(false)
 
   const { fromDate, toDate, periodLabel } = useMemo(() => {
@@ -1205,104 +1204,6 @@ export default function TransactionsPage() {
 
       {/* modalOrigin se captura para futuras animaciones de scale-in-from-click */}
       <span aria-hidden="true" data-modal-origin={modalOrigin ? `${modalOrigin.x},${modalOrigin.y}` : ''} className="hidden" />
-
-      {/* ─── FAB móvil: speed-dial gasto/ingreso ─── */}
-      {fabOpen && (
-        <button
-          type="button"
-          aria-label="Cerrar opciones"
-          className="fixed inset-0 z-30 cursor-default bg-black/30 backdrop-blur-sm md:hidden"
-          style={{ animation: 'fade-in 180ms cubic-bezier(0.4, 0, 0.2, 1)' }}
-          onClick={() => setFabOpen(false)}
-        />
-      )}
-      <div
-        className="fixed right-4 z-40 flex flex-col items-end gap-2 md:hidden"
-        style={{ bottom: 'calc(var(--bottom-tabs-h) + var(--safe-bottom) + 1rem)' }}
-      >
-        {fabOpen && (
-          <>
-            <button
-              type="button"
-              onClick={() => {
-                setFabOpen(false)
-                setModalType('income')
-              }}
-              aria-label="Nuevo ingreso"
-              className="fab-item flex items-center gap-2.5 rounded-full bg-income pl-3 pr-4 text-sm font-semibold text-white shadow-lg"
-              style={{ animation: 'fab-pop 220ms cubic-bezier(0.16, 1, 0.3, 1) both' }}
-            >
-              <span className="flex h-9 w-9 items-center justify-center rounded-full bg-white/15">
-                <svg
-                  xmlns="http://www.w3.org/2000/svg"
-                  width="18"
-                  height="18"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth="2.5"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                >
-                  <path d="M12 19V5M5 12l7-7 7 7" />
-                </svg>
-              </span>
-              Ingreso
-            </button>
-            <button
-              type="button"
-              onClick={() => {
-                setFabOpen(false)
-                setModalType('expense')
-              }}
-              aria-label="Nuevo gasto"
-              className="fab-item flex items-center gap-2.5 rounded-full bg-expense pl-3 pr-4 text-sm font-semibold text-white shadow-lg"
-              style={{
-                animation: 'fab-pop 220ms cubic-bezier(0.16, 1, 0.3, 1) 40ms both',
-              }}
-            >
-              <span className="flex h-9 w-9 items-center justify-center rounded-full bg-white/15">
-                <svg
-                  xmlns="http://www.w3.org/2000/svg"
-                  width="18"
-                  height="18"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth="2.5"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                >
-                  <path d="M12 5v14M5 12l7 7 7-7" />
-                </svg>
-              </span>
-              Gasto
-            </button>
-          </>
-        )}
-        <button
-          type="button"
-          onClick={() => setFabOpen((o) => !o)}
-          aria-label={fabOpen ? 'Cerrar nuevo movimiento' : 'Nuevo movimiento'}
-          aria-expanded={fabOpen}
-          className="flex h-14 w-14 cursor-pointer items-center justify-center rounded-full bg-brand text-white shadow-xl transition-transform duration-300"
-          style={{ transform: fabOpen ? 'rotate(45deg)' : 'rotate(0deg)' }}
-        >
-          <svg
-            xmlns="http://www.w3.org/2000/svg"
-            width="26"
-            height="26"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="2.5"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-          >
-            <path d="M12 5v14M5 12h14" />
-          </svg>
-        </button>
-      </div>
     </div>
   )
 }
