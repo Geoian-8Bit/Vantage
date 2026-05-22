@@ -2,7 +2,7 @@ import { type NextRequest } from 'next/server'
 import { z } from 'zod'
 
 import { getActiveSpace } from '@/lib/auth/space'
-import { requireUser } from '@/lib/auth/session'
+import { requireNonAnonymousUser } from '@/lib/auth/session'
 import { jsonOk, jsonError } from '@/lib/api/response'
 import { ValidationError } from '@/lib/api/errors'
 import {
@@ -274,7 +274,7 @@ async function importJson(
 
 export async function POST(request: NextRequest) {
   try {
-    const user = await requireUser()
+    const user = await requireNonAnonymousUser()
     const space = await getActiveSpace()
     const contentType = request.headers.get('content-type') ?? ''
 

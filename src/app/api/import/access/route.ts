@@ -1,7 +1,7 @@
 import { type NextRequest } from 'next/server'
 
 import { getActiveSpace } from '@/lib/auth/space'
-import { requireUser } from '@/lib/auth/session'
+import { requireNonAnonymousUser } from '@/lib/auth/session'
 import { jsonOk, jsonError } from '@/lib/api/response'
 import { ValidationError } from '@/lib/api/errors'
 import { transactionService } from '@/features/transactions/application/transaction.service'
@@ -46,7 +46,7 @@ function ghStr(v: unknown): string {
 
 export async function POST(request: NextRequest) {
   try {
-    const user = await requireUser()
+    const user = await requireNonAnonymousUser()
     const space = await getActiveSpace()
     const form = await request.formData()
     const file = form.get('file')

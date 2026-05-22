@@ -1,4 +1,5 @@
 import { getActiveSpace } from '@/lib/auth/space'
+import { requireNonAnonymousUser } from '@/lib/auth/session'
 import { jsonError } from '@/lib/api/response'
 import { transactionService } from '@/features/transactions/application/transaction.service'
 import { categoryService } from '@/features/categories/application/category.service'
@@ -10,6 +11,7 @@ export const runtime = 'nodejs'
 
 export async function GET() {
   try {
+    await requireNonAnonymousUser()
     const space = await getActiveSpace()
     const [transactions, categories, savings, debts, recurring] = await Promise.all([
       transactionService.list(space.id, { limit: 500, offset: 0 }),

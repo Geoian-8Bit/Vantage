@@ -1,7 +1,7 @@
 import { type NextRequest } from 'next/server'
 import { z } from 'zod'
 
-import { requireUser } from '@/lib/auth/session'
+import { requireNonAnonymousUser } from '@/lib/auth/session'
 import { jsonError } from '@/lib/api/response'
 
 export const runtime = 'nodejs'
@@ -39,7 +39,7 @@ function formatCurrency(n: number): string {
 
 export async function POST(request: NextRequest) {
   try {
-    await requireUser()
+    await requireNonAnonymousUser()
     const body = await request.json()
     const payload = payloadSchema.parse(body)
 

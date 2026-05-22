@@ -2,7 +2,7 @@ import { type NextRequest } from 'next/server'
 import { z } from 'zod'
 
 import { getActiveSpace } from '@/lib/auth/space'
-import { requireUser } from '@/lib/auth/session'
+import { requireNonAnonymousUser } from '@/lib/auth/session'
 import { jsonOk, jsonError } from '@/lib/api/response'
 import { validateRows, type RawImportRow } from '@/lib/utils/importValidation'
 import { transactionService } from '@/features/transactions/application/transaction.service'
@@ -22,7 +22,7 @@ const commitSchema = z.object({
 
 export async function POST(request: NextRequest) {
   try {
-    const user = await requireUser()
+    const user = await requireNonAnonymousUser()
     const space = await getActiveSpace()
     const body = await request.json()
     const { rows, mapping } = commitSchema.parse(body)

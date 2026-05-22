@@ -39,6 +39,27 @@ export async function signIn(formData: FormData) {
   redirect('/dashboard')
 }
 
+/**
+ * Inicia sesión como usuario anonymous para entrar al demo público compartido.
+ * El trigger handle_new_user lo añade automáticamente al space demo. Toda
+ * acción sensible (cambiar email/password, MFA, importar, invitar, etc.) está
+ * bloqueada server-side por is_anonymous y por RLS.
+ */
+export async function enterDemo() {
+  const supabase = await createClient()
+  const { error } = await supabase.auth.signInAnonymously()
+
+  if (error) {
+    const lower = error.message.toLowerCase()
+    const message = lower.includes('too many') || lower.includes('rate limit')
+      ? 'Demasiados accesos al demo desde tu red. Prueba en unos minutos'
+      : 'No se pudo entrar al demo. Inténtalo de nuevo'
+    redirect(`/login?error=${encodeURIComponent(message)}`)
+  }
+
+  redirect('/dashboard')
+}
+
 function translateError(message: string): string {
   const lower = message.toLowerCase()
   if (lower.includes('invalid login credentials')) return 'Email o contraseña incorrectos'

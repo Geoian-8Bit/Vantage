@@ -1,6 +1,6 @@
 import { type NextRequest } from 'next/server'
 
-import { requireUser } from '@/lib/auth/session'
+import { requireNonAnonymousUser } from '@/lib/auth/session'
 import { jsonOk, jsonError } from '@/lib/api/response'
 import { autoDetectMapping, type RawImportRow } from '@/lib/utils/importValidation'
 
@@ -11,7 +11,7 @@ const MAX_BYTES = 5 * 1024 * 1024 // 5 MB
 
 export async function POST(request: NextRequest) {
   try {
-    await requireUser()
+    await requireNonAnonymousUser()
     const form = await request.formData()
     const file = form.get('file')
     if (!(file instanceof File)) {

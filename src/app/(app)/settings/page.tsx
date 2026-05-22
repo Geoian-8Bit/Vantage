@@ -16,6 +16,7 @@ import { EmptyState } from '@/components/ui/EmptyState'
 import { useToast } from '@/components/ui/Toast'
 import { useDesignTheme } from '@/lib/theme/useDesignTheme'
 import type { DesignThemeId, ThemeMode } from '@/lib/theme/themes'
+import { useIsDemo } from '@/lib/auth/useIsDemo'
 import { logout } from '@/app/(app)/actions'
 
 import {
@@ -175,10 +176,27 @@ const SETTINGS_OPTIONS: SettingsOption[] = [
   },
 ]
 
+// IDs de secciones bloqueadas en modo demo (anonymous user). Logout lo
+// proporciona el banner persistente, así que ocultar "Cuenta" no atrapa.
+const DEMO_BLOCKED_VIEWS: ReadonlyArray<Exclude<SettingsView, 'menu'>> = [
+  'import',
+  'backup',
+  'account',
+]
+
 export default function SettingsPage() {
   const [view, setView] = useState<SettingsView>('menu')
+  const isDemo = useIsDemo()
 
-  if (view === 'menu') return <SettingsHub onPick={setView} />
+  // En demo, si el visitante llegó por algún medio a una view bloqueada,
+  // volver al menú silenciosamente. Defensa en profundidad junto a RLS y
+  // server actions ya bloqueadas.
+  if (isDemo && view !== 'menu' && DEMO_BLOCKED_VIEWS.includes(view as Exclude<SettingsView, 'menu'>)) {
+    setView('menu')
+    return null
+  }
+
+  if (view === 'menu') return <SettingsHub onPick={setView} isDemo={isDemo === true} />
   if (view === 'categories') return <CategoriesView onBack={() => setView('menu')} />
   if (view === 'appearance') return <AppearanceView onBack={() => setView('menu')} />
   if (view === 'import') return <ImportView onBack={() => setView('menu')} />
@@ -189,12 +207,18 @@ export default function SettingsPage() {
 
 // ── Hub ─────────────────────────────────────────────────────────────────
 
-function SettingsHub({ onPick }: { onPick: (v: SettingsView) => void }) {
+function SettingsHub({ onPick, isDemo }: { onPick: (v: SettingsView) => void; isDemo: boolean }) {
+  const visibleOptions = isDemo
+    ? SETTINGS_OPTIONS.filter(
+        (opt) => !DEMO_BLOCKED_VIEWS.includes(opt.id as Exclude<SettingsView, 'menu'>)
+      )
+    : SETTINGS_OPTIONS
+
   return (
     <div key="settings-menu" className="settings-view-anim w-full space-y-4 lg:space-y-5">
       <PageHeader section="Ajustes" page="Ajustes" />
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
-        {SETTINGS_OPTIONS.map((opt) => {
+        {visibleOptions.map((opt) => {
           const content = (
             <div className="group flex items-start gap-4 rounded-xl border border-border bg-card p-5 text-left shadow-sm transition-all hover:border-brand/40 hover:bg-surface/60">
               <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-brand-light text-brand transition-colors group-hover:bg-brand group-hover:text-white">

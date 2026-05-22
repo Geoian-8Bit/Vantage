@@ -1,6 +1,6 @@
 import Link from 'next/link'
 
-import { signIn } from './actions'
+import { signIn, enterDemo } from './actions'
 import { GoogleOAuthButton, OAuthDivider } from '../OAuthButtons'
 
 interface LoginPageProps {
@@ -95,6 +95,29 @@ export default async function LoginPage({ searchParams }: LoginPageProps) {
             Regístrate
           </Link>
         </p>
+
+        <div className="relative">
+          <div className="absolute inset-0 flex items-center" aria-hidden="true">
+            <div className="w-full border-t border-border" />
+          </div>
+          <div className="relative flex justify-center">
+            <span className="bg-card px-2 text-xs uppercase tracking-wider text-subtext">
+              o solo curiosea
+            </span>
+          </div>
+        </div>
+
+        <form action={enterDemo}>
+          <button
+            type="submit"
+            className="w-full rounded-xl border border-border bg-surface px-4 py-2.5 text-sm font-semibold text-text transition hover:border-accent hover:bg-accent-light"
+          >
+            Probar demo sin registrarte
+          </button>
+          <p className="mt-2 text-center text-xs text-subtext">
+            Datos compartidos de prueba · se reinician cada 6 h
+          </p>
+        </form>
       </div>
     </main>
   )

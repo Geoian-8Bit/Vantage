@@ -51,3 +51,15 @@ export class ConflictError extends AppError {
     this.name = 'ConflictError'
   }
 }
+
+/**
+ * Bloqueo específico para usuarios anonymous (visitantes del demo). Subclase
+ * de ForbiddenError para que el handler genérico lo siga mapeando a 403.
+ */
+export class DemoForbiddenError extends ForbiddenError {
+  constructor(message = 'Esta acción no está disponible en el modo demo') {
+    super(message)
+    this.name = 'DemoForbiddenError'
+    ;(this as { code: string }).code = 'demo_forbidden'
+  }
+}
