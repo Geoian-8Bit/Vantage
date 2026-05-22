@@ -66,7 +66,9 @@ jobs:
           ENC_FILE="${GZ_FILE}.gpg"
 
           # Dump del schema public, sin owners ni privileges (portable).
-          pg_dump \
+          # Path explicito al binario v17 porque Ubuntu trae v16 preinstalado
+          # y toma precedencia en PATH.
+          /usr/lib/postgresql/17/bin/pg_dump \
             --schema=public \
             --clean --if-exists \
             --quote-all-identifiers \
