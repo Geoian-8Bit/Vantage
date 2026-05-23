@@ -32,11 +32,11 @@ permissions:
 
 env:
   NODE_VERSION: '22'
-  # Variables públicas dummy para que build y E2E no rompan por env faltante.
-  # El E2E solo toca rutas públicas; el cliente real de Supabase solo se
-  # contacta en endpoints autenticados, que aquí no se ejercitan.
-  NEXT_PUBLIC_SUPABASE_URL: https://dummy.supabase.co
-  NEXT_PUBLIC_SUPABASE_ANON_KEY: sb_publishable_dummy_key_for_ci_builds_only
+# IMPORTANTE: las variables NEXT_PUBLIC_SUPABASE_* dummy van por job, no
+# aquí a nivel workflow. Si estuvieran a nivel workflow envenenarían el
+# job `deploy`: vercel build leería process.env y hardcodearía el dummy
+# en el bundle de producción, provocando ENOTFOUND en runtime aunque
+# vercel pull haya traído las env reales del proyecto.
 
 jobs:
   # ─── Setup: instala deps una sola vez y las cachea ─────────────────────
@@ -130,6 +130,13 @@ jobs:
     needs: install
     runs-on: ubuntu-latest
     timeout-minutes: 15
+    env:
+      # Públicas dummy: el build de CI no apunta a un Supabase real; las
+      # NEXT_PUBLIC_* se inyectan al bundle al construir, así que con
+      # cualquier valor sintácticamente válido es suficiente para que
+      # next build no aborte. Estas NO se aplican al job deploy.
+      NEXT_PUBLIC_SUPABASE_URL: https://dummy.supabase.co
+      NEXT_PUBLIC_SUPABASE_ANON_KEY: sb_publishable_dummy_key_for_ci_builds_only
     steps:
       - uses: actions/checkout@v4
 
@@ -161,6 +168,13 @@ jobs:
     needs: install
     runs-on: ubuntu-latest
     timeout-minutes: 15
+    env:
+      # Públicas dummy para que el dev server arranque. El smoke E2E solo
+      # cubre rutas públicas (landing, login, signup, redirect del
+      # middleware); el cliente real de Supabase no se contacta. Estas
+      # NO se aplican al job deploy.
+      NEXT_PUBLIC_SUPABASE_URL: https://dummy.supabase.co
+      NEXT_PUBLIC_SUPABASE_ANON_KEY: sb_publishable_dummy_key_for_ci_builds_only
     steps:
       - uses: actions/checkout@v4
 
