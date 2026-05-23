@@ -7,19 +7,20 @@ export interface OcrResult extends ParsedReceipt {
   rawText: string
 }
 
-// Modelos PP-OCRv5 para español. Se descargan desde el repo público
-// ppu-paddle-ocr-models y se cachean en HTTP cache del navegador. La
-// primera ejecución carga ~25 MB; las siguientes son instantáneas.
+// Modelos PP-OCRv5 multi-idioma latino (cubre español junto con otros
+// idiomas europeos). No existe un modelo dedicado solo a español en el
+// repo de ppu-paddle-ocr-models; el "latin" v5 es el correcto. Se
+// descarga al primer uso y queda en HTTP cache del navegador (~25 MB).
 const MODEL_BASE =
-  'https://media.githubusercontent.com/media/PT-Perkasa-Pilar-Utama/ppu-paddle-ocr-models/refs/heads/main'
+  'https://media.githubusercontent.com/media/PT-Perkasa-Pilar-Utama/ppu-paddle-ocr-models/main'
 const DICT_BASE =
-  'https://raw.githubusercontent.com/PT-Perkasa-Pilar-Utama/ppu-paddle-ocr-models/refs/heads/main'
+  'https://raw.githubusercontent.com/PT-Perkasa-Pilar-Utama/ppu-paddle-ocr-models/main'
 
 const PADDLE_CONFIG = {
   model: {
     detection: `${MODEL_BASE}/detection/PP-OCRv5_mobile_det_infer.onnx`,
-    recognition: `${MODEL_BASE}/recognition/multi/es/v5/es_PP-OCRv5_mobile_rec_infer.onnx`,
-    charactersDictionary: `${DICT_BASE}/recognition/multi/es/v5/ppocrv5_es_dict.txt`,
+    recognition: `${MODEL_BASE}/recognition/multi/latin/v5/latin_PP-OCRv5_mobile_rec_infer.onnx`,
+    charactersDictionary: `${DICT_BASE}/recognition/multi/latin/v5/ppocrv5_latin_dict.txt`,
   },
 }
 
