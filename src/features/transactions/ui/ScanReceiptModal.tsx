@@ -1,7 +1,7 @@
 'use client'
 
 import Image from 'next/image'
-import { useRef, useState, useSyncExternalStore } from 'react'
+import { useEffect, useRef, useState, useSyncExternalStore } from 'react'
 
 import { Modal } from '@/components/ui/Modal'
 import { useToast } from '@/components/ui/Toast'
@@ -55,6 +55,10 @@ interface ScanReceiptModalProps {
 
 type Stage =
   | { kind: 'idle' }
+  // Modo "viewfinder propio" para iOS PWA standalone, donde el input file
+  // con capture no abre la cámara. Pedimos getUserMedia y mostramos el
+  // stream en un <video> dentro del modal.
+  | { kind: 'camera' }
   | { kind: 'processing'; preview: string; progress: number }
   | { kind: 'editing'; preview: string; file: File; ocr: OcrResult }
   | { kind: 'error'; preview: string; message: string }
@@ -77,13 +81,16 @@ export function ScanReceiptModal({ isOpen, onClose }: ScanReceiptModalProps) {
   // elegir y disparar la cámara según el caso desde el mismo botón.
   const cameraInputRef = useRef<HTMLInputElement>(null)
   const galleryInputRef = useRef<HTMLInputElement>(null)
+  const videoRef = useRef<HTMLVideoElement>(null)
+  const streamRef = useRef<MediaStream | null>(null)
   const create = useCreateTransaction()
   const toast = useToast()
 
-  // En PWA standalone de iOS, capture no abre la cámara — abre nada. En
-  // ese caso quitamos capture del input de "Hacer foto": sigue siendo un
-  // input file, pero el sheet del sistema iOS muestra "Take Photo" como
-  // primera opción al pulsarlo, que cumple la misma función.
+  // En PWA standalone (iOS añadido a pantalla de inicio), el input file
+  // con capture no abre la cámara. En ese caso desplegamos un viewfinder
+  // propio con getUserMedia. En navegador normal, mantenemos el input
+  // con capture porque abre la cámara nativa del sistema sin permisos
+  // extra y sin viewfinder duplicado.
   const isStandalone = useIsStandalonePwa()
 
   // Reset al cerrar el modal: ajustamos state al cambiar prop durante el
@@ -144,6 +151,76 @@ export function ScanReceiptModal({ isOpen, onClose }: ScanReceiptModalProps) {
     e.target.value = ''
   }
 
+  // Detener el stream cuando salimos de stage 'camera' por cualquier
+  // motivo (cancelar, snapshot, cerrar modal). La cámara se libera y el
+  // LED indicador del dispositivo se apaga.
+  useEffect(() => {
+    if (stage.kind !== 'camera') {
+      streamRef.current?.getTracks().forEach((t) => t.stop())
+      streamRef.current = null
+    }
+  }, [stage.kind])
+
+  // Conectar el stream al <video> cuando aparece en el DOM.
+  useEffect(() => {
+    if (stage.kind === 'camera' && streamRef.current && videoRef.current) {
+      videoRef.current.srcObject = streamRef.current
+      videoRef.current.play().catch(() => {
+        // Algunos navegadores requieren un gesture extra para play().
+        // No es bloqueante: el viewfinder se queda en pausa pero el
+        // botón disparador sigue funcionando.
+      })
+    }
+  }, [stage.kind])
+
+  const openCamera = async () => {
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({
+        // ideal en lugar de exact: si el dispositivo no tiene cámara
+        // trasera (p.ej. iPad sin selfie cam configurada), cae a la
+        // disponible en vez de fallar.
+        video: {
+          facingMode: { ideal: 'environment' },
+          width: { ideal: 1920 },
+          height: { ideal: 1440 },
+        },
+        audio: false,
+      })
+      streamRef.current = stream
+      setStage({ kind: 'camera' })
+    } catch (err) {
+      const message =
+        err instanceof Error && err.name === 'NotAllowedError'
+          ? 'Diste "No permitir" al pedir la cámara. Permítela en los ajustes del navegador.'
+          : err instanceof Error
+            ? err.message
+            : 'No se pudo abrir la cámara.'
+      setStage({ kind: 'error', preview: '', message })
+    }
+  }
+
+  const snapshot = () => {
+    const video = videoRef.current
+    if (!video || !video.videoWidth) return
+    const canvas = document.createElement('canvas')
+    canvas.width = video.videoWidth
+    canvas.height = video.videoHeight
+    const ctx = canvas.getContext('2d')
+    if (!ctx) return
+    ctx.drawImage(video, 0, 0, canvas.width, canvas.height)
+    canvas.toBlob(
+      (blob) => {
+        if (!blob) return
+        const file = new File([blob], `ticket-${Date.now()}.jpg`, {
+          type: 'image/jpeg',
+        })
+        void handleFile(file)
+      },
+      'image/jpeg',
+      0.92
+    )
+  }
+
   return (
     <>
       {/*
@@ -151,18 +228,21 @@ export function ScanReceiptModal({ isOpen, onClose }: ScanReceiptModalProps) {
         (1x1 px) — Safari iOS no abre el picker si el input es display:none.
         El camera tiene capture="environment" para forzar la trasera.
       */}
-      <input
-        ref={cameraInputRef}
-        type="file"
-        accept="image/*"
-        // Solo aplicamos capture fuera de PWA standalone. iOS WebKit en
-        // standalone se traga el click cuando hay capture; sin él, el
-        // sheet del sistema sigue ofreciendo "Take Photo" como primer
-        // botón, así que la UX queda equivalente.
-        {...(isStandalone ? {} : { capture: 'environment' as const })}
-        style={VISUALLY_HIDDEN}
-        onChange={onFileChange}
-      />
+      {/*
+        Input de cámara nativa para navegador normal. En PWA standalone no
+        lo usamos porque iOS WebKit ignora capture; allí abrimos un
+        viewfinder propio con getUserMedia.
+      */}
+      {!isStandalone && (
+        <input
+          ref={cameraInputRef}
+          type="file"
+          accept="image/*"
+          capture="environment"
+          style={VISUALLY_HIDDEN}
+          onChange={onFileChange}
+        />
+      )}
       <input
         ref={galleryInputRef}
         type="file"
@@ -183,7 +263,10 @@ export function ScanReceiptModal({ isOpen, onClose }: ScanReceiptModalProps) {
             <div className="flex w-full flex-col gap-2 sm:flex-row sm:justify-center">
               <button
                 type="button"
-                onClick={() => cameraInputRef.current?.click()}
+                onClick={() => {
+                  if (isStandalone) void openCamera()
+                  else cameraInputRef.current?.click()
+                }}
                 className="flex flex-1 items-center justify-center gap-2 rounded-xl bg-brand px-4 py-3 text-sm font-semibold text-white shadow-sm hover:bg-brand-hover"
               >
                 <svg
@@ -228,6 +311,40 @@ export function ScanReceiptModal({ isOpen, onClose }: ScanReceiptModalProps) {
           </div>
         )}
 
+        {stage.kind === 'camera' && (
+          <div className="flex flex-col items-center gap-3">
+            <div className="relative aspect-[3/4] w-full overflow-hidden rounded-xl bg-black">
+              <video
+                ref={videoRef}
+                autoPlay
+                playsInline
+                muted
+                className="h-full w-full object-cover"
+              />
+              {/* Marco guía: ayuda al usuario a encuadrar el ticket. */}
+              <div className="pointer-events-none absolute inset-6 rounded-lg border-2 border-white/60" />
+            </div>
+            <div className="flex w-full items-center justify-between gap-3">
+              <button
+                type="button"
+                onClick={() => setStage({ kind: 'idle' })}
+                className="flex-1 rounded-lg border border-border bg-surface px-4 py-2.5 text-sm font-semibold text-text"
+              >
+                Cancelar
+              </button>
+              <button
+                type="button"
+                onClick={snapshot}
+                aria-label="Disparar foto"
+                className="flex h-16 w-16 shrink-0 items-center justify-center rounded-full bg-brand shadow-lg ring-4 ring-brand/30"
+              >
+                <span className="h-12 w-12 rounded-full border-4 border-white bg-white/0" />
+              </button>
+              <span className="flex-1" />
+            </div>
+          </div>
+        )}
+
         {stage.kind === 'processing' && (
           <div className="flex flex-col items-center gap-4 py-6">
             <div className="relative h-48 w-full overflow-hidden rounded-xl bg-surface">
@@ -260,7 +377,10 @@ export function ScanReceiptModal({ isOpen, onClose }: ScanReceiptModalProps) {
             <div className="flex w-full flex-col gap-2 sm:flex-row sm:justify-center">
               <button
                 type="button"
-                onClick={() => cameraInputRef.current?.click()}
+                onClick={() => {
+                  if (isStandalone) void openCamera()
+                  else cameraInputRef.current?.click()
+                }}
                 className="flex-1 rounded-lg bg-brand px-4 py-2 text-sm font-semibold text-white"
               >
                 Otra foto
