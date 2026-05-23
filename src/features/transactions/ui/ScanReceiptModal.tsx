@@ -96,8 +96,11 @@ export function ScanReceiptModal({ isOpen, onClose }: ScanReceiptModalProps) {
   // Dos inputs separados: uno fuerza cámara (capture="environment") y
   // otro abre la galería normal. Un solo input con capture no permite
   // elegir y disparar la cámara según el caso desde el mismo botón.
-  const cameraInputRef = useRef<HTMLInputElement>(null)
-  const galleryInputRef = useRef<HTMLInputElement>(null)
+  // Antes usábamos refs + .click() programático para abrir el picker.
+  // Resultaba en clicks que Android Chrome ignoraba cuando el botón
+  // estaba dentro del portal del modal y el input fuera. Ahora usamos
+  // <label htmlFor>: el navegador conecta label e input nativamente sin
+  // JS intermedio, conservando el gesture del usuario.
   const videoRef = useRef<HTMLVideoElement>(null)
   const streamRef = useRef<MediaStream | null>(null)
   const create = useCreateTransaction()
@@ -238,95 +241,71 @@ export function ScanReceiptModal({ isOpen, onClose }: ScanReceiptModalProps) {
     )
   }
 
-  return (
-    <>
-      {/*
-        Dos inputs separados, ambos visualmente ocultos pero con layout
-        (1x1 px) — Safari iOS no abre el picker si el input es display:none.
-        El camera tiene capture="environment" para forzar la trasera.
-      */}
-      {/*
-        Input de cámara nativa para navegador normal. En PWA standalone no
-        lo usamos porque iOS WebKit ignora capture; allí abrimos un
-        viewfinder propio con getUserMedia.
-      */}
-      {!needsCustomViewfinder && (
-        <input
-          ref={cameraInputRef}
-          type="file"
-          accept="image/*"
-          capture="environment"
-          style={VISUALLY_HIDDEN}
-          onChange={onFileChange}
-        />
-      )}
-      <input
-        ref={galleryInputRef}
-        type="file"
-        accept="image/*"
-        style={VISUALLY_HIDDEN}
-        onChange={onFileChange}
-      />
+  const cameraInputId = 'receipt-camera-input'
+  const galleryInputId = 'receipt-gallery-input'
 
-      <Modal
-        isOpen={isOpen}
-        onClose={onClose}
-        title={stage.kind === 'editing' ? 'Revisar gasto' : 'Añadir gasto desde foto'}
-        dirty={dirty}
-      >
-        {stage.kind === 'idle' && (
-          <div className="flex flex-col items-center gap-3 py-6 text-center text-sm text-subtext">
-            <p>¿De dónde quieres sacar la foto del ticket?</p>
-            <div className="flex w-full flex-col gap-2 sm:flex-row sm:justify-center">
+  return (
+    <Modal
+      isOpen={isOpen}
+      onClose={onClose}
+      title={stage.kind === 'editing' ? 'Revisar gasto' : 'Añadir gasto desde foto'}
+      dirty={dirty}
+    >
+      {stage.kind === 'idle' && (
+        <div className="flex flex-col items-center gap-3 py-6 text-center text-sm text-subtext">
+          <p>¿De dónde quieres sacar la foto del ticket?</p>
+          <div className="flex w-full flex-col gap-2 sm:flex-row sm:justify-center">
+            {needsCustomViewfinder ? (
+              // iOS PWA: usamos viewfinder propio, no input file.
               <button
                 type="button"
-                onClick={() => {
-                  if (needsCustomViewfinder) void openCamera()
-                  else cameraInputRef.current?.click()
-                }}
+                onClick={() => void openCamera()}
                 className="flex flex-1 items-center justify-center gap-2 rounded-xl bg-brand px-4 py-3 text-sm font-semibold text-white shadow-sm hover:bg-brand-hover"
               >
-                <svg
-                  xmlns="http://www.w3.org/2000/svg"
-                  width="18"
-                  height="18"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth="2"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                >
-                  <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z" />
-                  <circle cx="12" cy="13" r="4" />
-                </svg>
+                <CameraIcon />
                 Hacer foto
               </button>
-              <button
-                type="button"
-                onClick={() => galleryInputRef.current?.click()}
-                className="flex flex-1 items-center justify-center gap-2 rounded-xl border border-border bg-surface px-4 py-3 text-sm font-semibold text-text"
-              >
-                <svg
-                  xmlns="http://www.w3.org/2000/svg"
-                  width="18"
-                  height="18"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth="2"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
+            ) : (
+              // Resto: <label htmlFor> + <input> en el mismo árbol. El
+              // navegador conecta el toque del label con el input
+              // nativamente, sin pasar por JS — evita el bug del click
+              // programático en Android Chrome cuando el botón vive en
+              // un portal y el input fuera.
+              <>
+                <label
+                  htmlFor={cameraInputId}
+                  className="flex flex-1 cursor-pointer items-center justify-center gap-2 rounded-xl bg-brand px-4 py-3 text-sm font-semibold text-white shadow-sm hover:bg-brand-hover"
                 >
-                  <rect x="3" y="3" width="18" height="18" rx="2" ry="2" />
-                  <circle cx="8.5" cy="8.5" r="1.5" />
-                  <polyline points="21 15 16 10 5 21" />
-                </svg>
-                Elegir de galería
-              </button>
-            </div>
+                  <CameraIcon />
+                  Hacer foto
+                </label>
+                <input
+                  id={cameraInputId}
+                  type="file"
+                  accept="image/*"
+                  capture="environment"
+                  style={VISUALLY_HIDDEN}
+                  onChange={onFileChange}
+                />
+              </>
+            )}
+            <label
+              htmlFor={galleryInputId}
+              className="flex flex-1 cursor-pointer items-center justify-center gap-2 rounded-xl border border-border bg-surface px-4 py-3 text-sm font-semibold text-text"
+            >
+              <GalleryIcon />
+              Elegir de galería
+            </label>
+            <input
+              id={galleryInputId}
+              type="file"
+              accept="image/*"
+              style={VISUALLY_HIDDEN}
+              onChange={onFileChange}
+            />
           </div>
-        )}
+        </div>
+      )}
 
         {stage.kind === 'camera' && (
           <div className="flex flex-col items-center gap-3">
@@ -391,25 +370,13 @@ export function ScanReceiptModal({ isOpen, onClose }: ScanReceiptModalProps) {
         {stage.kind === 'error' && (
           <div className="flex flex-col items-center gap-3 py-6 text-center text-sm">
             <p className="text-expense">{stage.message}</p>
-            <div className="flex w-full flex-col gap-2 sm:flex-row sm:justify-center">
-              <button
-                type="button"
-                onClick={() => {
-                  if (needsCustomViewfinder) void openCamera()
-                  else cameraInputRef.current?.click()
-                }}
-                className="flex-1 rounded-lg bg-brand px-4 py-2 text-sm font-semibold text-white"
-              >
-                Otra foto
-              </button>
-              <button
-                type="button"
-                onClick={() => galleryInputRef.current?.click()}
-                className="flex-1 rounded-lg border border-border bg-surface px-4 py-2 text-sm font-semibold text-text"
-              >
-                De galería
-              </button>
-            </div>
+            <button
+              type="button"
+              onClick={() => setStage({ kind: 'idle' })}
+              className="rounded-lg bg-brand px-4 py-2 text-sm font-semibold text-white"
+            >
+              Volver a elegir
+            </button>
           </div>
         )}
 
@@ -458,7 +425,47 @@ export function ScanReceiptModal({ isOpen, onClose }: ScanReceiptModalProps) {
             />
           </div>
         )}
-      </Modal>
-    </>
+    </Modal>
+  )
+}
+
+function CameraIcon() {
+  return (
+    <svg
+      xmlns="http://www.w3.org/2000/svg"
+      width="18"
+      height="18"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden="true"
+    >
+      <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z" />
+      <circle cx="12" cy="13" r="4" />
+    </svg>
+  )
+}
+
+function GalleryIcon() {
+  return (
+    <svg
+      xmlns="http://www.w3.org/2000/svg"
+      width="18"
+      height="18"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden="true"
+    >
+      <rect x="3" y="3" width="18" height="18" rx="2" ry="2" />
+      <circle cx="8.5" cy="8.5" r="1.5" />
+      <polyline points="21 15 16 10 5 21" />
+    </svg>
   )
 }
