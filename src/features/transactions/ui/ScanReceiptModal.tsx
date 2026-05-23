@@ -1,7 +1,7 @@
 'use client'
 
 import Image from 'next/image'
-import { useRef, useState } from 'react'
+import { useRef, useState, useSyncExternalStore } from 'react'
 
 import { Modal } from '@/components/ui/Modal'
 import { useToast } from '@/components/ui/Toast'
@@ -29,6 +29,24 @@ const VISUALLY_HIDDEN = {
   whiteSpace: 'nowrap',
   border: 0,
 } as const
+
+const emptySubscribe = () => () => {}
+
+/**
+ * Detecta si la app corre en modo PWA standalone (instalada en la pantalla
+ * de inicio). Sirve para evitar `capture="environment"` en ese caso: iOS
+ * WebKit en standalone tiene un bug por el que el input file con capture
+ * silencia el click programático y no abre la cámara.
+ */
+function useIsStandalonePwa(): boolean {
+  return useSyncExternalStore(
+    emptySubscribe,
+    () =>
+      typeof window !== 'undefined' &&
+      window.matchMedia?.('(display-mode: standalone)').matches,
+    () => false
+  )
+}
 
 interface ScanReceiptModalProps {
   isOpen: boolean
@@ -61,6 +79,12 @@ export function ScanReceiptModal({ isOpen, onClose }: ScanReceiptModalProps) {
   const galleryInputRef = useRef<HTMLInputElement>(null)
   const create = useCreateTransaction()
   const toast = useToast()
+
+  // En PWA standalone de iOS, capture no abre la cámara — abre nada. En
+  // ese caso quitamos capture del input de "Hacer foto": sigue siendo un
+  // input file, pero el sheet del sistema iOS muestra "Take Photo" como
+  // primera opción al pulsarlo, que cumple la misma función.
+  const isStandalone = useIsStandalonePwa()
 
   // Reset al cerrar el modal: ajustamos state al cambiar prop durante el
   // render para no caer en setState-in-effect.
@@ -131,7 +155,11 @@ export function ScanReceiptModal({ isOpen, onClose }: ScanReceiptModalProps) {
         ref={cameraInputRef}
         type="file"
         accept="image/*"
-        capture="environment"
+        // Solo aplicamos capture fuera de PWA standalone. iOS WebKit en
+        // standalone se traga el click cuando hay capture; sin él, el
+        // sheet del sistema sigue ofreciendo "Take Photo" como primer
+        // botón, así que la UX queda equivalente.
+        {...(isStandalone ? {} : { capture: 'environment' as const })}
         style={VISUALLY_HIDDEN}
         onChange={onFileChange}
       />
