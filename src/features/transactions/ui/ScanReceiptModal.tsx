@@ -33,17 +33,34 @@ const VISUALLY_HIDDEN = {
 const emptySubscribe = () => () => {}
 
 /**
- * Detecta si la app corre en modo PWA standalone (instalada en la pantalla
- * de inicio). Sirve para evitar `capture="environment"` en ese caso: iOS
- * WebKit en standalone tiene un bug por el que el input file con capture
- * silencia el click programático y no abre la cámara.
+ * El bug del input file + capture es específico de iOS WebKit en modo
+ * standalone. En Android PWA y en navegadores con pestaña normal,
+ * capture funciona. Detectamos iOS por user-agent + el truco de "Mac
+ * con touch" para iPad nuevos (que reportan como Macintosh).
  */
-function useIsStandalonePwa(): boolean {
+function isIosWebKit(): boolean {
+  if (typeof navigator === 'undefined') return false
+  const ua = navigator.userAgent
+  if (/iPad|iPhone|iPod/.test(ua)) return true
+  // iPadOS 13+ se identifica como Mac pero tiene touch.
+  return ua.includes('Macintosh') && typeof document !== 'undefined' && 'ontouchend' in document
+}
+
+/**
+ * True solo si estamos en PWA standalone + iOS WebKit (la combinación
+ * donde input file con capture no abre cámara). En ese caso usamos
+ * nuestro propio viewfinder con getUserMedia. En cualquier otro caso
+ * — incluido Android PWA standalone — delegamos en el input nativo,
+ * que abre la cámara del sistema sin permisos extra.
+ */
+function useNeedsCustomViewfinder(): boolean {
   return useSyncExternalStore(
     emptySubscribe,
-    () =>
-      typeof window !== 'undefined' &&
-      window.matchMedia?.('(display-mode: standalone)').matches,
+    () => {
+      if (typeof window === 'undefined') return false
+      const standalone = window.matchMedia?.('(display-mode: standalone)').matches ?? false
+      return standalone && isIosWebKit()
+    },
     () => false
   )
 }
@@ -86,12 +103,12 @@ export function ScanReceiptModal({ isOpen, onClose }: ScanReceiptModalProps) {
   const create = useCreateTransaction()
   const toast = useToast()
 
-  // En PWA standalone (iOS añadido a pantalla de inicio), el input file
-  // con capture no abre la cámara. En ese caso desplegamos un viewfinder
-  // propio con getUserMedia. En navegador normal, mantenemos el input
-  // con capture porque abre la cámara nativa del sistema sin permisos
-  // extra y sin viewfinder duplicado.
-  const isStandalone = useIsStandalonePwa()
+  // El input file + capture no abre cámara solo en la combinación
+  // "iOS WebKit + PWA standalone". En Android PWA y en navegadores
+  // normales (incluido Safari pestaña) el input nativo funciona bien,
+  // así que evitamos el viewfinder propio y el permiso de cámara extra
+  // que getUserMedia exigiría.
+  const needsCustomViewfinder = useNeedsCustomViewfinder()
 
   // Reset al cerrar el modal: ajustamos state al cambiar prop durante el
   // render para no caer en setState-in-effect.
@@ -233,7 +250,7 @@ export function ScanReceiptModal({ isOpen, onClose }: ScanReceiptModalProps) {
         lo usamos porque iOS WebKit ignora capture; allí abrimos un
         viewfinder propio con getUserMedia.
       */}
-      {!isStandalone && (
+      {!needsCustomViewfinder && (
         <input
           ref={cameraInputRef}
           type="file"
@@ -264,7 +281,7 @@ export function ScanReceiptModal({ isOpen, onClose }: ScanReceiptModalProps) {
               <button
                 type="button"
                 onClick={() => {
-                  if (isStandalone) void openCamera()
+                  if (needsCustomViewfinder) void openCamera()
                   else cameraInputRef.current?.click()
                 }}
                 className="flex flex-1 items-center justify-center gap-2 rounded-xl bg-brand px-4 py-3 text-sm font-semibold text-white shadow-sm hover:bg-brand-hover"
@@ -378,7 +395,7 @@ export function ScanReceiptModal({ isOpen, onClose }: ScanReceiptModalProps) {
               <button
                 type="button"
                 onClick={() => {
-                  if (isStandalone) void openCamera()
+                  if (needsCustomViewfinder) void openCamera()
                   else cameraInputRef.current?.click()
                 }}
                 className="flex-1 rounded-lg bg-brand px-4 py-2 text-sm font-semibold text-white"
