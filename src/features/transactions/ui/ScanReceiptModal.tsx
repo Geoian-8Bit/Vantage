@@ -1,7 +1,7 @@
 'use client'
 
 import Image from 'next/image'
-import { useEffect, useRef, useState } from 'react'
+import { useRef, useState } from 'react'
 
 import { Modal } from '@/components/ui/Modal'
 import { useToast } from '@/components/ui/Toast'
@@ -12,6 +12,23 @@ import { TransactionForm } from './TransactionForm'
 import { useCreateTransaction } from './useTransactions'
 
 import type { CreateTransactionInput } from '../domain/transaction.schema'
+
+// Estilo visually-hidden estándar: oculta del layout y de lectores de
+// pantalla, pero el elemento sigue existiendo en el árbol con tamaño 1x1.
+// Hace falta esto en vez de `hidden`/display:none porque iOS Safari y
+// algunos Chrome Android se niegan a abrir el selector de archivos cuando
+// el <input> no tiene layout.
+const VISUALLY_HIDDEN = {
+  position: 'absolute',
+  width: 1,
+  height: 1,
+  padding: 0,
+  margin: -1,
+  overflow: 'hidden',
+  clip: 'rect(0, 0, 0, 0)',
+  whiteSpace: 'nowrap',
+  border: 0,
+} as const
 
 interface ScanReceiptModalProps {
   isOpen: boolean
@@ -37,7 +54,11 @@ export function ScanReceiptModal({ isOpen, onClose }: ScanReceiptModalProps) {
   const [stage, setStage] = useState<Stage>({ kind: 'idle' })
   const [dirty, setDirty] = useState(false)
   const [prevIsOpen, setPrevIsOpen] = useState(isOpen)
-  const fileInputRef = useRef<HTMLInputElement>(null)
+  // Dos inputs separados: uno fuerza cámara (capture="environment") y
+  // otro abre la galería normal. Un solo input con capture no permite
+  // elegir y disparar la cámara según el caso desde el mismo botón.
+  const cameraInputRef = useRef<HTMLInputElement>(null)
+  const galleryInputRef = useRef<HTMLInputElement>(null)
   const create = useCreateTransaction()
   const toast = useToast()
 
@@ -50,17 +71,6 @@ export function ScanReceiptModal({ isOpen, onClose }: ScanReceiptModalProps) {
       setDirty(false)
     }
   }
-
-  // Cuando el modal se abre y aún no hay imagen, disparamos el selector.
-  useEffect(() => {
-    if (isOpen && stage.kind === 'idle') {
-      // Esperamos un tick para que el modal exista en el DOM antes de
-      // disparar el input file (algunos navegadores bloquean clicks
-      // programáticos sin gesture si la interacción está demasiado lejos).
-      const t = setTimeout(() => fileInputRef.current?.click(), 50)
-      return () => clearTimeout(t)
-    }
-  }, [isOpen, stage.kind])
 
   const handleFile = async (file: File) => {
     const preview = URL.createObjectURL(file)
@@ -103,21 +113,34 @@ export function ScanReceiptModal({ isOpen, onClose }: ScanReceiptModalProps) {
       }
     : undefined
 
+  const onFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (file) void handleFile(file)
+    // Reset para que volver a seleccionar el mismo archivo dispare onChange.
+    e.target.value = ''
+  }
+
   return (
     <>
+      {/*
+        Dos inputs separados, ambos visualmente ocultos pero con layout
+        (1x1 px) — Safari iOS no abre el picker si el input es display:none.
+        El camera tiene capture="environment" para forzar la trasera.
+      */}
       <input
-        ref={fileInputRef}
+        ref={cameraInputRef}
         type="file"
-        accept="image/jpeg,image/png,image/webp,image/heic,image/heif"
+        accept="image/*"
         capture="environment"
-        hidden
-        onChange={(e) => {
-          const file = e.target.files?.[0]
-          if (file) void handleFile(file)
-          // Reset para que seleccionar el mismo archivo dos veces vuelva
-          // a disparar el onChange.
-          e.target.value = ''
-        }}
+        style={VISUALLY_HIDDEN}
+        onChange={onFileChange}
+      />
+      <input
+        ref={galleryInputRef}
+        type="file"
+        accept="image/*"
+        style={VISUALLY_HIDDEN}
+        onChange={onFileChange}
       />
 
       <Modal
@@ -127,15 +150,53 @@ export function ScanReceiptModal({ isOpen, onClose }: ScanReceiptModalProps) {
         dirty={dirty}
       >
         {stage.kind === 'idle' && (
-          <div className="flex flex-col items-center gap-4 py-8 text-center text-sm text-subtext">
-            <p>Selecciona o haz una foto del ticket.</p>
-            <button
-              type="button"
-              onClick={() => fileInputRef.current?.click()}
-              className="rounded-xl bg-brand px-5 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-brand-hover"
-            >
-              Elegir foto
-            </button>
+          <div className="flex flex-col items-center gap-3 py-6 text-center text-sm text-subtext">
+            <p>¿De dónde quieres sacar la foto del ticket?</p>
+            <div className="flex w-full flex-col gap-2 sm:flex-row sm:justify-center">
+              <button
+                type="button"
+                onClick={() => cameraInputRef.current?.click()}
+                className="flex flex-1 items-center justify-center gap-2 rounded-xl bg-brand px-4 py-3 text-sm font-semibold text-white shadow-sm hover:bg-brand-hover"
+              >
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  width="18"
+                  height="18"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                >
+                  <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z" />
+                  <circle cx="12" cy="13" r="4" />
+                </svg>
+                Hacer foto
+              </button>
+              <button
+                type="button"
+                onClick={() => galleryInputRef.current?.click()}
+                className="flex flex-1 items-center justify-center gap-2 rounded-xl border border-border bg-surface px-4 py-3 text-sm font-semibold text-text"
+              >
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  width="18"
+                  height="18"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                >
+                  <rect x="3" y="3" width="18" height="18" rx="2" ry="2" />
+                  <circle cx="8.5" cy="8.5" r="1.5" />
+                  <polyline points="21 15 16 10 5 21" />
+                </svg>
+                Elegir de galería
+              </button>
+            </div>
           </div>
         )}
 
@@ -168,13 +229,22 @@ export function ScanReceiptModal({ isOpen, onClose }: ScanReceiptModalProps) {
         {stage.kind === 'error' && (
           <div className="flex flex-col items-center gap-3 py-6 text-center text-sm">
             <p className="text-expense">{stage.message}</p>
-            <button
-              type="button"
-              onClick={() => fileInputRef.current?.click()}
-              className="rounded-lg border border-border bg-surface px-4 py-2 text-sm font-semibold text-text"
-            >
-              Probar con otra foto
-            </button>
+            <div className="flex w-full flex-col gap-2 sm:flex-row sm:justify-center">
+              <button
+                type="button"
+                onClick={() => cameraInputRef.current?.click()}
+                className="flex-1 rounded-lg bg-brand px-4 py-2 text-sm font-semibold text-white"
+              >
+                Otra foto
+              </button>
+              <button
+                type="button"
+                onClick={() => galleryInputRef.current?.click()}
+                className="flex-1 rounded-lg border border-border bg-surface px-4 py-2 text-sm font-semibold text-text"
+              >
+                De galería
+              </button>
+            </div>
           </div>
         )}
 
