@@ -33,33 +33,33 @@ const VISUALLY_HIDDEN = {
 const emptySubscribe = () => () => {}
 
 /**
- * El bug del input file + capture es específico de iOS WebKit en modo
- * standalone. En Android PWA y en navegadores con pestaña normal,
- * capture funciona. Detectamos iOS por user-agent + el truco de "Mac
- * con touch" para iPad nuevos (que reportan como Macintosh).
- */
-function isIosWebKit(): boolean {
-  if (typeof navigator === 'undefined') return false
-  const ua = navigator.userAgent
-  if (/iPad|iPhone|iPod/.test(ua)) return true
-  // iPadOS 13+ se identifica como Mac pero tiene touch.
-  return ua.includes('Macintosh') && typeof document !== 'undefined' && 'ontouchend' in document
-}
-
-/**
- * True solo si estamos en PWA standalone + iOS WebKit (la combinación
- * donde input file con capture no abre cámara). En ese caso usamos
- * nuestro propio viewfinder con getUserMedia. En cualquier otro caso
- * — incluido Android PWA standalone — delegamos en el input nativo,
- * que abre la cámara del sistema sin permisos extra.
+ * True si el dispositivo es móvil con `getUserMedia` disponible.
+ *
+ * En móvil siempre preferimos nuestro viewfinder propio sobre el input
+ * file con `capture`, por dos motivos:
+ *
+ *  - iOS WebKit en PWA standalone: input con capture no abre cámara.
+ *  - Android: input con capture falla en silencio si el navegador no
+ *    tiene permiso de cámara a nivel sistema operativo (Ajustes →
+ *    Apps → Chrome → Permisos → Cámara). El usuario no recibe ningún
+ *    prompt — solo "no pasa nada al pulsar".
+ *
+ * `getUserMedia` cubre ambos: dispara el prompt del SO si el permiso
+ * no está concedido, y al aceptarlo la cámara queda accesible.
+ *
+ * Detección por `pointer: coarse` en lugar de user-agent: cubre Android,
+ * iOS, tabletas con touch, Chromebooks táctiles, sin string-matching
+ * frágil.
  */
 function useNeedsCustomViewfinder(): boolean {
   return useSyncExternalStore(
     emptySubscribe,
     () => {
       if (typeof window === 'undefined') return false
-      const standalone = window.matchMedia?.('(display-mode: standalone)').matches ?? false
-      return standalone && isIosWebKit()
+      const isTouchPrimary = window.matchMedia?.('(pointer: coarse)').matches ?? false
+      const hasMediaDevices =
+        typeof navigator !== 'undefined' && !!navigator.mediaDevices?.getUserMedia
+      return isTouchPrimary && hasMediaDevices
     },
     () => false
   )
@@ -209,12 +209,17 @@ export function ScanReceiptModal({ isOpen, onClose }: ScanReceiptModalProps) {
       streamRef.current = stream
       setStage({ kind: 'camera' })
     } catch (err) {
-      const message =
-        err instanceof Error && err.name === 'NotAllowedError'
-          ? 'Diste "No permitir" al pedir la cámara. Permítela en los ajustes del navegador.'
-          : err instanceof Error
-            ? err.message
-            : 'No se pudo abrir la cámara.'
+      let message: string
+      if (err instanceof Error && err.name === 'NotAllowedError') {
+        message =
+          'Has denegado el permiso de cámara. Para arreglarlo: Ajustes del móvil → Aplicaciones → tu navegador → Permisos → Cámara → Permitir.'
+      } else if (err instanceof Error && err.name === 'NotFoundError') {
+        message = 'Este dispositivo no tiene cámara disponible.'
+      } else if (err instanceof Error) {
+        message = err.message
+      } else {
+        message = 'No se pudo abrir la cámara.'
+      }
       setStage({ kind: 'error', preview: '', message })
     }
   }
