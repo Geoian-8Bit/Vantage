@@ -12,7 +12,7 @@ test.describe('smoke público', () => {
     await page.goto('/login')
     await expect(page.getByRole('heading', { name: 'Inicia sesión' })).toBeVisible()
     await expect(page.getByLabel('Email')).toBeVisible()
-    await expect(page.getByLabel('Contraseña')).toBeVisible()
+    await expect(page.getByLabel('Contraseña', { exact: true })).toBeVisible()
     await expect(page.getByRole('button', { name: 'Entrar' })).toBeVisible()
   })
 
