@@ -1,5 +1,7 @@
 import Link from 'next/link'
 
+import { PasswordInput } from '@/components/ui/PasswordInput'
+
 import { signUp } from './actions'
 
 interface SignupPageProps {
@@ -18,7 +20,7 @@ export default async function SignupPage({ searchParams }: SignupPageProps) {
           </Link>
           <h1 className="text-2xl font-bold tracking-tight text-text">Crea tu cuenta</h1>
           <p className="text-sm text-subtext">
-            Te enviaremos un email para confirmar tu dirección.
+            Regístrate para empezar a usar Vantage.
           </p>
         </div>
 
@@ -54,14 +56,12 @@ export default async function SignupPage({ searchParams }: SignupPageProps) {
               <label htmlFor="password" className="text-sm font-medium text-text">
                 Contraseña
               </label>
-              <input
+              <PasswordInput
                 id="password"
                 name="password"
-                type="password"
                 required
                 autoComplete="new-password"
                 minLength={8}
-                className="w-full rounded-xl border border-border bg-surface px-3 py-2.5 text-sm text-text"
               />
               <p className="text-xs text-subtext">Mínimo 8 caracteres.</p>
             </div>
@@ -70,14 +70,12 @@ export default async function SignupPage({ searchParams }: SignupPageProps) {
               <label htmlFor="confirmPassword" className="text-sm font-medium text-text">
                 Confirma la contraseña
               </label>
-              <input
+              <PasswordInput
                 id="confirmPassword"
                 name="confirmPassword"
-                type="password"
                 required
                 autoComplete="new-password"
                 minLength={8}
-                className="w-full rounded-xl border border-border bg-surface px-3 py-2.5 text-sm text-text"
               />
             </div>
 

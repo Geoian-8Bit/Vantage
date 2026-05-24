@@ -1,5 +1,7 @@
 import Link from 'next/link'
 
+import { PasswordInput } from '@/components/ui/PasswordInput'
+
 import { signIn, enterDemo } from './actions'
 
 interface LoginPageProps {
@@ -60,14 +62,12 @@ export default async function LoginPage({ searchParams }: LoginPageProps) {
                 ¿Olvidaste?
               </Link>
             </div>
-            <input
+            <PasswordInput
               id="password"
               name="password"
-              type="password"
               required
               autoComplete="current-password"
               minLength={6}
-              className="w-full rounded-xl border border-border bg-surface px-3 py-2.5 text-sm text-text"
             />
           </div>
 

@@ -1,5 +1,6 @@
 import { redirect } from 'next/navigation'
 
+import { PasswordInput } from '@/components/ui/PasswordInput'
 import { createClient } from '@/lib/supabase/server'
 
 import { resetPassword } from './actions'
@@ -35,14 +36,12 @@ export default async function ResetPasswordPage({ searchParams }: ResetPasswordP
             <label htmlFor="password" className="text-sm font-medium text-text">
               Nueva contraseña
             </label>
-            <input
+            <PasswordInput
               id="password"
               name="password"
-              type="password"
               required
               autoComplete="new-password"
               minLength={8}
-              className="w-full rounded-xl border border-border bg-surface px-3 py-2.5 text-sm text-text"
             />
           </div>
 
@@ -50,14 +49,12 @@ export default async function ResetPasswordPage({ searchParams }: ResetPasswordP
             <label htmlFor="confirmPassword" className="text-sm font-medium text-text">
               Confirma la contraseña
             </label>
-            <input
+            <PasswordInput
               id="confirmPassword"
               name="confirmPassword"
-              type="password"
               required
               autoComplete="new-password"
               minLength={8}
-              className="w-full rounded-xl border border-border bg-surface px-3 py-2.5 text-sm text-text"
             />
           </div>
 

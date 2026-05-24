@@ -32,7 +32,7 @@ export async function signUp(formData: FormData) {
   const supabase = await createClient()
   const origin = (await headers()).get('origin') ?? 'http://localhost:3000'
 
-  const { error } = await supabase.auth.signUp({
+  const { data, error } = await supabase.auth.signUp({
     email: parsed.data.email,
     password: parsed.data.password,
     options: {
@@ -42,6 +42,13 @@ export async function signUp(formData: FormData) {
 
   if (error) {
     redirect(`/signup?error=${encodeURIComponent(translateError(error.message))}`)
+  }
+
+  // Con la confirmación por email desactivada en Supabase, signUp ya deja una
+  // sesión activa y el usuario entra directo. Si la confirmación está activa,
+  // no hay sesión y le pedimos que revise su correo.
+  if (data.session) {
+    redirect('/dashboard')
   }
 
   redirect(`/signup?sent=1&email=${encodeURIComponent(parsed.data.email)}`)
