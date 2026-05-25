@@ -1,6 +1,6 @@
 # Vantage Design System
 
-Sistema fully tokenizado en `src/renderer/styles/globals.css`. Todos los componentes consumen variables CSS, nunca hex hardcoded.
+Sistema fully tokenizado en `src/app/globals.css`. Todos los componentes consumen variables CSS, nunca hex hardcoded.
 
 ## Color strategy
 
@@ -61,7 +61,7 @@ Animaciones nombradas más usadas: `fade-up`, `scale-in`, `modal-emerge`, `skele
 
 ## Components
 
-Todos en `src/renderer/components/`.
+Todos en `src/components/` (transversales) y `src/features/<dominio>/ui/` (específicos de dominio).
 
 - `TiltCard` — wrapper que setea CSS vars `--tilt-x/y` con cursor tracking; el consumidor las usa en su transform. `intensity` en grados (default 6).
 - `Skeleton` + `skeletons/` — placeholders con shimmer. Componer skeletons específicos por pantalla.
@@ -76,17 +76,21 @@ Charts (`components/charts/`):
 - `ChartTooltip` / `ChartPieTooltip` — Tooltips Clay para Recharts con dot, sombra, blur, font display.
 - `chartTokens.ts` — props compartidos: `CHART_GRID_PROPS`, `CHART_AXIS_PROPS`, `CHART_BAR_RADIUS`, `CHART_CURSOR_LINE/BAR`, `CHART_LEGEND_STYLE`.
 
-Hooks (`hooks/`):
-- `useDesignTheme` — paleta + modo, persiste en localStorage, auto-purga themes legacy.
+Hooks (`src/lib/hooks/` y `src/lib/theme/`):
+- `useDesignTheme` (`lib/theme/`) — paleta + modo, persiste en localStorage, auto-purga themes legacy.
 - `useAnimatedNumber` — interpola valores monetarios con ease-out-cubic 600ms.
 - `useModalOrigin` — captura punto de origen del click para escala desde ahí.
-- `lib/transition.ts` — wrapper de View Transitions API con flushSync, respeta reduced-motion.
+- `useIsClient` — evita parpadeos de hidratación en componentes que dependen del cliente.
 
 ## Layout
 
-- Sidebar: `w-14` mobile / `w-60` lg. Halo radial brand + accent en fondo.
+Layout responsive con dos modos de navegación según breakpoint (`md` = 768px):
+
+- **Escritorio/tablet (`md+`)**: `Sidebar` lateral (`hidden md:flex`, `w-14` en `md` colapsada a iconos / `w-60` en `lg` con labels). Halo radial brand + accent en el fondo.
+- **Móvil (`<md`)**: la sidebar se oculta y aparecen `BottomTabs` (barra de navegación fija inferior, `md:hidden`) + `GlobalFAB` (botón flotante para añadir movimiento rápido con el pulgar).
+- Contenedor raíz `h-dvh` (viewport dinámico, respeta las barras del navegador móvil). El `<main>` reserva `pb-tabbar` para no quedar tapado por la barra inferior.
 - Main: `padding p-4 lg:p-6` dentro de la clase `.screen-content` (que también dispara stagger entry).
-- Cards reposo: `rounded-xl bg-card border border-border shadow-sm p-5`.
+- Cards reposo: `rounded-xl bg-card border border-border shadow-sm p-5`. En móvil, el contenido va siempre dentro de una card (`bg-card`), nunca plano sobre el surface.
 - Cards principales (balance, hub tiles): `rounded-2xl shadow-md` y arriba.
 - Espaciado vertical entre secciones: `space-y-4 lg:space-y-5` por defecto.
 

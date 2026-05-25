@@ -1,106 +1,76 @@
-# Despliegue en Vercel — Fase 4
+# Despliegue (Vercel + GitHub Actions)
 
-Pasos exactos para llevar Vantage de local a una URL pública en Vercel. Asume que has terminado Fase 3 (auth con magic link funciona en local).
+Cómo está montado el despliegue de Vantage y qué hay que configurar para reproducirlo. La app vive en `main` y se publica en Vercel sobre Supabase.
 
-## 1. Pre-requisitos
+> Los valores reales (URLs, keys, connection string) **no van en este repo**: viven en `.env.local` (local) y en las env vars de Vercel / secrets de GitHub. Aquí solo hay placeholders.
 
-- La rama `migration/web-rewrite` está pusheada a `origin` (GitHub).
-- Tienes cuenta GitHub con el repo Vantage.
-- La rama compila localmente: `npm run build`.
+## Flujo de despliegue
 
-## 2. Crear cuenta Vercel
+El despliegue **no usa la integración Git nativa de Vercel** — `vercel.json` la desactiva (`git.deploymentEnabled: false`). En su lugar lo orquesta GitHub Actions:
 
-1. Entra a https://vercel.com → **Sign Up** → **Continue with GitHub**.
-2. Autoriza Vercel a leer tus repos.
-3. Cuando te pida elegir scope, elige tu cuenta personal (no equipo).
+1. Push a `main` → workflow `CI/CD` (`.github/workflows/ci.yml`).
+2. Corren en paralelo: lint + typecheck, unit (Vitest), build (Next.js) y E2E (Playwright sobre rutas públicas).
+3. Si **todo** pasa, el job `deploy` ejecuta `vercel pull` → `vercel build --prod` → `vercel deploy --prebuilt --prod` con el `VERCEL_TOKEN`.
 
-## 3. Importar el repo
+Las PRs corren el mismo CI sin desplegar. La rama de producción es `main`.
 
-1. Dashboard Vercel → **Add New...** → **Project**.
-2. Verás la lista de repos GitHub. Busca **Vantage** → **Import**.
-3. **Configure Project**:
-   - **Framework Preset**: Next.js (detectado automáticamente).
-   - **Root Directory**: `./` (raíz, no cambiar).
-   - **Build Command**: dejar por defecto (`next build`).
-   - **Output Directory**: dejar por defecto (`.next`).
-   - **Install Command**: dejar por defecto (`npm install`).
-4. **NO pulses Deploy todavía.** Antes hay que añadir las env vars.
+## Env vars de la app
 
-## 4. Configurar Production Branch
+Las mismas claves valen para `.env.local` (desarrollo) y para Vercel (Production / Preview / Development). Cómo obtener cada una está en [`.env.example`](../.env.example).
 
-Por defecto Vercel toma `main` como rama de producción. Como nuestro código vive en `migration/web-rewrite` (y `main` aún tiene Electron), hay que cambiarlo:
-
-1. Sigue en la pantalla de **Configure Project**.
-2. Despliega la sección **Git Repository** o **Branches**.
-3. **Production Branch**: cambia de `main` a `migration/web-rewrite`.
-
-Si esta opción no aparece aquí: termina el primer deploy (paso 6), luego ve a **Project Settings → Git → Production Branch** y cámbialo ahí. El siguiente push activará el nuevo branch.
-
-## 5. Environment Variables
-
-Despliega la sección **Environment Variables** y añade las 4 siguientes. Cada una a los tres entornos: **Production**, **Preview** y **Development**.
-
-| Name | Value | Notas |
+| Name | Ámbito | Notas |
 | --- | --- | --- |
-| `NEXT_PUBLIC_SUPABASE_URL` | `https://syhtdsbhltfonuydfbme.supabase.co` | Pública |
-| `NEXT_PUBLIC_SUPABASE_ANON_KEY` | `sb_publishable_VlCQn-cByHG6MDrpshWeMw_oRbFFLXL` | Pública |
-| `SUPABASE_SERVICE_ROLE_KEY` | (la `sb_secret_...` que ya tienes) | **Secreta** |
-| `DATABASE_URL` | (Pooler **Transaction** modo, puerto **6543**) | **Secreta**, ver más abajo |
+| `NEXT_PUBLIC_SUPABASE_URL` | Pública | URL del proyecto Supabase. |
+| `NEXT_PUBLIC_SUPABASE_ANON_KEY` | Pública | Publishable key (`sb_publishable_...`). |
+| `SUPABASE_SERVICE_ROLE_KEY` | **Secreta** | Solo server-side. Nunca expuesta al cliente. |
+| `DATABASE_URL` | **Secreta** | Connection string del Pooler. Ver nota abajo. |
+| `CRON_SECRET` | **Secreta** | Bearer que protege los endpoints `/api/cron/*`. |
 
-> ⚠️ La `DATABASE_URL` que usamos en local apunta a puerto **5432** (modo Session). Para producción serverless **conviene usar puerto 6543** (modo Transaction), que maneja mejor las conexiones de funciones serverless.
+> **`DATABASE_URL` — modo según entorno.** En local usa el Pooler en **modo Session** (puerto `5432`), que va mejor para las migraciones de Drizzle. En Vercel (serverless) usa **modo Transaction** (puerto `6543`), que maneja mejor las conexiones efímeras de las funciones.
+>
+> En Supabase: **Project Settings → Database → Connection string**, marca *Use connection pooling*, elige el modo, copia la URI y sustituye `[YOUR-PASSWORD]`.
 
-Para coger la del pooler en modo Transaction:
+## Secrets y variables de GitHub Actions
 
-1. Supabase → **Project Settings** → **Database** → **Connection string**.
-2. Marca **Use connection pooling**.
-3. Modo: **Transaction** (puerto **6543**).
-4. URI: copia, sustituye `[YOUR-PASSWORD]` por la contraseña real.
-5. Quedará:
-   ```
-   postgresql://postgres.syhtdsbhltfonuydfbme:[YOUR-PASSWORD]@aws-1-eu-central-1.pooler.supabase.com:6543/postgres
-   ```
+En **Settings → Secrets and variables → Actions** del repo:
 
-## 6. Deploy
+**Secrets**
+- `VERCEL_TOKEN`, `VERCEL_ORG_ID`, `VERCEL_PROJECT_ID` — para que el job `deploy` publique en Vercel.
+- `CRON_SECRET` — mismo valor que en Vercel; lo usa el workflow `reset-demo`.
+- `DATABASE_URL` (modo Session) y `BACKUP_PASSPHRASE` — los usa el workflow `db-backup` (pg_dump cifrado con GPG).
 
-1. Pulsa **Deploy**.
-2. Vercel hará: clone → install → build → deploy. Tarda ~2 minutos la primera vez.
-3. Cuando termine te da una URL tipo `https://vantage-xxx.vercel.app`. Cópiala.
+**Variables**
+- `APP_URL` — URL pública desplegada, sin slash final (ej. `https://vantage.vercel.app`). Es variable (no secret) para que se vea en los logs.
 
-## 7. Configurar URLs en Supabase
+## Configuración de auth en Supabase
 
-Antes de probar el login en producción, hay que añadir la URL de Vercel a la whitelist de Supabase. Si no, los magic links te rebotarán.
+Vantage usa **Supabase Auth por email + contraseña** (la confirmación de email está desactivada: el alta entra directa al dashboard). El callback `/auth/callback` se usa para el flujo de recuperación de contraseña.
 
-1. Supabase → **Authentication** → **URL Configuration**.
-2. **Site URL**: cámbialo a la URL de Vercel (sin barra final).
-3. **Redirect URLs**: añade `https://vantage-xxx.vercel.app/auth/callback` (y mantén `http://localhost:3000/auth/callback` para seguir trabajando en local).
-4. Guarda.
+En **Authentication → URL Configuration**:
 
-> El **Site URL** se usa para los emails de magic link. Si lo dejas en localhost, los enlaces enviados desde producción intentarán abrir localhost en el navegador de tu familiar — y fallarán.
+1. **Site URL**: la URL de producción de Vercel, sin slash final. Se usa como base de los emails (p. ej. reset de contraseña).
+2. **Redirect URLs**: añade `https://TU-APP.vercel.app/auth/callback` y mantén `http://localhost:3000/auth/callback` para desarrollo local.
 
-## 8. Probar
+> Si el **Site URL** apunta a localhost, los enlaces de los emails enviados desde producción abrirán localhost y fallarán.
 
-1. Abre la URL de Vercel en una pestaña nueva (idealmente en incógnito).
-2. Pulsa **Iniciar sesión**.
-3. Mete tu email → te llega un magic link.
-4. Pulsa el enlace → debería caer en `https://vantage-xxx.vercel.app/dashboard`.
+## Tareas programadas (cron)
 
-## 9. Avísame
+- **Recurrentes** — `vercel.json` define un Vercel Cron diario (`0 6 * * *`) que llama a `/api/cron/process-recurring`. El plan Hobby limita a 1 cron diario por proyecto.
+- **Reset del demo** — workflow `reset-demo` (GitHub Actions) cada 6 h llama a `/api/cron/reset-demo`. Se hace en Actions, no en Vercel Cron, justo por el límite de 1 cron/día.
+- **Backup de DB** — workflow `db-backup` (GitHub Actions) semanal: `pg_dump` cifrado con GPG y subido como artifact (retención 90 días). Las instrucciones de restauración están en la cabecera de `.github/workflows/db-backup.yml`.
 
-Cuando lo tengas funcionando, dime:
-- La URL pública de Vercel (`https://...`).
-- La nueva `DATABASE_URL` con el pooler en modo Transaction (la mando al `.env.local` actualizado).
-- Si has tenido algún error en build o deploy.
-
----
+Todos los endpoints `/api/cron/*` exigen el header `Authorization: Bearer $CRON_SECRET`.
 
 ## Troubleshooting
 
-**Build falla con "Module not found: server-only"**: añadido en Fase 3, está en deps. Si pasa, mira el log y comprueba que `server-only` está en `dependencies` del `package.json`.
+**Build falla con "Module not found: server-only"**: comprueba que `server-only` está en `dependencies` del `package.json`.
 
-**Build falla con "Error: DATABASE_URL no está definido"**: te falta la env var en Vercel o el typeo es incorrecto.
+**Build falla con "DATABASE_URL no está definido"**: falta la env var en Vercel o hay un typo.
 
-**Magic link redirige a localhost en vez de Vercel**: el `Site URL` de Supabase sigue en `http://localhost:3000`. Cámbialo a la URL de Vercel.
+**El deploy no se dispara al pushear**: el deploy depende de que el CI esté verde (`needs: [quality, unit, build, e2e]`) y de que sea push a `main`. Revisa los jobs fallidos en Actions. Recuerda que la integración Git de Vercel está desactivada a propósito (`vercel.json`).
 
-**Login en Vercel falla con "missing_code" o similar**: la URL de Vercel no está en **Redirect URLs** de Supabase. Añádela.
+**Emails de recuperación abren localhost**: el **Site URL** de Supabase sigue en `http://localhost:3000`. Cámbialo a la URL de Vercel.
 
-**Tarda mucho en arrancar tras inactividad**: el plan Free de Vercel no duerme funciones, pero Supabase Free sí pausa proyectos tras 7 días sin actividad. Esto se resuelve en Fase 11 con un cron keep-alive.
+**Login falla con "missing_code" o similar tras un email**: la URL de producción no está en **Redirect URLs** de Supabase. Añádela.
+
+**El proyecto Supabase se pausa**: el plan Free pausa tras 7 días de inactividad. Los crons (recurrentes/reset/backup) mantienen actividad regular y lo evitan.

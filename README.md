@@ -6,7 +6,7 @@ Aplicación web de finanzas personales: movimientos, ahorros, deudas, recurrente
 
 Next.js 15 App Router · TypeScript estricto · Tailwind 4 · Drizzle ORM · Postgres en Supabase · Supabase Auth · TanStack Query · Zod · Vitest + Playwright · Vercel + GitHub Actions.
 
-Detalles en [`docs/architecture.md`](docs/architecture.md) y decisiones en [`docs/adr/`](docs/adr).
+Detalles en [`docs/architecture.md`](docs/architecture.md), decisiones en [`docs/adr/`](docs/adr) y despliegue en [`docs/deploy-vercel.md`](docs/deploy-vercel.md).
 
 ## Comandos principales
 

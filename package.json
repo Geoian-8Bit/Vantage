@@ -1,7 +1,7 @@
 {
   "name": "vantage",
   "version": "0.5.0",
-  "description": "Aplicación web de finanzas personales — migración en curso desde Electron",
+  "description": "Aplicación web de finanzas personales (Next.js + Supabase, desplegada en Vercel)",
   "private": true,
   "scripts": {
     "dev": "next dev --turbo",
