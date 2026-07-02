@@ -640,6 +640,37 @@ export default function TransactionsPage() {
             </div>
           )}
 
+          {/* Mobile-only: toggle "Acumular meses" visible (en escritorio vive en el header) */}
+          <button
+            type="button"
+            onClick={toggleRollover}
+            aria-pressed={rolloverEnabled}
+            aria-label="Acumular meses: suma como disponible el balance no ahorrado de periodos anteriores"
+            title="Suma como disponible el balance no ahorrado de periodos anteriores"
+            className={`ml-auto inline-flex shrink-0 cursor-pointer items-center gap-1.5 rounded-lg border px-2.5 py-1.5 text-xs font-medium transition-colors md:hidden ${
+              rolloverEnabled
+                ? 'border-brand/30 bg-brand/10 text-brand'
+                : 'border-border bg-surface text-text hover:bg-border'
+            }`}
+          >
+            <svg
+              aria-hidden="true"
+              xmlns="http://www.w3.org/2000/svg"
+              width="13"
+              height="13"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            >
+              <path d="M17 2.1l4 4-4 4" />
+              <path d="M3 12.2v-2a4 4 0 0 1 4-4h12.8M7 21.9l-4-4 4-4" />
+              <path d="M21 11.8v2a4 4 0 0 1-4 4H4.2" />
+            </svg>
+            Acumular
+          </button>
           {/* Mobile-only: trigger del sheet de filtros + counter compacto */}
           <button
             type="button"
@@ -649,7 +680,7 @@ export default function TransactionsPage() {
                 ? `Abrir filtros (${activeFiltersCount} activos)`
                 : 'Abrir filtros'
             }
-            className="ml-auto inline-flex shrink-0 cursor-pointer items-center gap-1.5 rounded-lg border border-border bg-surface px-2.5 py-1.5 text-xs font-medium text-text transition-colors hover:bg-border md:hidden"
+            className="inline-flex shrink-0 cursor-pointer items-center gap-1.5 rounded-lg border border-border bg-surface px-2.5 py-1.5 text-xs font-medium text-text transition-colors hover:bg-border md:hidden"
           >
             <svg
               xmlns="http://www.w3.org/2000/svg"
