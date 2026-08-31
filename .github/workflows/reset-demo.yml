@@ -45,3 +45,33 @@ jobs:
           curl -fsSL --max-time 60 \
             -H "Authorization: Bearer ${CRON_SECRET}" \
             "${APP_URL}/api/cron/reset-demo"
+
+  # ─── Keepalive contra la desactivacion por inactividad ─────────────────
+  # GitHub desactiva los workflows con `schedule` cuando el repo lleva 60
+  # dias sin commits. Este job empuja un commit vacio si nos acercamos al
+  # limite, reseteando el contador. El push va firmado por GITHUB_TOKEN, y
+  # los pushes hechos con ese token no disparan workflows, asi que no gasta
+  # minutos de CI ni provoca un deploy.
+  keepalive:
+    name: Commit vacio si el repo lleva 50 dias parado
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    if: github.event_name == 'schedule'
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Push empty commit si procede
+        run: |
+          last=$(git log -1 --format=%ct)
+          days=$(( ( $(date +%s) - last ) / 86400 ))
+          echo "Dias desde el ultimo commit: $days"
+          if [ "$days" -lt 50 ]; then
+            echo "Por debajo del umbral, no hace falta keepalive."
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git commit --allow-empty -m "chore(ci): keepalive para mantener activos los workflows programados"
+          git push

@@ -245,3 +245,33 @@ jobs:
 
       - name: Deploy to Vercel
         run: vercel deploy --prebuilt --prod --token=${{ secrets.VERCEL_TOKEN }}
+
+  # ─── Rehabilitar workflows programados ─────────────────────────────────
+  # GitHub desactiva los workflows con `schedule` cuando el repo pasa 60
+  # dias sin actividad (estado `disabled_inactivity`). Un push a main es
+  # actividad, asi que aprovechamos este workflow —que nunca se autodesactiva
+  # porque no es programado— para volver a activar los que se hayan caido.
+  # No depende de que CI este verde: el objetivo es recuperar los crons.
+  reenable-schedules:
+    name: Reactivar workflows programados
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    permissions:
+      actions: write
+    steps:
+      - name: Enable workflows in disabled_inactivity
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          REPO: ${{ github.repository }}
+        run: |
+          ids=$(gh api "repos/$REPO/actions/workflows" \
+            --jq '.workflows[] | select(.state == "disabled_inactivity") | .id')
+          if [ -z "$ids" ]; then
+            echo "Ningun workflow desactivado por inactividad."
+            exit 0
+          fi
+          for id in $ids; do
+            echo "Reactivando workflow $id"
+            gh api --method PUT "repos/$REPO/actions/workflows/$id/enable"
+          done
