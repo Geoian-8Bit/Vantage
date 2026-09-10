@@ -1,10 +1,27 @@
 # Vantage
 
+[![CI/CD](https://github.com/Geoian-8Bit/Vantage/actions/workflows/ci.yml/badge.svg)](https://github.com/Geoian-8Bit/Vantage/actions/workflows/ci.yml)
+
 Aplicación web de **finanzas personales**: movimientos, apartados, deudas, recurrentes y análisis. Una sola cuenta dueña de sus datos, accesible desde el navegador e instalable como PWA en el móvil.
 
 > **Demo público sin registro** → **<https://vantage-geoian-s-projects.vercel.app>**
 >
-> En la pantalla de login pulsa *"Probar demo sin registrarte"*. Es una cuenta anónima compartida que se resetea automáticamente cada 6 h, así que cualquiera puede trastear sin ensuciar datos reales.
+> En la pantalla de login pulsa _"Probar demo sin registrarte"_. Es una cuenta anónima compartida que se resetea automáticamente cada 6 h, así que cualquiera puede trastear sin ensuciar datos reales.
+
+## Capturas
+
+<!-- TODO: captura del dashboard en escritorio. Guardar en docs/media/dashboard.png -->
+<!-- TODO: captura de la vista móvil (bottom tabs + FAB en /transactions). Guardar en docs/media/movil.png -->
+<!-- TODO: GIF del OCR leyendo un ticket y rellenando el formulario. Guardar en docs/media/ocr-ticket.gif -->
+<!-- TODO: captura de analytics con los gráficos de Recharts. Guardar en docs/media/analytics.png -->
+
+## Destacado técnico
+
+- **Migración completa de Electron + SQLite a Next.js + Supabase con paridad funcional**, sin que nadie perdiera el histórico de la etapa de escritorio → [Qué es](#qué-es) y [Decisiones técnicas](#decisiones-técnicas).
+- **OCR de tickets client-side**: PaddleOCR PP-OCRv5 sobre `onnxruntime-web`, sin enviar la foto a ningún servidor → [Captura y gestión de movimientos](#captura-y-gestión-de-movimientos).
+- **RLS multi-space en Postgres**: el aislamiento de datos lo impone la base de datos, no el código de la aplicación → [Qué es](#qué-es) y [Stack](#stack).
+- **Backup semanal de Postgres cifrado con GPG AES256** mediante GitHub Action, con las instrucciones de restauración versionadas junto al workflow → [Import / Export / Backup](#import--export--backup).
+- **Demo pública anónima que se resetea sola cada 6 h**, para que cualquiera pruebe la app sin registrarse ni ensuciar datos reales → [Autenticación](#autenticación).
 
 ---
 
@@ -18,31 +35,48 @@ Más contexto de producto y principios en [`PRODUCT.md`](PRODUCT.md). Sistema de
 
 ---
 
+## Decisiones técnicas
+
+**De Electron + SQLite a Next.js + Supabase.** La versión de escritorio funcionaba, pero cada corrección significaba compilar un `.exe`, subirlo a algún sitio y pedirle a cada usuario que lo reinstalase; y no había forma de apuntar un gasto en el momento de hacerlo, que es cuando se apunta o no se apunta nunca. La migración resolvió las tres cosas a la vez: despliegue automático, acceso desde el móvil y una sola versión viva. Lo que se sacrificó: la app dejó de ser local-first (los datos ya no están en el disco del usuario, sino en un Postgres gestionado), apareció dependencia de un proveedor y de su plan gratuito, y hubo que construir un backend que antes no existía. La compatibilidad se mantuvo con el flujo de restore desde `.db` SQLite, para que nadie perdiese su histórico.
+
+**Backend propio por capas en lugar de hablar con Supabase desde el cliente.** Con Supabase el camino corto era llamar a la base de datos directamente desde React y ahorrarse la capa de API. Se descartó a propósito: el objetivo era montar la separación que se usa en empresa (UI → hook → API route → service → repository → DB), con validación Zod en los bordes y casos de uso testables sin navegador. El coste asumido es más código y más indirección para operaciones triviales.
+
+**Drizzle en lugar de Prisma.** Prisma es más maduro y tiene mejor experiencia inicial. Se descartó por los cold-starts en funciones serverless, que es exactamente donde corre esto (Vercel Hobby): Drizzle es SQL tipado y ligero, sin motor de consultas que arrancar en cada invocación fría.
+
+**OCR de tickets en el navegador, no en el servidor.** La alternativa era una API de OCR en la nube o un endpoint propio con el modelo cargado. Se descartó: la foto de un ticket es un dato personal, y mandarla a un tercero —o a mis propios logs— para leer un importe no compensa. Con PaddleOCR sobre `onnxruntime-web` la imagen no sale del dispositivo, no hay coste por petición y no hay nada que escalar. El precio es la descarga inicial del modelo y un reconocimiento más lento en móviles modestos.
+
+---
+
 ## Funcionalidades
 
 ### Captura y gestión de movimientos
+
 - **Movimientos** en tres modos en el mismo formulario: gasto/ingreso **puntual**, **apartado** (afecta a una hucha de ahorro) o **recurrente** (se materializa solo cada día/semana/mes).
 - **FAB global** y barra inferior con "Movs" en el centro para añadir un gasto en dos toques desde el móvil.
 - **Alta por foto del ticket**: hace una foto, OCR client-side con **PaddleOCR PP-OCRv5** (modelo `latin`, soporta español) sobre **onnxruntime-web**, y rellena el formulario con importe, fecha y comercio. Viewfinder propio con `getUserMedia` para móvil; en escritorio cae al input nativo.
 - **Bulk delete** y filtros (categoría, método de pago, rango de fechas, texto) compartidos entre `/transactions` y `/analytics`.
 
 ### Apartados, deudas y recurrentes
+
 - **Apartados** (savings) con metas y porcentaje de progreso.
 - **Deudas amortizables**: cuota recurrente automática y simulador de pago extra para ver impacto en plazo/intereses.
 - **Recurrentes**: lista propia, generación automática diaria por **Vercel Cron** (`0 6 * * *`) que llama a `/api/cron/process-recurring`.
 
 ### Análisis
+
 - **Dashboard** con resumen mensual, evolución y desglose por categoría.
 - **Stats / Analytics** con gráficos **Recharts 3** y filterbar unificada con Transactions.
 - **Calendario** con vista mensual y doble-click para añadir gasto rápido en un día.
 
 ### Import / Export / Backup
+
 - **Import Excel** y **Import Access** (`mdb-reader`) — pensado para migrar desde GesHogar o desde hojas de cálculo.
 - **Export PDF** vía `pdfkit`.
 - **Restore desde `.db` SQLite** con `sql.js`, para subir el backup de la app Electron antigua.
 - **Backup automático** de Postgres: GitHub Action semanal que ejecuta `pg_dump` y cifra el dump con **GPG AES256** antes de subirlo como artifact (retención 90 días). Instrucciones de restauración en la cabecera de [`.github/workflows/db-backup.yml`](.github/workflows/db-backup.yml).
 
 ### Autenticación
+
 - **Email + contraseña** clásica (Supabase Auth). Confirmación de email **desactivada**: el alta entra directa al dashboard.
 - **Botón "ver contraseña"** en login y signup.
 - **Cambio de email / contraseña** desde Ajustes, con confirmación por email.
@@ -51,6 +85,7 @@ Más contexto de producto y principios en [`PRODUCT.md`](PRODUCT.md). Sistema de
 - **Demo público** sin login: cuenta anónima compartida, acceso solo-lectura para acciones sensibles, reset cada 6 h vía GitHub Action.
 
 ### Interfaz
+
 - **Responsive completo** móvil/escritorio. En móvil: bottom tabs, FAB en `/transactions`, **bottom-sheet de filtros con swipe-down**, todo el contenido dentro de cards.
 - **PWA instalable**: manifest + service worker, funciona offline para navegación básica.
 - **5 paletas seleccionables** (Corporativo / Soft Clay / Botánico / Tea House / Mediterráneo) con modo claro y oscuro, todo en CSS tokens, sin framer-motion ni shadcn.
@@ -144,6 +179,7 @@ npm run dev                           # http://localhost:3000
 3. Si todo pasa, el job `deploy` ejecuta `vercel pull` → `vercel build --prod` → `vercel deploy --prebuilt --prod`.
 
 Tareas programadas:
+
 - **Vercel Cron** (`vercel.json`) — diario a las 06:00 UTC: materializa recurrentes pendientes.
 - **GitHub Action `reset-demo`** — cada 6 h: resetea la cuenta del demo.
 - **GitHub Action `db-backup`** — semanal: `pg_dump` cifrado con GPG y subido como artifact.
